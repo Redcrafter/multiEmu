@@ -1,6 +1,6 @@
 #include "RenderImage.h"
-#include <memory>
 #include <stdexcept>
+#include <cstring>
 
 RenderImage::RenderImage(const int width, const int height) {
 	glGenTextures(1, &textureID);
@@ -8,7 +8,7 @@ RenderImage::RenderImage(const int width, const int height) {
 	Height = height;
 
 	imgData = new Color[width * height];
-	std::memset(imgData, 0, width * height * sizeof(Color));
+	memset(imgData, 0, width * height * sizeof(Color));
 
 	glBindTexture(GL_TEXTURE_2D, textureID);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Width, Height, 0, GL_BGR, GL_UNSIGNED_BYTE, imgData);

@@ -104,25 +104,25 @@ int32_t NFDi_UTF8_Strlen( const nfdchar_t *str )
 	/* If there is UTF-8 BOM ignore it. */
 	if (strlen(str) > 2)
 	{
-		strncpy_s(maybe_bom, 4 , str, 3);
+		strncpy(maybe_bom, str, 3);
 		maybe_bom[3] = 0;
 		if (strcmp(maybe_bom, (nfdchar_t*)NFD_UTF8_BOM) == 0)
 			i += 3;
 	}
 	
 	while(str[i])
-	{
+    {
 		if (str[i] >> 7 == 0)
         {
             /* If bit pattern begins with 0 we have ascii character. */ 
 			++character_count;
         }
-		else if (str[i] >> 6 == 3)
+        else if (str[i] >> 6 == 3)
         {
 		/* If bit pattern begins with 11 it is beginning of UTF-8 byte sequence. */
 			++character_count;
         }
-		else if (str[i] >> 6 == 2)
+        else if (str[i] >> 6 == 2) 
 			;		/* If bit pattern begins with 10 it is middle of utf-8 byte sequence. */
 		else
         {

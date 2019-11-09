@@ -66,7 +66,7 @@ md5::md5(const char* data, uint64_t length) {
 
 md5::md5(std::istream& stream) {
 	if(!stream.good()) {
-		throw new std::exception("Bad stream");
+		throw new std::runtime_error("Bad stream");
 	}
 	
 	uint8_t message[64];

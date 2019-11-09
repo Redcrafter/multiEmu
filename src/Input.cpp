@@ -1,6 +1,6 @@
 #include "Input.h"
 
-#include <filesystem>
+#include "fs.h"
 #include <fstream>
 #include <cassert>
 
@@ -8,7 +8,7 @@ int Input::keys[16] { 0 };
 std::map<int, Action> Input::keyMap;
 
 void Input::LoadKeyMap() {
-	if(std::filesystem::exists("./keymap.txt")) {
+	if(fs::exists("./keymap.txt")) {
 		std::ifstream stream("./keymap.txt");
 
 		throw std::logic_error("Not implemented");

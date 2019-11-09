@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <cstring>
 
 const Color colors[] = {
 	{84, 84, 84},
@@ -223,7 +224,7 @@ void ppu2C02::Clock() {
 				}
 
 				if(scanlineY >= 0) {
-					std::memset(oam2, 0xFF, sizeof(oam2));
+					memset(oam2, 0xFF, sizeof(oam2));
 					spriteCount = 0;
 					spriteZeroPossible = false;
 

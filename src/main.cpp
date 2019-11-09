@@ -13,6 +13,7 @@
 #include <GLFW/glfw3.h>
 #include "shaders/shader.h"
 
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -21,7 +22,7 @@
 #include <iostream>
 #include <mutex>
 #include <bass.h>
-#include <filesystem>
+#include "fs.h"
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_opengl3.h"
@@ -115,7 +116,7 @@ void LoadRom(const char* path) {
 	for(int i = 0; i < 10; ++i) {
 		std::string sPath = partial + std::to_string(i) + ".sav";
 
-		if(std::filesystem::exists(sPath)) {
+		if(fs::exists(sPath)) {
 			try {
 				saveStates[i] = new saver(sPath);
 			} catch(std::exception& e) {
@@ -136,8 +137,8 @@ void SaveState(int number) {
 
 	try {
 		auto path = "./saves/" + nes->cartridge->hash->ToString() + "-" + std::to_string(number) + ".sav";
-		if(std::filesystem::exists(path)) {
-			std::filesystem::copy(path, path + ".old", std::filesystem::copy_options::overwrite_existing);
+		if(fs::exists(path)) {
+			fs::copy(path, path + ".old", fs::copy_options::overwrite_existing);
 		}
 		state->Save(path);
 

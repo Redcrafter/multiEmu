@@ -548,7 +548,7 @@ float RP2A03::GenerateSample() {
 	buf.sample = val;
 	bufferPos++;
 	if(bufferPos >= bufferLength) {
-		__debugbreak();
+		// __debugbreak();
 		throw std::runtime_error("Buffer overflow");
 	}
 
