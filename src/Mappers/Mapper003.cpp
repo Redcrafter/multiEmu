@@ -17,7 +17,7 @@ bool Mapper003::cpuMapWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper003::ppuMapRead(uint16_t addr, uint32_t& mapped) {
+bool Mapper003::ppuMapRead(uint16_t addr, uint32_t& mapped, bool readOnly) {
 	if(addr < 0x2000) {
 		mapped = (addr & 0x1FFF) + (selectedBank * 0x2000);
 		

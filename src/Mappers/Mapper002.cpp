@@ -25,7 +25,7 @@ bool Mapper002::cpuMapWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper002::ppuMapRead(uint16_t addr, uint32_t& mapped) {
+bool Mapper002::ppuMapRead(uint16_t addr, uint32_t& mapped, bool readOnly) {
 	return false;
 }
 

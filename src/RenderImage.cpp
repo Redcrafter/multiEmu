@@ -2,14 +2,13 @@
 #include <memory>
 #include <stdexcept>
 
-RenderImage::RenderImage(const int width, const int height, const float x, const float y) {
+RenderImage::RenderImage(const int width, const int height) {
 	glGenTextures(1, &textureID);
 	Width = width;
 	Height = height;
 
 	imgData = new Color[width * height];
 	std::memset(imgData, 0, width * height * sizeof(Color));
-	mat = translate(glm::vec3(x, y, 0.0f)) * scale(glm::vec3(Width, Height, 1.0f));
 
 	glBindTexture(GL_TEXTURE_2D, textureID);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Width, Height, 0, GL_BGR, GL_UNSIGNED_BYTE, imgData);
@@ -23,6 +22,7 @@ RenderImage::~RenderImage() {
 }
 
 void RenderImage::Clear(Color col) {
+	changed = true;
 	for(int i = 0; i < Width * Height; ++i) {
 		imgData[i] = col;
 	}

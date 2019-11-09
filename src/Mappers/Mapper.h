@@ -12,9 +12,10 @@ public:
 
 	virtual int cpuMapRead(uint16_t addr, uint32_t& mapped) = 0;
 	virtual bool cpuMapWrite(uint16_t addr, uint8_t data) = 0;
-	virtual bool ppuMapRead(uint16_t addr, uint32_t& mapped) = 0;
+	virtual bool ppuMapRead(uint16_t addr, uint32_t& mapped, bool readOnly) = 0;
 	virtual bool ppuMapWrite(uint16_t addr, uint8_t data) = 0;
 
+	// TODO: virtual uint8_t* GetSaveRam() = 0;
 	virtual void SaveState(saver& saver) = 0;
 	virtual void LoadState(saver& saver) = 0;
 protected:

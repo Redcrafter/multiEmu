@@ -10,8 +10,14 @@ Mapper001::Mapper001(uint8_t prgBanks, uint8_t chrBanks) : Mapper(prgBanks, chrB
 }
 
 int Mapper001::cpuMapRead(uint16_t addr, uint32_t& mapped) {
+	lastWrite = false;
 	if(addr < 0x8000) {
-		return false; // TODO: ram?
+		// TODO: ram enable
+		if(ramEnable && addr >= 0x6000) {
+			mapped = prgRam[addr & 0x1FFF];
+			return 2;
+		}
+		return false;
 	}
 
 	mapped = (addr & 0x3FFF) | prgBankOffset[(addr >> 14) & 1];
@@ -20,24 +26,29 @@ int Mapper001::cpuMapRead(uint16_t addr, uint32_t& mapped) {
 
 bool Mapper001::cpuMapWrite(uint16_t addr, uint8_t data) {
 	if(addr < 0x8000) {
+		if(addr >= 0x6000) {
+			prgRam[addr & 0x1FFF] = data;
+			return true;
+		}
+		return false;
+	}
+	if(lastWrite) {
 		return false;
 	}
 
 	if(data & 0x80) {
-		shiftRegister = 0;
-		writeState = 1;
+		shiftRegister = 0b100000;
+		Control |= 0x0C;
+		lastWrite = true;
+
+		return false;
 	}
 
-	if(writeState) {
+	shiftRegister >>= 1;
+	shiftRegister |= (data & 1) << 5;
+
+	if(shiftRegister & 1) {
 		shiftRegister >>= 1;
-		shiftRegister |= (data & 1) << 7;
-
-		writeState++;
-	}
-
-	if(writeState == 6) {
-		writeState = 0;
-		shiftRegister >>= 3;
 
 		switch((addr >> 13) & 3) {
 			case 0:
@@ -66,7 +77,7 @@ bool Mapper001::cpuMapWrite(uint16_t addr, uint8_t data) {
 				break;
 			case 3:
 				prgBank = shiftRegister & 0xF;
-				// Todo: ram
+				ramEnable = shiftRegister & 0x10;
 				break;
 		}
 
@@ -87,22 +98,22 @@ bool Mapper001::cpuMapWrite(uint16_t addr, uint8_t data) {
 		}
 
 		if(Control & 0x10) {
-			chrBankOffset[0] = (chrBank0 & ~1) * 0x1000;
-			chrBankOffset[1] = (chrBank0 & ~1) * 0x1000 + 0x1000;
-		} else {
 			chrBankOffset[0] = (chrBank0) * 0x1000;
 			chrBankOffset[1] = (chrBank1) * 0x1000;
+		} else {
+			chrBankOffset[0] = (chrBank0 & ~1) * 0x1000;
+			chrBankOffset[1] = (chrBank0 & ~1) * 0x1000 + 0x1000;
 		}
 
-		shiftRegister = 0;
+		shiftRegister = 0b100000;
 	}
 
 	return false;
 }
 
-bool Mapper001::ppuMapRead(uint16_t addr, uint32_t& mapped) {
+bool Mapper001::ppuMapRead(uint16_t addr, uint32_t& mapped, bool readOnly) {
 	if(addr < 0x2000) {
-		mapped = addr & 0x0FFF + chrBankOffset[(addr >> 12) & 1];
+		mapped = (addr & 0x0FFF) + chrBankOffset[(addr >> 12) & 1];
 		return true;
 	}
 	return false;
@@ -113,7 +124,6 @@ bool Mapper001::ppuMapWrite(uint16_t addr, uint8_t data) {
 }
 
 void Mapper001::SaveState(saver& saver) {
-	saver << writeState;
 	saver << Control;
 	saver << shiftRegister;
 	saver << chrBank0;
@@ -125,10 +135,13 @@ void Mapper001::SaveState(saver& saver) {
 
 	saver << chrBankOffset[0];
 	saver << chrBankOffset[1];
+
+	saver.Write((char*)prgRam, sizeof(prgRam));
 }
 
 void Mapper001::LoadState(saver& saver) {
-	saver >> writeState;
+	// uint8_t temp = 0;
+	// saver >> temp;
 	saver >> Control;
 	saver >> shiftRegister;
 	saver >> chrBank0;
@@ -140,4 +153,6 @@ void Mapper001::LoadState(saver& saver) {
 
 	saver >> chrBankOffset[0];
 	saver >> chrBankOffset[1];
+
+	saver.Read((char*)prgRam, sizeof(prgRam));
 }

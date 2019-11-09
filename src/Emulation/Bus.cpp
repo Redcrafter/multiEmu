@@ -1,9 +1,10 @@
 #include "Bus.h"
 #include "../Input/StandardController.h"
+#include "../Mappers/Mapper004.h"
 
-Bus::Bus(std::shared_ptr<Cartridge>& cartridge) : cartridge(cartridge), cpu(cpu6502(this)), apu(RP2A03(this)) {
+Bus::Bus(std::shared_ptr<Cartridge>& cartridge) : cartridge(cartridge), cpu(mos6502(this)), apu(RP2A03(this)) {
 	ppu.cartridge = cartridge;
-	
+
 	for(unsigned char& i : CpuRam) {
 		i = 0;
 	}
@@ -32,11 +33,11 @@ static int last4017 = 0;
 
 void Bus::Clock() {
 	ppu.Clock();
-	
+
 	if(systemClockCounter % 3 == 0) {
 		last4017++;
 		apu.Clock();
-		
+
 		if(dmaTransfer) {
 			if(dmaDummy) {
 				if(systemClockCounter % 2 == 1) {
@@ -72,7 +73,7 @@ void Bus::Clock() {
 			ppu.nmi++;
 		}
 	}
-	
+
 	systemClockCounter++;
 }
 
@@ -107,7 +108,7 @@ void Bus::CpuWrite(uint16_t addr, uint8_t data) {
 	}
 }
 
-uint8_t Bus::CpuRead(uint16_t addr) {
+uint8_t Bus::CpuRead(uint16_t addr, bool readOnly) {
 	uint8_t data = 0;
 
 	if(cartridge->cpuRead(addr, data)) {
@@ -115,18 +116,22 @@ uint8_t Bus::CpuRead(uint16_t addr) {
 	} else if(addr < 0x2000) {
 		data = CpuRam[addr & 0x07FF];
 	} else if(addr < 0x4000) {
-		data = ppu.cpuRead(addr & 0x2007);
-	} else if(addr == 0x4014) {
-		// data = ppu.cpuRead(addr);
-	} else if(addr == 0x4015) {
-		data = apu.CpuRead(addr);
-	} else if(addr == 0x4016) {
-		if(controller1 != nullptr) {
-			data = controller1->CpuRead(addr);
-		}
-	} else if(addr == 0x4017) {
-		if(controller2 != nullptr) {
-			data = controller2->CpuRead(addr);
+		data = ppu.cpuRead(addr & 0x2007, readOnly);
+	} else {
+		switch(addr) {
+			case 0x4015:
+				data = apu.ReadStatus(readOnly);
+				break;
+			case 0x4016:
+				if(controller1 != nullptr) {
+					data = controller1->CpuRead(addr, readOnly);
+				}
+				break;
+			case 0x4017:
+				if(controller2 != nullptr) {
+					data = controller2->CpuRead(addr, readOnly);
+				}
+				break;
 		}
 	}
 
@@ -157,7 +162,7 @@ void Bus::LoadState(saver& saver) {
 	apu.LoadState(saver);
 
 	cartridge->LoadState(saver);
-
+	
 	saver.Read(reinterpret_cast<char*>(&CpuRam), sizeof(CpuRam));
 	saver >> dmaPage;
 	saver >> dmaAddr;

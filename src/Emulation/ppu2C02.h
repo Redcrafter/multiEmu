@@ -4,11 +4,13 @@
 #include "../RenderImage.h"
 #include "../saver.h"
 
+class PatternTables;
 class Bus;
 
 struct Sprite {
 	uint8_t y;
 	uint8_t id;
+
 	union {
 		struct {
 			uint8_t Palette : 2;
@@ -17,8 +19,10 @@ struct Sprite {
 			bool FlipHorizontal : 1;
 			bool FlipVertical : 1;
 		};
+
 		uint8_t reg;
 	} Attributes;
+
 	uint8_t x;
 };
 
@@ -28,15 +32,17 @@ struct PpuState {
 
 	uint8_t writeState;
 	uint8_t readBuffer;
-	uint8_t palettes[32], vram[2 * 1024], chrRAM[8 * 1024];
+	uint8_t palettes[32]{};
+	uint8_t vram[2 * 1024]{};
+	uint8_t chrRAM[8 * 1024]{};
 
 	Sprite oam[64], oam2[8];
 	uint8_t spriteCount;
 	uint8_t spriteShifterLo[8], spriteShifterHi[8];
 	bool spriteZeroPossible, spriteZeroBeingRendered;
 
-	int scanlineX, scanlineY;
-	
+	int scanlineX = 0, scanlineY = 0;
+
 	union {
 		struct {
 			bool grayscale : 1;
@@ -87,7 +93,7 @@ public:
 	bool frameComplete = false;
 	int nmi;
 	uint8_t oamAddr = 0;
-	
+
 	union {
 		struct {
 			uint8_t nametableX : 1;
@@ -102,6 +108,7 @@ public:
 
 		uint8_t reg;
 	} Control;
+
 public:
 	RenderImage* texture;
 	std::shared_ptr<Cartridge> cartridge;
@@ -114,16 +121,16 @@ public:
 	void SaveState(saver& saver);
 	void LoadState(saver& saver);
 
-	void DrawPatternTable(RenderImage* texture, int i, int palette);
-
 	// main bus
-	uint8_t cpuRead(uint16_t addr);
+	uint8_t cpuRead(uint16_t addr, bool readOnly);
 	void cpuWrite(uint16_t addr, uint8_t data);
 
 	// ppu bus
-	uint8_t ppuRead(uint16_t addr);
+	uint8_t ppuRead(uint16_t addr, bool readOnly = false);
 	void ppuWrite(uint16_t addr, uint8_t data);
+
+	// void DrawPatternTable(PatternTables& texture, int i, int palette);
+	Color GetPaletteColor(uint8_t palette, uint8_t pixel) const;
 private:
 	void LoadBackgroundShifters();
-	Color GetPaletteColor(uint8_t palette, uint8_t pixel) const;
 };

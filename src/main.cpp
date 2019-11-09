@@ -16,15 +16,28 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/transform.hpp>
 
 #include <iostream>
 #include <mutex>
 #include <bass.h>
 #include <filesystem>
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_opengl3.h"
+#include "imgui/imgui_impl_glfw.h"
+
+#include "imguiWindows/imgui_memory_editor.h"
+#include "imguiWindows/imgui_tas_editor.h"
+#include "imguiWindows/imgui_pattern_tables.h"
+#include "imguiWindows/imgui_cpu_state.h"
+
+#include "nativefiledialog/nfd.h"
+
 bool runningTas = false;
 std::shared_ptr<TasController> controller1, controller2;
-std::shared_ptr<Bus> nes;
+std::shared_ptr<Bus> nes = nullptr;
+std::string currentRom;
 int selectedSaveState = 0;
 saver* saveStates[10]{nullptr};
 
@@ -32,7 +45,7 @@ GLuint programID;
 GLuint vaoID, vertexBufferID, uvBufferID;
 GLuint MatrixLocation;
 
-RenderImage* textures;
+RenderImage* mainTexture;
 glm::mat4 projection;
 
 static const GLfloat vertexBuffer[] = {
@@ -54,16 +67,10 @@ static const GLfloat uvBuffer[] = {
 	0, 1,
 };
 
-enum TextureID {
-	MainTexture,
-	LeftPattern,
-	RightPattern,
-	AudioTexture
-};
-
-bool drawPattern = false, // TODO: mmc3 stuff
-     drawAudio = false;
-int displayPallet = 0;
+MemoryEditor memEdit;
+TasEditor tasEdit{"Tas Editor"};
+PatternTables tables{"Pattern Tables"};
+CpuStateWindow cpuWindow{"Cpu State"};
 
 bool speedUp = false;
 bool running = false;
@@ -71,14 +78,89 @@ bool step = false;
 
 HSTREAM audioStreamHandle;
 
-void DrawTexture(TextureID id) {
-	auto& texture = textures[id];
+int gameScale = 2;
+int WindowWidth = gameScale * 256;
+int WindowHeight = WindowWidth * (7.0 / 8.0) + 19;
 
-	texture.BufferImage();
-	auto mat = projection * texture.GetMatrix();
-	glUniformMatrix4fv(MatrixLocation, 1, GL_FALSE, &mat[0][0]);
-	glDrawArrays(GL_TRIANGLES, 0, 2 * 3);
+void LoadRom(const char* path) {
+	std::shared_ptr<Cartridge> cart;
 
+	try {
+		cart = std::make_shared<Cartridge>(path);
+	} catch(std::exception& e) {
+		printf("Error loading %s\n%s\n", path, e.what());
+		return;
+	}
+	currentRom = path;
+
+	if(nes == nullptr) {
+		nes = std::make_shared<Bus>(cart);
+
+		nes->controller1 = std::make_shared<StandardController>(0);
+		nes->controller2 = std::make_shared<StandardController>(1);
+
+		nes->ppu.texture = mainTexture;
+		
+		tables.ppu = &nes->ppu;
+		cpuWindow.cpu = &nes->cpu;
+	} else {
+		nes->InsertCartridge(cart);
+		nes->Reset();
+	}
+
+	running = true;
+
+	std::string partial = "./saves/" + nes->cartridge->hash->ToString() + "-";
+
+	for(int i = 0; i < 10; ++i) {
+		std::string sPath = partial + std::to_string(i) + ".sav";
+
+		if(std::filesystem::exists(sPath)) {
+			try {
+				saveStates[i] = new saver(sPath);
+			} catch(std::exception& e) {
+				printf("Error loading state: %s\n%s\n", sPath.c_str(), e.what());
+			}
+		}
+	}
+}
+
+void SaveState(int number) {
+	if(nes == nullptr) {
+		return;
+	}
+	const auto state = new saver();
+	delete saveStates[number];
+	saveStates[number] = state;
+	nes->SaveState(*state);
+
+	try {
+		auto path = "./saves/" + nes->cartridge->hash->ToString() + "-" + std::to_string(number) + ".sav";
+		if(std::filesystem::exists(path)) {
+			std::filesystem::copy(path, path + ".old", std::filesystem::copy_options::overwrite_existing);
+		}
+		state->Save(path);
+
+		printf("Saved state %i\n", number);
+	} catch(std::exception& e) {
+		printf("Error saving %s\n", e.what());
+	}
+}
+
+void LoadState(int number) {
+	if(nes->cartridge == nullptr) {
+		return;
+	}
+
+	auto state = saveStates[number];
+	if(state != nullptr) {
+		state->readPos = 0;
+		nes->LoadState(*state);
+
+		printf("Loaded state %i\n", number);
+	} else {
+		printf("Failed to load state %i\n", number);
+	}
 }
 
 void Resample() {
@@ -111,6 +193,7 @@ void Resample() {
 
 	BASS_StreamPutData(audioStreamHandle, buffer, writePos * 4);
 
+	/*
 	if(drawAudio) {
 		auto& text = textures[AudioTexture];
 		text.Clear({0, 0, 0});
@@ -216,7 +299,7 @@ void Resample() {
 
 		// TODO: Noise and DMC
 		// Noise
-		/*{
+		{
 			int lastX = 0;
 			int lastY = 0;
 
@@ -232,8 +315,8 @@ void Resample() {
 					lastY = val;
 				}
 			}
-		}*/
-	}
+		}
+	}*/
 }
 
 void Draw() {
@@ -258,24 +341,29 @@ void Draw() {
 			}
 		}
 
-		if(drawPattern) {
-			nes->ppu.DrawPatternTable(&textures[LeftPattern], 0, displayPallet);
-			nes->ppu.DrawPatternTable(&textures[RightPattern], 1, displayPallet);
-		}
-
 		step = false;
 		Resample();
 	}
 
-	DrawTexture(MainTexture);
+	int Width, Height, X = 0, Y = 19;
+	#if false
+	if(WindowWidth < WindowHeight * (8.0 / 7.0) - 19) {
+		Width = WindowWidth;
+		Height = Width * (7.0 / 8.0);
+	} else {
+		Height = WindowHeight - 19;
+		Width = Height * (8.0 / 7.0);
+		X = (WindowWidth - Width) / 2;
+	}
+	#else
+	Width = 512;
+	Height = Width * (7.0 / 8.0);
+	#endif
 
-	if(drawPattern) {
-		DrawTexture(LeftPattern);
-		DrawTexture(RightPattern);
-	}
-	if(drawAudio) {
-		DrawTexture(AudioTexture);
-	}
+	mainTexture->BufferImage();
+	auto mat = projection * (translate(glm::vec3(X, Y, 0.0f)) * scale(glm::vec3(Width, Height, 1.0f)));
+	glUniformMatrix4fv(MatrixLocation, 1, GL_FALSE, &mat[0][0]);
+	glDrawArrays(GL_TRIANGLES, 0, 2 * 3);
 }
 
 void onKeyCall(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -295,7 +383,7 @@ void onKeyCall(GLFWwindow* window, int key, int scancode, int action, int mods) 
 			speedUp = !speedUp;
 			break;
 		case Action::ChangePallet:
-			displayPallet = (displayPallet + 1) % 8;
+			// displayPallet = (displayPallet + 1) % 8;
 			break;
 		case Action::Step:
 			step = true;
@@ -305,42 +393,15 @@ void onKeyCall(GLFWwindow* window, int key, int scancode, int action, int mods) 
 			running = true;
 			break;
 		case Action::Reset:
-			if(nes != nullptr) {
+			if(nes) {
 				nes->Reset();
 			}
 			break;
 		case Action::SaveState:
-			if(nes != nullptr) {
-				const auto state = new saver();
-				delete saveStates[selectedSaveState];
-				saveStates[selectedSaveState] = state;
-				nes->SaveState(*state);
-
-				try {
-					auto path = "./saves/" + nes->cartridge->hash->ToString() + "-" + std::to_string(selectedSaveState) + ".sav";
-					if(std::filesystem::exists(path)) {
-						std::filesystem::copy(path, path + ".old", std::filesystem::copy_options::overwrite_existing);
-					}
-					state->Save(path);
-
-					printf("Saved state %i\n", selectedSaveState);
-				} catch(std::exception& e) {
-					printf("Error saving %s\n", e.what());
-				}
-			}
+			SaveState(selectedSaveState);
 			break;
 		case Action::LoadState:
-			if(nes->cartridge != nullptr) {
-				auto state = saveStates[selectedSaveState];
-				if(state != nullptr) {
-					state->readPos = 0;
-					nes->LoadState(*state);
-
-					printf("Loaded state %i\n", selectedSaveState);
-				} else {
-					printf("Load failed: no state %i\n", selectedSaveState);
-				}
-			}
+			LoadState(selectedSaveState);
 			break;
 		case Action::SelectNextState:
 			selectedSaveState = (selectedSaveState + 1) % 10;
@@ -357,53 +418,24 @@ void onKeyCall(GLFWwindow* window, int key, int scancode, int action, int mods) 
 }
 
 void onResize(GLFWwindow* window, int width, int height) {
+	WindowWidth = width;
+	WindowHeight = height;
+
 	projection = glm::ortho(0.0f, (float)width, (float)height, 0.0f);
 	glViewport(0, 0, width, height);
 }
 
 void onDrop(GLFWwindow* window, int count, const char** paths) {
-	std::string path(paths[0]);
-	std::shared_ptr<Cartridge> cart;
+	LoadRom(paths[0]);
+}
 
-	try {
-		cart = std::make_shared<Cartridge>(path);
-	} catch(std::exception& e) {
-		printf("Error loading %s\n%s\n", path.c_str(), e.what());
-		return;
-	}
-
-	if(nes == nullptr) {
-		nes = std::make_shared<Bus>(cart);
-
-		nes->controller1 = std::make_shared<StandardController>(0);
-		nes->controller2 = std::make_shared<StandardController>(1);
-		
-		nes->ppu.texture = &textures[0];
-	} else {
-		nes->InsertCartridge(cart);
-		nes->Reset();
-	}
-
-	running = true;
-
-	std::string partial = "./saves/" + nes->cartridge->hash->ToString() + "-";
-
-	for(int i = 0; i < 10; ++i) {
-		std::string sPath = partial + std::to_string(i) + ".sav";
-
-		if(std::filesystem::exists(sPath)) {
-			try {
-				saveStates[i] = new saver(sPath);
-			} catch(std::exception& e) {
-				printf("Error loading state: %s\n%s\n", sPath.c_str(), e.what());
-			}
-		}
-	}
+void onGlfwError(int error, const char* description) {
+	fprintf(stderr, "Glfw Error: %d: %s\n", error, description);
 }
 
 int main() {
 	Input::LoadKeyMap();
-	
+
 	#pragma region Bass Init
 	{
 		BASS_SetConfig(BASS_CONFIG_VISTA_TRUEPOS, 0);
@@ -426,8 +458,7 @@ int main() {
 	#pragma endregion
 
 	#pragma region glfw Init
-	const int scale = 2;
-
+	glfwSetErrorCallback(onGlfwError);
 	if(!glfwInit()) {
 		fprintf(stderr, "Failed to initialize GLFW\n");
 		return -1;
@@ -440,13 +471,14 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL 
 
 	// Open a window and create its OpenGL context
-	auto window = glfwCreateWindow(293 * scale, 240 * scale, "NES emulator", NULL, NULL);
+	auto window = glfwCreateWindow(WindowWidth, WindowHeight, "NES emulator", NULL, NULL);
 	if(window == NULL) {
-		fprintf(stderr, "Failed to open GLFW window\n");
 		glfwTerminate();
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
+	// glfwSwapInterval(1); // Enable vsync
+
 	// Initialize GLEW
 	if(glewInit() != GLEW_OK) {
 		fprintf(stderr, "Failed to initialize GLEW\n");
@@ -459,22 +491,14 @@ int main() {
 	glfwSetWindowSizeCallback(window, onResize);
 	glfwSetDropCallback(window, onDrop);
 
-	onResize(window, 293 * scale, 240 * scale);
+	onResize(window, WindowWidth, WindowHeight);
 	#pragma endregion
 
 	#pragma region opengl Init
 	programID = LoadShaders("shader.vs", "shader.fs");
 	glUseProgram(programID);
 
-	textures = new RenderImage[4]{
-		RenderImage(256, 240, 0, 0),                     // Main image
-		RenderImage(128, 128, 0, 480),                   // Left pattern table
-		RenderImage(128, 128, 128, 480),                 // Right pattern table
-		RenderImage(256, 256, 256 * 2 * (8.0 / 7.0), 0), // Audio texture
-	};
-
-	textures[0].mat = textures[0].mat * glm::scale(glm::vec3(2 * (8.0 / 7.0), 2, 1.0f));
-
+	mainTexture = new RenderImage(256, 240);
 	MatrixLocation = glGetUniformLocation(programID, "MVP");
 
 	glClearColor(0, 0, 0, 0);
@@ -512,11 +536,170 @@ int main() {
 	#pragma endregion
 	#pragma endregion
 
+	#pragma region ImGui Init
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	(void)io;
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+	//ImGui::StyleColorsClassic();
+
+	// Setup Platform/Renderer bindings
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init("#version 330 core");
+
+	tables.Init();
+
+	memEdit.Open = false;
+	memEdit.ReadFn = [](const uint8_t* data, uint64_t addr) {
+		uint8_t res = 0;
+
+		if(nes) {
+			res = nes->CpuRead(addr, true);
+		}
+
+		return res;
+	};
+	memEdit.WriteFn = [](uint8_t* data, uint64_t addr, uint8_t value) {
+
+	};
+	#pragma endregion
+
 	#pragma region render loop
 	do {
+		bool enabled = nes != nullptr;
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		// ImGui::ShowDemoWindow();
+
 		Draw();
+
+		if(ImGui::BeginMainMenuBar()) {
+			if(ImGui::BeginMenu("File")) {
+				if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
+					char* outPath = nullptr;
+					const auto res = NFD_OpenDialog({"nes"}, nullptr, &outPath);
+
+					if(res == NFD_OKAY) {
+						LoadRom(outPath);
+					}
+				}
+				if(ImGui::BeginMenu("Recent ROM")) {
+
+					ImGui::Separator();
+					if(ImGui::MenuItem("Clear")) {
+
+					}
+
+					ImGui::EndMenu();
+				}
+
+				ImGui::Separator();
+
+				if(ImGui::BeginMenu("Save State", enabled)) {
+					for(int i = 0; i < 10; ++i) {
+						std::string str = std::to_string(i);
+						if(ImGui::MenuItem(str.c_str(), ("Shift+" + str).c_str())) {
+							SaveState(i);
+						}
+					}
+					ImGui::EndMenu();
+				}
+				if(ImGui::BeginMenu("Load State", enabled)) {
+					for(int i = 0; i < 10; ++i) {
+						std::string str = std::to_string(i);
+						if(ImGui::MenuItem(str.c_str(), ("Shift+" + str).c_str())) {
+							LoadState(i);
+						}
+					}
+					ImGui::EndMenu();
+				}
+
+				if(ImGui::BeginMenu("Save Slot", enabled)) {
+					for(int i = 0; i < 10; ++i) {
+						std::string str = "Select Slot " + std::to_string(i);
+
+						bool selected = selectedSaveState == i;
+						ImGui::Checkbox(str.c_str(), &selected);
+
+						if(selected) {
+							selectedSaveState = i;
+						}
+					}
+
+					ImGui::EndMenu();
+				}
+
+				ImGui::Separator();
+				if(ImGui::MenuItem("Exit", "Alt+F4")) {
+					break;
+				}
+
+				ImGui::EndMenu();
+			}
+
+			if(ImGui::BeginMenu("Emulation")) {
+				bool paused = !running;
+				ImGui::Checkbox("Pause", &paused);
+				running = !paused;
+
+				ImGui::Separator();
+
+				if(ImGui::MenuItem("Soft Reset", nullptr, false, enabled)) {
+					if(nes) {
+						nes->Reset();
+					}
+				}
+				if(ImGui::MenuItem("Hard Reset", nullptr, false, enabled)) {
+					nes = nullptr;
+					LoadRom(currentRom.c_str());
+				}
+
+				ImGui::EndMenu();
+			}
+
+			if(ImGui::BeginMenu("Tools")) {
+				if(ImGui::MenuItem("RAM Watch")) {
+					memEdit.Open = true;
+				}
+
+				if(ImGui::MenuItem("Tas Editor")) {
+					tasEdit.Open();
+				}
+
+				if(ImGui::MenuItem("CPU Viewer")) {
+					cpuWindow.Open();
+				}
+				if(ImGui::MenuItem("PPU Viewer")) {
+					tables.Open();
+				}
+
+				ImGui::EndMenu();
+			}
+
+			ImGui::EndMainMenuBar();
+		}
+
+		cpuWindow.DrawWindow();
+		tables.DrawWindow();
+		tasEdit.DrawWindow();
+		
+		if(memEdit.Open) {
+			memEdit.DrawWindow("Memory Editor", nullptr, 0x10000);
+		}
+
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
@@ -526,8 +709,16 @@ int main() {
 	for(auto saveState : saveStates) {
 		delete saveState;
 	}
-	delete[] textures;
+	delete mainTexture;
+
 	BASS_Free();
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
+	glfwDestroyWindow(window);
+	glfwTerminate();
 
 	return 0;
 }

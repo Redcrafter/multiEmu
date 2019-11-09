@@ -1,0 +1,22 @@
+#include "imgui_cpu_state.h"
+#include "../imgui/imgui.h"
+
+CpuStateWindow::CpuStateWindow(std::string title) : Title(std::move(title)) { }
+
+void CpuStateWindow::Open() {
+	open = true;
+}
+
+void CpuStateWindow::DrawWindow() {
+	if(!open) {
+		return;
+	}
+
+	if(ImGui::Begin(Title.c_str(), &open)) {
+		if(cpu) {
+			ImGui::Text("PC: $%04X\nSP: $%04X\nA: $%02X\nX: $%02X\nY: $%02X", cpu->PC, cpu->SP, cpu->A, cpu->X, cpu->Y);
+		}
+		
+		ImGui::End();
+	}
+}

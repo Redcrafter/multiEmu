@@ -2,10 +2,6 @@
 #include <GL/glew.h>
 #include <cstdint>
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/transform.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 #include "md5.h"
 
 struct Color {
@@ -20,9 +16,7 @@ private:
 
 	bool changed = false;
 public:
-	glm::mat4 mat;
-	
-	RenderImage(int width, int height, float x, float y);
+	RenderImage(int width, int height);
 	~RenderImage();
 	
 	RenderImage(const RenderImage&) = delete;
@@ -35,8 +29,5 @@ public:
 	void BufferImage();
 
 	md5 GetHashCode();
-
-	int GetWidth() const { return Width; }
-	glm::mat4 GetMatrix() const { return mat; }
 };
 

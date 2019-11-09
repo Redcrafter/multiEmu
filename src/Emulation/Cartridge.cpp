@@ -79,7 +79,7 @@ bool Cartridge::cpuRead(uint16_t addr, uint8_t& data) {
 
 	switch(res) {
 		case 1:
-			data = prgRom[mapped];
+			data = prgRom[mapped & (prgBanks * 0x4000 - 1)];
 			return true;
 		case 2:
 			data = mapped;
@@ -93,10 +93,10 @@ bool Cartridge::cpuWrite(uint16_t addr, uint8_t data) {
 	return mapper->cpuMapWrite(addr, data);
 }
 
-bool Cartridge::ppuRead(uint16_t addr, uint8_t& data) {
+bool Cartridge::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 	uint32_t mapped = 0;
-	if(mapper->ppuMapRead(addr, mapped) && chrBanks != 0) {
-		data = chrRom[mapped];
+	if(mapper->ppuMapRead(addr, mapped, readOnly) && chrBanks != 0) {
+		data = chrRom[mapped & (chrBanks * 0x2000 - 1)];
 		return true;
 	}
 	return false;

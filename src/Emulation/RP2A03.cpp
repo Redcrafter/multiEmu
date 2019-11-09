@@ -1,5 +1,6 @@
 #include "RP2A03.h"
 #include "Bus.h"
+#include <cassert>
 
 const int lengthTable[] = {
 	10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
@@ -172,10 +173,7 @@ uint8_t Pulse::Output() {
 	}
 }
 
-DMC::DMC(Bus* bus) : bus(bus) {
-}
-
-void DMC::Clock() {
+void DMC::Clock(Bus* bus) {
 	if(timer > 0) {
 		timer--;
 		return;
@@ -199,36 +197,49 @@ void DMC::Clock() {
 
 	if(bitCount == 0) {
 		bitCount = 8;
-
+		
 		if(bufferEmpty) {
 			silence = true;
 		} else {
 			silence = false;
-
 			shiftRegister = sampleBuffer;
 			bufferEmpty = true;
-
-			if(currentLength > 0) {
-				// TODO: Stall cpu for 4 cycles
-				sampleBuffer = bus->CpuRead(currentAddress);
-				currentAddress = (currentAddress + 1) & 0x7FFF;
-				bufferEmpty = false;
-
-				currentLength--;
-				if(currentLength == 0) {
-					if(loop) {
-						currentAddress = sampleAddress;
-						currentLength = sampleLength;
-					} else {
-						irq = irqEnable;
-					}
-				}
-			}
+			
+			FillBuffer(bus);
 		}
 	}
 }
 
-RP2A03::RP2A03(Bus* bus) : pulse1(), pulse2(), triangle(), noise(), dmc(bus) {
+void DMC::Reload() {
+	currentAddress = sampleAddress;
+	currentLength = sampleLength;
+}
+
+void DMC::FillBuffer(Bus* bus) {
+	if(bufferEmpty && currentLength > 0) {
+		// TODO: Stall cpu for 4 cycles
+		sampleBuffer = bus->CpuRead(currentAddress);
+		if(currentAddress == 0xFFFF) {
+			currentAddress = 0x8000;
+		} else {
+			currentAddress++;
+		}
+		bufferEmpty = false;
+
+		currentLength--;
+		if(currentLength == 0) {
+			if(loop) {
+				Reload();
+			} else {
+				irq = irqEnable;
+			}
+		}
+
+		// printf("Current length: %i\n", currentLength);
+	}
+}
+
+RP2A03::RP2A03(Bus* bus) : bus(bus) {
 	pulse1.negative = 1;
 }
 
@@ -274,7 +285,7 @@ void RP2A03::Clock() {
 		pulse1.Clock();
 		pulse2.Clock();
 		noise.Clock();
-		dmc.Clock();
+		dmc.Clock(bus);
 	}
 	triangle.Clock();
 
@@ -308,7 +319,6 @@ void RP2A03::Reset() {
 }
 
 void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
-	// printf("%04X %02X\n", addr, data);
 	switch(addr) {
 			#pragma region Pulse
 		case 0x4000:
@@ -378,6 +388,10 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 			dmc.irqEnable = data & 0x80;
 			dmc.loop = data & 0x40;
 			dmc.timerPeriod = dmcTable[data & 0xF];
+
+			if(!dmc.irqEnable) {
+				dmc.irq = false;
+			}
 			break;
 		case 0x4011:
 			dmc.value = data & 0x7F;
@@ -387,12 +401,15 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 			break;
 		case 0x4013:
 			dmc.sampleLength = (data << 4) | 1;
+
+			// dmc.Reload();
 			break;
-		case 0x4015:
+		case 0x4015: {
 			pulse1.enabled = data & 0x1;
 			pulse2.enabled = data & 0x2;
 			triangle.enabled = data & 0x4;
 			noise.enabled = data & 0x8;
+			bool oldDmc = dmc.enabled;
 			dmc.enabled = data & 0x10;
 
 			if(!pulse1.enabled) {
@@ -407,10 +424,18 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 			if(!noise.enabled) {
 				noise.lengthCounter = 0;
 			}
-			if(!dmc.enabled) {
-
+			if(dmc.enabled) {
+				if(!oldDmc || dmc.currentLength == 0) {
+					dmc.Reload();
+				}
+				dmc.FillBuffer(bus);
+			} else {
+				dmc.currentLength = 0;
 			}
+
+			dmc.irq = false;
 			break;
+		}
 		case 0x4017:
 			last4017Write = data;
 			frameCounterMode = data >> 7;
@@ -433,36 +458,33 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 	}
 }
 
-uint8_t RP2A03::CpuRead(uint16_t addr) {
+uint8_t RP2A03::ReadStatus(bool readOnly) {
 	uint8_t res = 0;
+	if(pulse1.lengthCounter > 0) {
+		res |= 1 << 0;
+	}
+	if(pulse2.lengthCounter > 0) {
+		res |= 1 << 1;
+	}
+	if(triangle.lengthCounter > 0) {
+		res |= 1 << 2;
+	}
+	if(noise.lengthCounter > 0) {
+		res |= 1 << 3;
+	}
+	if(dmc.currentLength > 0) {
+		res |= 1 << 4;
+	}
 
-	switch(addr) {
-		case 0x4015:
-			if(pulse1.lengthCounter > 0) {
-				res |= 1 << 0;
-			}
-			if(pulse2.lengthCounter > 0) {
-				res |= 1 << 1;
-			}
-			if(triangle.lengthCounter > 0) {
-				res |= 1 << 2;
-			}
-			if(noise.lengthCounter > 0) {
-				res |= 1 << 3;
-			}
-			if(dmc.currentLength > 0) {
-				res |= 1 << 4;
-			}
+	if(Irq) {
+		res |= 1 << 6;
+	}
+	if(dmc.irq) {
+		res |= 1 << 7;
+	}
 
-			if(Irq) {
-				res |= 1 << 6;
-			}
-			if(dmc.irq) {
-				res |= 1 << 7;
-			}
-
-			Irq = false;
-			break;
+	if(!readOnly) {
+		Irq = false;
 	}
 
 	return res;
@@ -495,7 +517,7 @@ void RP2A03::ClockLength() {
 }
 
 float RP2A03::GenerateSample() {
-	auto &buf = waveBuffer[bufferPos];
+	auto& buf = waveBuffer[bufferPos];
 
 	buf.pulse1 = pulse1.Output();
 	buf.pulse2 = pulse2.Output();
@@ -538,33 +560,11 @@ bool RP2A03::GetIrq() {
 }
 
 void RP2A03::SaveState(saver& saver) {
-	saver << Irq;
-	saver << last4017Write;
-	saver << frameCounterMode;
-	saver << frameCounter;
-	saver << IRQinhibit;
-
-	saver.Write(reinterpret_cast<char*>(&pulse1), sizeof(Pulse));
-	saver.Write(reinterpret_cast<char*>(&pulse2), sizeof(Pulse));
-	saver.Write(reinterpret_cast<char*>(&triangle), sizeof(Triangle));
-	saver.Write(reinterpret_cast<char*>(&noise), sizeof(Noise));
-	saver.Write(reinterpret_cast<char*>(&dmc), sizeof(DMC));
-
+	saver.Write(reinterpret_cast<const char*>(this), sizeof(RP2A03state));
 	assert(bufferPos == 0);
 }
 
 void RP2A03::LoadState(saver& saver) {
-	saver >> Irq;
-	saver >> last4017Write;
-	saver >> frameCounterMode;
-	saver >> frameCounter;
-	saver >> IRQinhibit;
-
-	saver.Read(reinterpret_cast<char*>(&pulse1), sizeof(Pulse));
-	saver.Read(reinterpret_cast<char*>(&pulse2), sizeof(Pulse));
-	saver.Read(reinterpret_cast<char*>(&triangle), sizeof(Triangle));
-	saver.Read(reinterpret_cast<char*>(&noise), sizeof(Noise));
-	saver.Read(reinterpret_cast<char*>(&dmc), sizeof(DMC));
-
+	saver.Read(reinterpret_cast<char*>(this), sizeof(RP2A03state));
 	bufferPos = 0;
 }

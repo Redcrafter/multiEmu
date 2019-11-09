@@ -3,43 +3,87 @@
 
 // address mode of jsr changed
 const Instruction lookup[] = {
-	{"BRK", Instructions::BRK, IMP}, {"ORA", Instructions::ORA, IZX}, {"kil", Instructions::KIL, IMM}, {"slo", Instructions::SLO, IZX}, {"nop", Instructions::NOP, ZP0}, {"ORA", Instructions::ORA, ZP0}, {"ASL", Instructions::ASL, ZP0}, {"slo", Instructions::SLO, ZP0}, {"PHP", Instructions::PHP, IMP}, {"ORA", Instructions::ORA, IMM}, {"ASL", Instructions::ASL, IMP}, {"anc", Instructions::ANC, IMM}, {"nop", Instructions::NOP, ABS}, {"ORA", Instructions::ORA, ABS}, {"ASL", Instructions::ASL, ABS}, {"slo", Instructions::SLO, ABS},
-	{"BPL", Instructions::BPL, REL}, {"ORA", Instructions::ORA, IZY}, {"kil", Instructions::KIL, IMM}, {"slo", Instructions::SLO, IZY}, {"nop", Instructions::NOP, ZPX}, {"ORA", Instructions::ORA, ZPX}, {"ASL", Instructions::ASL, ZPX}, {"slo", Instructions::SLO, ZPX}, {"CLC", Instructions::CLC, IMP}, {"ORA", Instructions::ORA, ABY}, {"nop", Instructions::NOP, IMP}, {"slo", Instructions::SLO, ABY}, {"nop", Instructions::NOP, ABX}, {"ORA", Instructions::ORA, ABX}, {"ASL", Instructions::ASL, ABX}, {"slo", Instructions::SLO, ABX},
-	{"JSR", Instructions::JSR, IMP}, {"AND", Instructions::AND, IZX}, {"kil", Instructions::KIL, IMM}, {"rla", Instructions::RLA, IZX}, {"BIT", Instructions::BIT, ZP0}, {"AND", Instructions::AND, ZP0}, {"ROL", Instructions::ROL, ZP0}, {"rla", Instructions::RLA, ZP0}, {"PLP", Instructions::PLP, IMP}, {"AND", Instructions::AND, IMM}, {"ROL", Instructions::ROL, IMP}, {"anc", Instructions::ANC, IMM}, {"BIT", Instructions::BIT, ABS}, {"AND", Instructions::AND, ABS}, {"ROL", Instructions::ROL, ABS}, {"rla", Instructions::RLA, ABS},
-	{"BMI", Instructions::BMI, REL}, {"AND", Instructions::AND, IZY}, {"kil", Instructions::KIL, IMM}, {"rla", Instructions::RLA, IZY}, {"nop", Instructions::NOP, ZPX}, {"AND", Instructions::AND, ZPX}, {"ROL", Instructions::ROL, ZPX}, {"rla", Instructions::RLA, ZPX}, {"SEC", Instructions::SEC, IMP}, {"AND", Instructions::AND, ABY}, {"nop", Instructions::NOP, IMP}, {"rla", Instructions::RLA, ABY}, {"nop", Instructions::NOP, ABX}, {"AND", Instructions::AND, ABX}, {"ROL", Instructions::ROL, ABX}, {"rla", Instructions::RLA, ABX},
-	{"RTI", Instructions::RTI, IMP}, {"EOR", Instructions::EOR, IZX}, {"kil", Instructions::KIL, IMM}, {"sre", Instructions::SRE, IZX}, {"nop", Instructions::NOP, ZP0}, {"EOR", Instructions::EOR, ZP0}, {"LSR", Instructions::LSR, ZP0}, {"sre", Instructions::SRE, ZP0}, {"PHA", Instructions::PHA, IMP}, {"EOR", Instructions::EOR, IMM}, {"LSR", Instructions::LSR, IMP}, {"alr", Instructions::ALR, IMM}, {"JMP", Instructions::JMP, ABS}, {"EOR", Instructions::EOR, ABS}, {"LSR", Instructions::LSR, ABS}, {"sre", Instructions::SRE, ABS},
-	{"BVC", Instructions::BVC, REL}, {"EOR", Instructions::EOR, IZY}, {"kil", Instructions::KIL, IMM}, {"sre", Instructions::SRE, IZY}, {"nop", Instructions::NOP, ZPX}, {"EOR", Instructions::EOR, ZPX}, {"LSR", Instructions::LSR, ZPX}, {"sre", Instructions::SRE, ZPX}, {"CLI", Instructions::CLI, IMP}, {"EOR", Instructions::EOR, ABY}, {"nop", Instructions::NOP, IMP}, {"sre", Instructions::SRE, ABY}, {"nop", Instructions::NOP, ABX}, {"EOR", Instructions::EOR, ABX}, {"LSR", Instructions::LSR, ABX}, {"sre", Instructions::SRE, ABX},
-	{"RTS", Instructions::RTS, IMP}, {"ADC", Instructions::ADC, IZX}, {"kil", Instructions::KIL, IMM}, {"rra", Instructions::RRA, IZX}, {"nop", Instructions::NOP, ZP0}, {"ADC", Instructions::ADC, ZP0}, {"ROR", Instructions::ROR, ZP0}, {"rra", Instructions::RRA, ZP0}, {"PLA", Instructions::PLA, IMP}, {"ADC", Instructions::ADC, IMM}, {"ROR", Instructions::ROR, IMP}, {"arr", Instructions::ARR, IMM}, {"JMP", Instructions::JMP, IND}, {"ADC", Instructions::ADC, ABS}, {"ROR", Instructions::ROR, ABS}, {"rra", Instructions::RRA, ABS},
-	{"BVS", Instructions::BVS, REL}, {"ADC", Instructions::ADC, IZY}, {"kil", Instructions::KIL, IMM}, {"rra", Instructions::RRA, IZY}, {"nop", Instructions::NOP, ZPX}, {"ADC", Instructions::ADC, ZPX}, {"ROR", Instructions::ROR, ZPX}, {"rra", Instructions::RRA, ZPX}, {"SEI", Instructions::SEI, IMP}, {"ADC", Instructions::ADC, ABY}, {"nop", Instructions::NOP, IMP}, {"rra", Instructions::RRA, ABY}, {"nop", Instructions::NOP, ABX}, {"ADC", Instructions::ADC, ABX}, {"ROR", Instructions::ROR, ABX}, {"rra", Instructions::RRA, ABX},
-	{"nop", Instructions::NOP, IMM}, {"STA", Instructions::STA, IZX}, {"nop", Instructions::NOP, IMM}, {"sax", Instructions::SAX, IZX}, {"STY", Instructions::STY, ZP0}, {"STA", Instructions::STA, ZP0}, {"STX", Instructions::STX, ZP0}, {"sax", Instructions::SAX, ZP0}, {"DEY", Instructions::DEY, IMP}, {"nop", Instructions::NOP, IMM}, {"TXA", Instructions::TXA, IMP}, {"xaa", Instructions::XAA, IMM}, {"STY", Instructions::STY, ABS}, {"STA", Instructions::STA, ABS}, {"STX", Instructions::STX, ABS}, {"sax", Instructions::SAX, ABS},
-	{"BCC", Instructions::BCC, REL}, {"STA", Instructions::STA, IZY}, {"kil", Instructions::KIL, IMM}, {"ahx", Instructions::AHX, IZY}, {"STY", Instructions::STY, ZPX}, {"STA", Instructions::STA, ZPX}, {"STX", Instructions::STX, ZPY}, {"sax", Instructions::SAX, ZPY}, {"TYA", Instructions::TYA, IMP}, {"STA", Instructions::STA, ABY}, {"TXS", Instructions::TXS, IMP}, {"tas", Instructions::TAS, ABY}, {"shy", Instructions::SHY, ABX}, {"STA", Instructions::STA, ABX}, {"shx", Instructions::SHX, ABY}, {"ahx", Instructions::AHX, ABY},
-	{"LDY", Instructions::LDY, IMM}, {"LDA", Instructions::LDA, IZX}, {"LDX", Instructions::LDX, IMM}, {"lax", Instructions::LAX, IZX}, {"LDY", Instructions::LDY, ZP0}, {"LDA", Instructions::LDA, ZP0}, {"LDX", Instructions::LDX, ZP0}, {"lax", Instructions::LAX, ZP0}, {"TAY", Instructions::TAY, IMP}, {"LDA", Instructions::LDA, IMM}, {"TAX", Instructions::TAX, IMP}, {"lax", Instructions::LAX, IMM}, {"LDY", Instructions::LDY, ABS}, {"LDA", Instructions::LDA, ABS}, {"LDX", Instructions::LDX, ABS}, {"lax", Instructions::LAX, ABS},
-	{"BCS", Instructions::BCS, REL}, {"LDA", Instructions::LDA, IZY}, {"kil", Instructions::KIL, IMM}, {"lax", Instructions::LAX, IZY}, {"LDY", Instructions::LDY, ZPX}, {"LDA", Instructions::LDA, ZPX}, {"LDX", Instructions::LDX, ZPY}, {"lax", Instructions::LAX, ZPY}, {"CLV", Instructions::CLV, IMP}, {"LDA", Instructions::LDA, ABY}, {"TSX", Instructions::TSX, IMP}, {"las", Instructions::LAS, ABY}, {"LDY", Instructions::LDY, ABX}, {"LDA", Instructions::LDA, ABX}, {"LDX", Instructions::LDX, ABY}, {"lax", Instructions::LAX, ABY},
-	{"CPY", Instructions::CPY, IMM}, {"CMP", Instructions::CMP, IZX}, {"nop", Instructions::NOP, IMM}, {"dcp", Instructions::DCP, IZX}, {"CPY", Instructions::CPY, ZP0}, {"CMP", Instructions::CMP, ZP0}, {"DEC", Instructions::DEC, ZP0}, {"dcp", Instructions::DCP, ZP0}, {"INY", Instructions::INY, IMP}, {"CMP", Instructions::CMP, IMM}, {"DEX", Instructions::DEX, IMP}, {"axs", Instructions::AXS, IMM}, {"CPY", Instructions::CPY, ABS}, {"CMP", Instructions::CMP, ABS}, {"DEC", Instructions::DEC, ABS}, {"dcp", Instructions::DCP, ABS},
-	{"BNE", Instructions::BNE, REL}, {"CMP", Instructions::CMP, IZY}, {"kil", Instructions::KIL, IMM}, {"dcp", Instructions::DCP, IZY}, {"nop", Instructions::NOP, ZPX}, {"CMP", Instructions::CMP, ZPX}, {"DEC", Instructions::DEC, ZPX}, {"dcp", Instructions::DCP, ZPX}, {"CLD", Instructions::CLD, IMP}, {"CMP", Instructions::CMP, ABY}, {"nop", Instructions::NOP, IMP}, {"dcp", Instructions::DCP, ABY}, {"nop", Instructions::NOP, ABX}, {"CMP", Instructions::CMP, ABX}, {"DEC", Instructions::DEC, ABX}, {"dcp", Instructions::DCP, ABX},
-	{"CPX", Instructions::CPX, IMM}, {"SBC", Instructions::SBC, IZX}, {"nop", Instructions::NOP, IMM}, {"isc", Instructions::ISC, IZX}, {"CPX", Instructions::CPX, ZP0}, {"SBC", Instructions::SBC, ZP0}, {"INC", Instructions::INC, ZP0}, {"isc", Instructions::ISC, ZP0}, {"INX", Instructions::INX, IMP}, {"SBC", Instructions::SBC, IMM}, {"NOP", Instructions::NOP, IMP}, {"sbc", Instructions::SBC, IMM}, {"CPX", Instructions::CPX, ABS}, {"SBC", Instructions::SBC, ABS}, {"INC", Instructions::INC, ABS}, {"isc", Instructions::ISC, ABS},
-	{"BEQ", Instructions::BEQ, REL}, {"SBC", Instructions::SBC, IZY}, {"kil", Instructions::KIL, IMM}, {"isc", Instructions::ISC, IZY}, {"nop", Instructions::NOP, ZPX}, {"SBC", Instructions::SBC, ZPX}, {"INC", Instructions::INC, ZPX}, {"isc", Instructions::ISC, ZPX}, {"SED", Instructions::SED, IMP}, {"SBC", Instructions::SBC, ABY}, {"nop", Instructions::NOP, IMP}, {"isc", Instructions::ISC, ABY}, {"nop", Instructions::NOP, ABX}, {"SBC", Instructions::SBC, ABX}, {"INC", Instructions::INC, ABX}, {"isc", Instructions::ISC, ABX},
+	{Instructions::BRK, IMP}, {Instructions::ORA, IZX}, {Instructions::KIL, IMM}, {Instructions::SLO, IZX}, {Instructions::NOP, ZP0}, {Instructions::ORA, ZP0}, {Instructions::ASL, ZP0}, {Instructions::SLO, ZP0}, {Instructions::PHP, IMP}, {Instructions::ORA, IMM}, {Instructions::ASL, IMP}, {Instructions::ANC, IMM}, {Instructions::NOP, ABS}, {Instructions::ORA, ABS}, {Instructions::ASL, ABS}, {Instructions::SLO, ABS},
+	{Instructions::BPL, REL}, {Instructions::ORA, IZY}, {Instructions::KIL, IMM}, {Instructions::SLO, IZY}, {Instructions::NOP, ZPX}, {Instructions::ORA, ZPX}, {Instructions::ASL, ZPX}, {Instructions::SLO, ZPX}, {Instructions::CLC, IMP}, {Instructions::ORA, ABY}, {Instructions::NOP, IMP}, {Instructions::SLO, ABY}, {Instructions::NOP, ABX}, {Instructions::ORA, ABX}, {Instructions::ASL, ABX}, {Instructions::SLO, ABX},
+	{Instructions::JSR, IMP}, {Instructions::AND, IZX}, {Instructions::KIL, IMM}, {Instructions::RLA, IZX}, {Instructions::BIT, ZP0}, {Instructions::AND, ZP0}, {Instructions::ROL, ZP0}, {Instructions::RLA, ZP0}, {Instructions::PLP, IMP}, {Instructions::AND, IMM}, {Instructions::ROL, IMP}, {Instructions::ANC, IMM}, {Instructions::BIT, ABS}, {Instructions::AND, ABS}, {Instructions::ROL, ABS}, {Instructions::RLA, ABS},
+	{Instructions::BMI, REL}, {Instructions::AND, IZY}, {Instructions::KIL, IMM}, {Instructions::RLA, IZY}, {Instructions::NOP, ZPX}, {Instructions::AND, ZPX}, {Instructions::ROL, ZPX}, {Instructions::RLA, ZPX}, {Instructions::SEC, IMP}, {Instructions::AND, ABY}, {Instructions::NOP, IMP}, {Instructions::RLA, ABY}, {Instructions::NOP, ABX}, {Instructions::AND, ABX}, {Instructions::ROL, ABX}, {Instructions::RLA, ABX},
+	{Instructions::RTI, IMP}, {Instructions::EOR, IZX}, {Instructions::KIL, IMM}, {Instructions::SRE, IZX}, {Instructions::NOP, ZP0}, {Instructions::EOR, ZP0}, {Instructions::LSR, ZP0}, {Instructions::SRE, ZP0}, {Instructions::PHA, IMP}, {Instructions::EOR, IMM}, {Instructions::LSR, IMP}, {Instructions::ALR, IMM}, {Instructions::JMP, ABS}, {Instructions::EOR, ABS}, {Instructions::LSR, ABS}, {Instructions::SRE, ABS},
+	{Instructions::BVC, REL}, {Instructions::EOR, IZY}, {Instructions::KIL, IMM}, {Instructions::SRE, IZY}, {Instructions::NOP, ZPX}, {Instructions::EOR, ZPX}, {Instructions::LSR, ZPX}, {Instructions::SRE, ZPX}, {Instructions::CLI, IMP}, {Instructions::EOR, ABY}, {Instructions::NOP, IMP}, {Instructions::SRE, ABY}, {Instructions::NOP, ABX}, {Instructions::EOR, ABX}, {Instructions::LSR, ABX}, {Instructions::SRE, ABX},
+	{Instructions::RTS, IMP}, {Instructions::ADC, IZX}, {Instructions::KIL, IMM}, {Instructions::RRA, IZX}, {Instructions::NOP, ZP0}, {Instructions::ADC, ZP0}, {Instructions::ROR, ZP0}, {Instructions::RRA, ZP0}, {Instructions::PLA, IMP}, {Instructions::ADC, IMM}, {Instructions::ROR, IMP}, {Instructions::ARR, IMM}, {Instructions::JMP, IND}, {Instructions::ADC, ABS}, {Instructions::ROR, ABS}, {Instructions::RRA, ABS},
+	{Instructions::BVS, REL}, {Instructions::ADC, IZY}, {Instructions::KIL, IMM}, {Instructions::RRA, IZY}, {Instructions::NOP, ZPX}, {Instructions::ADC, ZPX}, {Instructions::ROR, ZPX}, {Instructions::RRA, ZPX}, {Instructions::SEI, IMP}, {Instructions::ADC, ABY}, {Instructions::NOP, IMP}, {Instructions::RRA, ABY}, {Instructions::NOP, ABX}, {Instructions::ADC, ABX}, {Instructions::ROR, ABX}, {Instructions::RRA, ABX},
+	{Instructions::NOP, IMM}, {Instructions::STA, IZX}, {Instructions::NOP, IMM}, {Instructions::SAX, IZX}, {Instructions::STY, ZP0}, {Instructions::STA, ZP0}, {Instructions::STX, ZP0}, {Instructions::SAX, ZP0}, {Instructions::DEY, IMP}, {Instructions::NOP, IMM}, {Instructions::TXA, IMP}, {Instructions::XAA, IMM}, {Instructions::STY, ABS}, {Instructions::STA, ABS}, {Instructions::STX, ABS}, {Instructions::SAX, ABS},
+	{Instructions::BCC, REL}, {Instructions::STA, IZY}, {Instructions::KIL, IMM}, {Instructions::AHX, IZY}, {Instructions::STY, ZPX}, {Instructions::STA, ZPX}, {Instructions::STX, ZPY}, {Instructions::SAX, ZPY}, {Instructions::TYA, IMP}, {Instructions::STA, ABY}, {Instructions::TXS, IMP}, {Instructions::TAS, ABY}, {Instructions::SHY, ABX}, {Instructions::STA, ABX}, {Instructions::SHX, ABY}, {Instructions::AHX, ABY},
+	{Instructions::LDY, IMM}, {Instructions::LDA, IZX}, {Instructions::LDX, IMM}, {Instructions::LAX, IZX}, {Instructions::LDY, ZP0}, {Instructions::LDA, ZP0}, {Instructions::LDX, ZP0}, {Instructions::LAX, ZP0}, {Instructions::TAY, IMP}, {Instructions::LDA, IMM}, {Instructions::TAX, IMP}, {Instructions::LAX, IMM}, {Instructions::LDY, ABS}, {Instructions::LDA, ABS}, {Instructions::LDX, ABS}, {Instructions::LAX, ABS},
+	{Instructions::BCS, REL}, {Instructions::LDA, IZY}, {Instructions::KIL, IMM}, {Instructions::LAX, IZY}, {Instructions::LDY, ZPX}, {Instructions::LDA, ZPX}, {Instructions::LDX, ZPY}, {Instructions::LAX, ZPY}, {Instructions::CLV, IMP}, {Instructions::LDA, ABY}, {Instructions::TSX, IMP}, {Instructions::LAS, ABY}, {Instructions::LDY, ABX}, {Instructions::LDA, ABX}, {Instructions::LDX, ABY}, {Instructions::LAX, ABY},
+	{Instructions::CPY, IMM}, {Instructions::CMP, IZX}, {Instructions::NOP, IMM}, {Instructions::DCP, IZX}, {Instructions::CPY, ZP0}, {Instructions::CMP, ZP0}, {Instructions::DEC, ZP0}, {Instructions::DCP, ZP0}, {Instructions::INY, IMP}, {Instructions::CMP, IMM}, {Instructions::DEX, IMP}, {Instructions::AXS, IMM}, {Instructions::CPY, ABS}, {Instructions::CMP, ABS}, {Instructions::DEC, ABS}, {Instructions::DCP, ABS},
+	{Instructions::BNE, REL}, {Instructions::CMP, IZY}, {Instructions::KIL, IMM}, {Instructions::DCP, IZY}, {Instructions::NOP, ZPX}, {Instructions::CMP, ZPX}, {Instructions::DEC, ZPX}, {Instructions::DCP, ZPX}, {Instructions::CLD, IMP}, {Instructions::CMP, ABY}, {Instructions::NOP, IMP}, {Instructions::DCP, ABY}, {Instructions::NOP, ABX}, {Instructions::CMP, ABX}, {Instructions::DEC, ABX}, {Instructions::DCP, ABX},
+	{Instructions::CPX, IMM}, {Instructions::SBC, IZX}, {Instructions::NOP, IMM}, {Instructions::ISC, IZX}, {Instructions::CPX, ZP0}, {Instructions::SBC, ZP0}, {Instructions::INC, ZP0}, {Instructions::ISC, ZP0}, {Instructions::INX, IMP}, {Instructions::SBC, IMM}, {Instructions::NOP, IMP}, {Instructions::SBC, IMM}, {Instructions::CPX, ABS}, {Instructions::SBC, ABS}, {Instructions::INC, ABS}, {Instructions::ISC, ABS},
+	{Instructions::BEQ, REL}, {Instructions::SBC, IZY}, {Instructions::KIL, IMM}, {Instructions::ISC, IZY}, {Instructions::NOP, ZPX}, {Instructions::SBC, ZPX}, {Instructions::INC, ZPX}, {Instructions::ISC, ZPX}, {Instructions::SED, IMP}, {Instructions::SBC, ABY}, {Instructions::NOP, IMP}, {Instructions::ISC, ABY}, {Instructions::NOP, ABX}, {Instructions::SBC, ABX}, {Instructions::INC, ABX}, {Instructions::ISC, ABX},
 };
 
-cpu6502::cpu6502(Bus* bus): bus(bus) {
+static State InstructionType(Instructions instruction) {
+	switch(instruction) {
+			// Read
+		case Instructions::LDA:
+		case Instructions::LDX:
+		case Instructions::LDY:
+		case Instructions::EOR:
+		case Instructions::AND:
+		case Instructions::ORA:
+		case Instructions::ADC:
+		case Instructions::SBC:
+		case Instructions::CMP:
+		case Instructions::CPX:
+		case Instructions::CPY:
+		case Instructions::BIT:
+		case Instructions::LAX:
+		case Instructions::NOP:
+
+			// Read write
+		case Instructions::ASL:
+		case Instructions::LSR:
+		case Instructions::ROL:
+		case Instructions::ROR:
+		case Instructions::INC:
+		case Instructions::DEC:
+		case Instructions::SLO:
+		case Instructions::SRE:
+		case Instructions::RLA:
+		case Instructions::RRA:
+		case Instructions::ISC:
+		case Instructions::DCP:
+		case Instructions::LAS:
+			return State::ReadInstr;
+			// Write
+		case Instructions::STA:
+		case Instructions::STX:
+		case Instructions::STY:
+		case Instructions::SAX:
+		case Instructions::AHX:
+		case Instructions::SHX:
+		case Instructions::SHY:
+		case Instructions::TAS:
+			return State::WriteInstr;
+		default: throw std::logic_error("not reachable");
+	}
+}
+
+mos6502::mos6502(Bus* bus): bus(bus) {
 	PC = bus->CpuRead(0xFFFC) | (bus->CpuRead(0xFFFD) << 8);
-	
+
 	#ifdef printDebug
 	file.open("D:\\Daten\\Desktop\\test.log");
 	#endif
 }
 
-cpu6502::~cpu6502() {
+mos6502::~mos6502() {
 	#ifdef printDebug
 	file.close();
 	#endif
 }
 
-void cpu6502::Reset() {
-	uint16_t lo = bus->CpuRead(0xFFFC);
-	uint16_t hi = bus->CpuRead(0xFFFD);
-
-	PC = (hi << 8) | lo;
+void mos6502::Reset() {
+	PC = bus->CpuRead(0xFFFC) | (bus->CpuRead(0xFFFD) << 8);
 	SP -= 3;
 
 	Status.I = Status.U = true;
@@ -47,58 +91,19 @@ void cpu6502::Reset() {
 	NMI = false;
 }
 
-void cpu6502::Nmi() {
+void mos6502::Nmi() {
 	NMI = true;
 }
 
-void cpu6502::SaveState(saver& saver) const {
-	saver << NMI;
-
-	saver << A;
-	saver << X;
-	saver << Y;
-	saver << SP;
-	saver << PC;
-	saver << Status.reg;
-	saver << static_cast<uint8_t>(state);
-
-	saver << ptr;
-	saver << addr_abs;
-
-	saver << instruction.name;
-	saver << static_cast<uint8_t>(instruction.instruction);
-	saver << static_cast<uint8_t>(instruction.addrMode);
-
-	saver << cycles;
+void mos6502::SaveState(saver& saver) const {
+	saver.Write(reinterpret_cast<const char*>(this), sizeof(mos6502state));
 }
 
-void cpu6502::LoadState(saver& saver) {
-	uint8_t temp;
-
-	saver >> NMI;
-
-	saver >> A;
-	saver >> X;
-	saver >> Y;
-	saver >> SP;
-	saver >> PC;
-	saver >> Status.reg;
-	saver >> temp;
-	state = static_cast<State>(temp);
-
-	saver >> ptr;
-	saver >> addr_abs;
-
-	instruction.name = saver.ReadString();
-	saver >> temp;
-	instruction.instruction = static_cast<Instructions>(temp);
-	saver >> temp;
-	instruction.addrMode = static_cast<AddressingModes>(temp);
-
-	saver >> cycles;
+void mos6502::LoadState(saver& saver) {
+	saver.Read(reinterpret_cast<char*>(this), sizeof(mos6502state));
 }
 
-void cpu6502::Clock() {
+void mos6502::Clock() {
 	uint8_t fetched = 0;
 	#ifdef printDebug
 	static char instrStr[256] = "\0";
@@ -109,38 +114,41 @@ void cpu6502::Clock() {
 		case State::FetchOpcode:
 			#ifdef printDebug
 			if(strPos != 0) {
-				instrStr[strPos] = '\n';
-				instrStr[strPos + 1] = '\0';
-				printf_s(instrStr);
+				for(int i = strPos; i < 27; ++i) {
+					instrStr[i] = ' ';
+				}
+
+				printf(instrStr);
 				file << instrStr;
 			}
 			#endif
 			if(NMI) {
 				instruction.instruction = Instructions::NMI;
 				instruction.addrMode = IMP;
-				instruction.name = "NMI";
 
 				#ifdef printDebug
-				strPos = sprintf_s(instrStr, "%04X: %s  ", PC, instruction.name.c_str());
+				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, 0, instruction.name.c_str());
 				#endif
 			} else if(IRQ && !Status.I) {
 				instruction.instruction = Instructions::IRQ;
 				instruction.addrMode = IMP;
-				instruction.name = "IRQ";
 
 				#ifdef printDebug
-				strPos = sprintf_s(instrStr, "%04X: %s  ", PC, instruction.name.c_str());
+				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, 0, instruction.name.c_str());
 				#endif
 			} else {
 				fetched = bus->CpuRead(PC);
 				instruction = lookup[fetched];
 
 				#ifdef printDebug
-				strPos = sprintf_s(instrStr, "%04X: %s  ", PC, instruction.name.c_str());
+				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, fetched, instruction.name.c_str());
 				#endif
 
 				PC++;
 			}
+			#ifdef printDebug
+			sprintf_s((instrStr + 27), sizeof(instrStr) - 27, "A:%02X X:%02X Y:%02X P:%02X SP:%02X Cy:%i\n", A, X, Y, Status.reg, SP, cycles + 1);
+			#endif
 			state = State::FetchOperator;
 			break;
 		case State::FetchOperator: // fetch operand
@@ -148,7 +156,19 @@ void cpu6502::Clock() {
 
 			switch(instruction.addrMode) {
 				case IMP:
+					#ifdef printDebug
+					switch (instruction.instruction) {
+						case Instructions::ASL:
+						case Instructions::ROL:
+						case Instructions::LSR:
+						case Instructions::ROR:
+							instrStr[strPos] = 'A';
+							strPos++;
+							break;
+					}
+					#endif
 					state = State::FetchOpcode;
+
 					switch(instruction.instruction) {
 						case Instructions::JSR:
 						case Instructions::BRK:
@@ -164,15 +184,18 @@ void cpu6502::Clock() {
 							addr_abs = fetched;
 							state = State::StackShit1;
 							break;
-						case Instructions::ASL: A = ASL(A);
+						case Instructions::ASL:
+							A = ASL(A);
 							break;
-						case Instructions::ROL: A = ROL(A);
+						case Instructions::ROL:
+							A = ROL(A);
 							break;
-						case Instructions::LSR: A = LSR(A);
+						case Instructions::LSR:
+							A = LSR(A);
 							break;
-						case Instructions::ROR: A = ROR(A);
+						case Instructions::ROR:
+							A = ROR(A);
 							break;
-
 						case Instructions::TXA:
 							A = X;
 
@@ -226,7 +249,6 @@ void cpu6502::Clock() {
 							Status.Z = Y == 0x00;
 							Status.N = Y & 0x80;
 							break;
-
 						case Instructions::SEC: Status.C = true;
 							break;
 						case Instructions::SED: Status.D = true;
@@ -247,16 +269,23 @@ void cpu6502::Clock() {
 				case IMM:
 					PC++;
 					#ifdef printDebug
-					strPos += sprintf_s((instrStr + strPos), sizeof(instrStr) - strPos, "#$%02X", fetched);
+					strPos += sprintf_s((instrStr + strPos), 27 - strPos, "#$%02X ", fetched);
 					#endif
 					switch(instruction.instruction) {
-						case Instructions::ORA: ORA(fetched);
+						case Instructions::ORA:
+							ORA(fetched);
 							break;
-						case Instructions::ANC: ANC(fetched);
+						case Instructions::ANC:
+							A &= fetched;
+
+							Status.Z = A == 0;
+							Status.C = Status.N = A & 0x80;
 							break;
-						case Instructions::AND: AND(fetched);
+						case Instructions::AND:
+							AND(fetched);
 							break;
-						case Instructions::EOR: EOR(fetched);
+						case Instructions::EOR:
+							EOR(fetched);
 							break;
 						case Instructions::ALR:
 							A &= fetched;
@@ -268,21 +297,29 @@ void cpu6502::Clock() {
 							Status.Z = A == 0;
 							Status.N = A & 0x80;
 							break;
-						case Instructions::ADC: ADC(fetched);
+						case Instructions::ADC:
+							ADC(fetched);
 							break;
-						case Instructions::LDA: LDA(fetched);
+						case Instructions::LDA:
+							LDA(fetched);
 							break;
-						case Instructions::LDX: LDX(fetched);
+						case Instructions::LDX:
+							LDX(fetched);
 							break;
-						case Instructions::LDY: LDY(fetched);
+						case Instructions::LDY:
+							LDY(fetched);
 							break;
-						case Instructions::LAX: LAX(fetched);
+						case Instructions::LAX:
+							LAX(fetched);
 							break;
-						case Instructions::CMP: CMP(fetched);
+						case Instructions::CMP:
+							CMP(fetched);
 							break;
-						case Instructions::CPX: CPX(fetched);
+						case Instructions::CPX:
+							CPX(fetched);
 							break;
-						case Instructions::CPY: CPY(fetched);
+						case Instructions::CPY:
+							CPY(fetched);
 							break;
 						case Instructions::AXS:
 							Status.C = (A & X) >= fetched;
@@ -303,7 +340,12 @@ void cpu6502::Clock() {
 							Status.Z = A == 0;
 							Status.N = A & 0x80;
 							break;
-						case Instructions::XAA: printf("XAA Not implemented");
+						case Instructions::XAA:
+							A = (A | 0xFF) & X & fetched;
+
+							Status.Z = A == 0;
+							Status.N = A & 0x80;
+							break;
 						case Instructions::NOP: break;
 					}
 					state = State::FetchOpcode;
@@ -311,7 +353,7 @@ void cpu6502::Clock() {
 				case ZP0:
 					PC++;
 					addr_abs = fetched;
-					state = InstructionType();
+					state = InstructionType(instruction.instruction);
 					break;
 				case ZPX:
 				case ZPY:
@@ -375,11 +417,11 @@ void cpu6502::Clock() {
 					break;
 				case ZPX:
 					addr_abs = (addr_abs + X) & 0xFF;
-					state = InstructionType();
+					state = InstructionType(instruction.instruction);
 					break;
 				case ZPY:
 					addr_abs = (addr_abs + Y) & 0xFF;
-					state = InstructionType();
+					state = InstructionType(instruction.instruction);
 					break;
 			}
 			break;
@@ -393,11 +435,7 @@ void cpu6502::Clock() {
 						addr_abs |= 0xFF00;
 					}
 					#ifdef printDebug
-					if(addr_abs & 0x80) {
-						strPos += sprintf_s((instrStr + strPos), sizeof(instrStr) - strPos, "-$%02X", (0xFFFF - addr_abs) & 0xFF);
-					} else {
-						strPos += sprintf_s((instrStr + strPos), sizeof(instrStr) - strPos, "$%02X", addr_abs & 0xFF);
-					}
+					strPos += sprintf_s((instrStr + strPos), 27 - strPos, "$%04X", PC + addr_abs);
 					#endif
 					if(((PC + addr_abs) & 0xFF00) != (PC & 0xFF00)) {
 						state = State::PageError; // page boundary
@@ -413,12 +451,12 @@ void cpu6502::Clock() {
 						case Instructions::JMP:
 							PC = addr_abs;
 							#ifdef printDebug
-							strPos += sprintf_s((instrStr + strPos), sizeof(instrStr) - strPos, "$%04X", addr_abs);
+							strPos += sprintf_s((instrStr + strPos), 27 - strPos, "$%04X", addr_abs);
 							#endif
 							state = State::FetchOpcode;
 							break;
 						default:
-							state = InstructionType();
+							state = InstructionType(instruction.instruction);
 							break;
 					}
 					break;
@@ -445,7 +483,7 @@ void cpu6502::Clock() {
 						case Instructions::NOP:
 							if(((addr_abs + X) & 0xFF00) == (addr_abs & 0xFF00)) {
 								addr_abs += X;
-								state = InstructionType();
+								state = InstructionType(instruction.instruction);
 								break;
 							}
 						default:
@@ -476,7 +514,7 @@ void cpu6502::Clock() {
 						case Instructions::NOP:
 							if(((addr_abs + Y) & 0xFF00) == (addr_abs & 0xFF00)) {
 								addr_abs += Y;
-								state = InstructionType();
+								state = InstructionType(instruction.instruction);
 								break;
 							}
 						default:
@@ -500,7 +538,7 @@ void cpu6502::Clock() {
 
 			switch(instruction.addrMode) {
 				case IZX:
-					state = InstructionType();
+					state = InstructionType(instruction.instruction);
 					break;
 				case IZY: {
 					switch(instruction.instruction) {
@@ -522,7 +560,7 @@ void cpu6502::Clock() {
 						case Instructions::NOP:
 							if(((addr_abs + Y) & 0xFF00) == (addr_abs & 0xFF00)) {
 								addr_abs += Y;
-								state = InstructionType();
+								state = InstructionType(instruction.instruction);
 								break;
 							}
 						default:
@@ -534,7 +572,7 @@ void cpu6502::Clock() {
 				case IND: // JMP
 					PC = addr_abs;
 					#ifdef printDebug
-					strPos += sprintf_s((instrStr + strPos), sizeof(instrStr) - strPos, "$%04X = %04X", ptr, addr_abs);
+					strPos += sprintf_s((instrStr + strPos), 27 - strPos, "$%04X", addr_abs);
 					#endif
 					state = State::FetchOpcode;
 					break;
@@ -543,7 +581,31 @@ void cpu6502::Clock() {
 		case State::ReadInstr:
 			fetched = bus->CpuRead(addr_abs);
 			#ifdef printDebug
-			strPos += sprintf_s((instrStr + strPos), sizeof(instrStr) - strPos, "$%04X = %02X", addr_abs, fetched);
+			switch(instruction.instruction) {
+				case Instructions::ASL:
+				case Instructions::LSR:
+				case Instructions::ROL:
+				case Instructions::ROR:
+				case Instructions::INC:
+				case Instructions::DEC:
+				case Instructions::SLO:
+				case Instructions::SRE:
+				case Instructions::RLA:
+				case Instructions::RRA:
+				case Instructions::ISC:
+				case Instructions::DCP:
+					break;
+				default:
+					switch(instruction.addrMode) {
+						case ZP0:
+							strPos += sprintf_s((instrStr + strPos), 27 - strPos, "$%02X", addr_abs);
+							break;
+						default:
+							strPos += sprintf_s((instrStr + strPos), 27 - strPos, "$%04X", addr_abs);
+							break;
+					}
+					break;
+			}
 			#endif
 
 			switch(instruction.instruction) {
@@ -769,7 +831,14 @@ void cpu6502::Clock() {
 				default: throw std::logic_error("Not reachable");
 			}
 			#ifdef printDebug
-			strPos += sprintf_s((instrStr + strPos), sizeof(instrStr) - strPos, "$%04X = %02X", addr_abs, toWrite);
+			switch(instruction.addrMode) {
+				case ZP0:
+					strPos += sprintf_s((instrStr + strPos), 27 - strPos, "$%02X", addr_abs);
+					break;
+				default:
+					strPos += sprintf_s((instrStr + strPos), 27 - strPos, "$%04X", addr_abs);
+					break;
+			}
 			#endif
 			bus->CpuWrite(writeAddr, toWrite);
 		}
@@ -893,7 +962,7 @@ void cpu6502::Clock() {
 				case Instructions::JSR:
 					PC = addr_abs | (bus->CpuRead(PC) << 8);
 					#ifdef printDebug
-					strPos += sprintf_s((instrStr + strPos), sizeof(instrStr) - strPos, "$%04X", PC);
+					strPos += sprintf_s((instrStr + strPos), 27 - strPos, "$%04X", PC);
 					#endif
 					break;
 			}
@@ -912,13 +981,13 @@ void cpu6502::Clock() {
 				case ABX:
 					bus->CpuRead((addr_abs & 0xFF00) | ((addr_abs + X) & 0xFF));
 					addr_abs += X;
-					state = InstructionType();
+					state = InstructionType(instruction.instruction);
 					break;
 				case ABY:
 				case IZY:
 					bus->CpuRead((addr_abs & 0xFF00) | ((addr_abs + Y) & 0xFF));
 					addr_abs += Y;
-					state = InstructionType();
+					state = InstructionType(instruction.instruction);
 					break;
 			}
 			break;
@@ -927,92 +996,37 @@ void cpu6502::Clock() {
 	cycles++;
 }
 
-void cpu6502::ORA(uint8_t val) {
+void mos6502::ORA(uint8_t val) {
 	A |= val;
 	Status.Z = A == 0;
 	Status.N = A & 0x80;
 }
 
-State cpu6502::InstructionType() const {
-	switch(instruction.instruction) {
-			// Read
-		case Instructions::LDA:
-		case Instructions::LDX:
-		case Instructions::LDY:
-		case Instructions::EOR:
-		case Instructions::AND:
-		case Instructions::ORA:
-		case Instructions::ADC:
-		case Instructions::SBC:
-		case Instructions::CMP:
-		case Instructions::CPX:
-		case Instructions::CPY:
-		case Instructions::BIT:
-		case Instructions::LAX:
-		case Instructions::NOP:
-
-			// Read write
-		case Instructions::ASL:
-		case Instructions::LSR:
-		case Instructions::ROL:
-		case Instructions::ROR:
-		case Instructions::INC:
-		case Instructions::DEC:
-		case Instructions::SLO:
-		case Instructions::SRE:
-		case Instructions::RLA:
-		case Instructions::RRA:
-		case Instructions::ISC:
-		case Instructions::DCP:
-		case Instructions::LAS:
-			return State::ReadInstr;
-			// Write
-		case Instructions::STA:
-		case Instructions::STX:
-		case Instructions::STY:
-		case Instructions::SAX:
-		case Instructions::AHX:
-		case Instructions::SHX:
-		case Instructions::SHY:
-		case Instructions::TAS:
-			return State::WriteInstr;
-		default: printf("%s\n", instruction.name.c_str());
-			throw std::logic_error("whops");
-	}
-}
-
-void cpu6502::PushStack(uint8_t val) {
+void mos6502::PushStack(uint8_t val) {
 	bus->CpuWrite(0x0100 + SP, val);
 	SP--;
 }
 
-uint8_t cpu6502::PopStack() {
+uint8_t mos6502::PopStack() {
 	SP++;
 	return bus->CpuRead(0x0100 + SP);
 }
 
-void cpu6502::ANC(uint8_t val) {
-	A &= val;
-
-	Status.Z = A == 0;
-	Status.C = Status.N = A & 0x80;
-}
-
-void cpu6502::AND(uint8_t val) {
+void mos6502::AND(uint8_t val) {
 	A &= val;
 
 	Status.Z = A == 0;
 	Status.N = A & 0x80;
 }
 
-void cpu6502::EOR(uint8_t val) {
+void mos6502::EOR(uint8_t val) {
 	A ^= val;
 
 	Status.Z = A == 0;
 	Status.N = A & 0x80;
 }
 
-void cpu6502::ADC(uint8_t val) {
+void mos6502::ADC(uint8_t val) {
 	uint16_t temp = A + val + Status.C;
 
 	Status.C = temp > 255;
@@ -1024,7 +1038,7 @@ void cpu6502::ADC(uint8_t val) {
 	Status.N = A & 0x80;
 }
 
-void cpu6502::SBC(uint8_t val) {
+void mos6502::SBC(uint8_t val) {
 	val ^= 0xFF;
 	const uint16_t temp = A + val + Status.C;
 
@@ -1037,7 +1051,7 @@ void cpu6502::SBC(uint8_t val) {
 	Status.N = A & 0x80;
 }
 
-uint8_t cpu6502::ASL(uint8_t val) {
+uint8_t mos6502::ASL(uint8_t val) {
 	Status.C = val & 0x80;
 
 	val = val << 1;
@@ -1047,7 +1061,7 @@ uint8_t cpu6502::ASL(uint8_t val) {
 	return val;
 }
 
-uint8_t cpu6502::ROL(uint8_t val) {
+uint8_t mos6502::ROL(uint8_t val) {
 	uint16_t tmp = (val << 1) | Status.C;
 
 	Status.C = tmp & 0xFF00;
@@ -1057,7 +1071,7 @@ uint8_t cpu6502::ROL(uint8_t val) {
 	return tmp;
 }
 
-uint8_t cpu6502::LSR(uint8_t val) {
+uint8_t mos6502::LSR(uint8_t val) {
 	Status.C = val & 1;
 	val >>= 1;
 
@@ -1067,7 +1081,7 @@ uint8_t cpu6502::LSR(uint8_t val) {
 	return val;
 }
 
-uint8_t cpu6502::ROR(uint8_t val) {
+uint8_t mos6502::ROR(uint8_t val) {
 	uint16_t tmp = (Status.C << 7) | (val >> 1);
 	Status.C = val & 1;
 
@@ -1077,7 +1091,7 @@ uint8_t cpu6502::ROR(uint8_t val) {
 	return tmp;
 }
 
-void cpu6502::CMP(uint8_t val) {
+void mos6502::CMP(uint8_t val) {
 	Status.C = A >= val;
 
 	val = A - val;
@@ -1085,7 +1099,7 @@ void cpu6502::CMP(uint8_t val) {
 	Status.N = val & 0x80;
 }
 
-void cpu6502::CPX(uint8_t val) {
+void mos6502::CPX(uint8_t val) {
 	Status.C = X >= val;
 
 	val = X - val;
@@ -1093,7 +1107,7 @@ void cpu6502::CPX(uint8_t val) {
 	Status.N = val & 0x80;
 }
 
-void cpu6502::CPY(uint8_t val) {
+void mos6502::CPY(uint8_t val) {
 	Status.C = Y >= val;
 
 	val = Y - val;
@@ -1101,25 +1115,25 @@ void cpu6502::CPY(uint8_t val) {
 	Status.N = val & 0x80;
 }
 
-void cpu6502::LDA(uint8_t val) {
+void mos6502::LDA(uint8_t val) {
 	A = val;
 	Status.Z = A == 0;
 	Status.N = A & 0x80;
 }
 
-void cpu6502::LDX(uint8_t val) {
+void mos6502::LDX(uint8_t val) {
 	X = val;
 	Status.Z = X == 0;
 	Status.N = X & 0x80;
 }
 
-void cpu6502::LDY(uint8_t val) {
+void mos6502::LDY(uint8_t val) {
 	Y = val;
 	Status.Z = Y == 0;
 	Status.N = Y & 0x80;
 }
 
-void cpu6502::LAX(uint8_t val) {
+void mos6502::LAX(uint8_t val) {
 	X = A = val;
 
 	Status.Z = X == 0;

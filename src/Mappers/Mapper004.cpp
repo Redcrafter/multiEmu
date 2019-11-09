@@ -136,24 +136,23 @@ bool Mapper004::cpuMapWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper004::ppuMapRead(uint16_t addr, uint32_t& mapped) {
-	// TODO: Somehow ignore DrawPatternTable
-	if(!lastA12 && (addr & 0x1000)) {
-		// A12
+bool Mapper004::ppuMapRead(uint16_t addr, uint32_t& mapped, bool readOnly) {
+	if(!readOnly) {
+		if(!lastA12 && (addr & 0x1000)) {
+			if(irqCounter == 0 || reloadIrq) {
+				reloadIrq = false;
+				irqCounter = irqLatch;
+			} else {
+				irqCounter--;
+			}
 
-		if(irqCounter == 0 || reloadIrq) {
-			reloadIrq = false;
-			irqCounter = irqLatch;
-		} else {
-			irqCounter--;
+			if(irqCounter == 0) {
+				Irq = irqEnable;
+			}
 		}
-
-		if(irqCounter == 0) {
-			Irq = irqEnable;
-		}
+		lastA12 = addr & 0x1000;
 	}
-	lastA12 = addr & 0x1000;
-
+	
 	if(addr >= 0x2000) {
 		return false;
 	}
@@ -183,12 +182,9 @@ bool Mapper004::ppuMapWrite(uint16_t addr, uint8_t data) {
 }
 
 void Mapper004::SaveState(saver& saver) {
-	saver.Write(reinterpret_cast<char*>(this), sizeof(Mapper004));
+	saver.Write(reinterpret_cast<char*>(this), sizeof(Mapper004State));
 }
 
 void Mapper004::LoadState(saver& saver) {
-	uint64_t vfptr = reinterpret_cast<uint64_t*>(this)[0];
-	
-	saver.Read(reinterpret_cast<char*>(this), sizeof(Mapper004));
-	*reinterpret_cast<uint64_t*>(this) = vfptr;
+	saver.Read(reinterpret_cast<char*>(this), sizeof(Mapper004State));
 }

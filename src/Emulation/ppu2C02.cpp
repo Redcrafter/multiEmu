@@ -1,6 +1,8 @@
 #include "ppu2C02.h"
 #include "Bus.h"
+
 #include <iostream>
+#include <cassert>
 
 const Color colors[] = {
 	{84, 84, 84},
@@ -447,7 +449,7 @@ void ppu2C02::SaveState(saver& saver) {
 	saver << oamAddr;
 	saver << Control.reg;
 	
-	saver.Write((char*)this, sizeof(PpuState));
+	saver.Write(reinterpret_cast<char*>(this), sizeof(PpuState));
 }
 
 void ppu2C02::LoadState(saver& saver) {
@@ -456,21 +458,23 @@ void ppu2C02::LoadState(saver& saver) {
 	saver >> oamAddr;
 	saver >> Control.reg;
 
-	saver.Read((char*)this, sizeof(PpuState));
+	saver.Read(reinterpret_cast<char*>(this), sizeof(PpuState));
 }
 
-uint8_t ppu2C02::cpuRead(uint16_t addr) {
+uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {
 	uint8_t res = 0;
 
 	switch(addr) {
 		case 0x2002:
 			res = (Status.reg & 0xE0) | (readBuffer & 0x1F);
-			last2002Read = 0;
+			if(!readOnly) {
+				last2002Read = 0;
 
-			Status.VerticalBlank = false; // Clear vblank
-			writeState = 0;               // Clear write latch
-			if(nmi == 1 || nmi == 2) {
-				nmi = 0; // Reading 2002 at same time as nmi is set supresses it
+				Status.VerticalBlank = false; // Clear vblank
+				writeState = 0;               // Clear write latch
+				if(nmi == 1 || nmi == 2) {
+					nmi = 0; // Reading 2002 at same time as nmi is set supresses it
+				}
 			}
 			break;
 		case 0x2004:
@@ -478,14 +482,16 @@ uint8_t ppu2C02::cpuRead(uint16_t addr) {
 			break;
 		case 0x2007:
 			res = readBuffer;
-			readBuffer = ppuRead(vramAddr.reg);
+			if(!readOnly) {
+				readBuffer = ppuRead(vramAddr.reg);
 
-			if(vramAddr.reg >= 0x3F00) {
-				res = readBuffer;                            // palette
-				readBuffer = ppuRead(vramAddr.reg - 0x1000); // Read buffer is mirrored into vram
+				if(vramAddr.reg >= 0x3F00) {
+					res = readBuffer;                            // palette
+					readBuffer = ppuRead(vramAddr.reg - 0x1000); // Read buffer is mirrored into vram
+				}
+
+				vramAddr.reg += Control.vramIncrement ? 32 : 1;
 			}
-
-			vramAddr.reg += Control.vramIncrement ? 32 : 1;
 			break;
 	}
 
@@ -544,12 +550,12 @@ void ppu2C02::cpuWrite(uint16_t addr, uint8_t data) {
 	}
 }
 
-uint8_t ppu2C02::ppuRead(uint16_t addr) {
+uint8_t ppu2C02::ppuRead(uint16_t addr, bool readOnly) {
 	uint8_t data = 0;
 
 	addr &= 0x3FFF;
 
-	if(cartridge->ppuRead(addr, data)) {
+	if(cartridge->ppuRead(addr, data, readOnly)) {
 		// Patten tables: 0x000 - 0x1FFF
 	} else if(addr <= 0x1FFF) {
 		data = chrRAM[addr]; // in case cartridge doesn't have rom
@@ -567,10 +573,10 @@ uint8_t ppu2C02::ppuRead(uint16_t addr) {
 				addr &= 0x7ff;
 				break;
 			case MirrorMode::OnescreenLo:
-				addr &= 0x3fff;
+				addr &= 0x3ff;
 				break;
 			case MirrorMode::OnescreenHi:
-				addr &= 0x3fff + 0x4000;
+				addr &= 0x3ff + 0x400;
 				break;
 		}
 
@@ -659,8 +665,7 @@ void ppu2C02::LoadBackgroundShifters() {
 }
 
 Color ppu2C02::GetPaletteColor(uint8_t palette, uint8_t pixel) const {
-	uint8_t addr = ((palette << 2) + pixel) & 0x3F;
-	addr &= 0x1F;
+	uint8_t addr = ((palette << 2) + pixel) & 0x1F;
 
 	switch(addr) {
 		case 0x10:
@@ -677,28 +682,5 @@ Color ppu2C02::GetPaletteColor(uint8_t palette, uint8_t pixel) const {
 			break;
 	}
 
-	return colors[palettes[addr]];
-}
-
-void ppu2C02::DrawPatternTable(RenderImage* texture, int i, int palette) {
-	for(uint16_t nTileY = 0; nTileY < 16; nTileY++) {
-		for(uint16_t nTileX = 0; nTileX < 16; nTileX++) {
-			uint16_t nOffset = (nTileY * 16 + nTileX) * 16;
-
-			for(uint16_t row = 0; row < 8; row++) {
-				uint8_t tile_lsb = ppuRead(i * 0x1000 + nOffset + row + 0);
-				uint8_t tile_msb = ppuRead(i * 0x1000 + nOffset + row + 8);
-
-				for(uint16_t col = 0; col < 8; col++) {
-					uint8_t pixel = (tile_lsb & 1) | ((tile_msb & 1) << 1);
-
-					tile_lsb >>= 1;
-					tile_msb >>= 1;
-
-					auto color = GetPaletteColor(palette, pixel);
-					texture->SetPixel(nTileX * 8 + (7 - col), nTileY * 8 + row, color);
-				}
-			}
-		}
-	}
+	return colors[palettes[addr] & 0x3F];
 }

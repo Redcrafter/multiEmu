@@ -8,7 +8,7 @@ public:
 	TasController(std::vector<uint8_t> inputs);
 	
 	void CpuWrite(uint16_t addr, uint8_t data) override;
-	uint8_t CpuRead(uint16_t addr) override;
+	uint8_t CpuRead(uint16_t addr, bool readOnly) override;
 	void Frame();
 
 	std::string GetInput();

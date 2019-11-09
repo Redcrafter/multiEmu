@@ -1,8 +1,7 @@
 #pragma once
 #include "Mapper.h"
 
-class Mapper004 : public Mapper {
-private:
+struct Mapper004State {
 	union {
 		struct {
 			uint8_t bankNumber : 3;
@@ -23,15 +22,18 @@ private:
 	bool lastA12 = false;
 	uint8_t irqCounter;
 	uint8_t irqLatch;
-	
+
 	uint8_t prgRam[0x2000];
 	bool ramEnable;
+};
+
+class Mapper004 : Mapper004State, public Mapper{
 public:
 	Mapper004(uint8_t prgBanks, uint8_t chrBanks);
 	
 	int cpuMapRead(uint16_t addr, uint32_t& mapped) override;
 	bool cpuMapWrite(uint16_t addr, uint8_t data) override;
-	bool ppuMapRead(uint16_t addr, uint32_t& mapped) override;
+	bool ppuMapRead(uint16_t addr, uint32_t& mapped, bool readOnly) override;
 	bool ppuMapWrite(uint16_t addr, uint8_t data) override;
 
 	void SaveState(saver& saver) override;

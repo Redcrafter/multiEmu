@@ -12,7 +12,7 @@ bool Mapper000::cpuMapWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper000::ppuMapRead(uint16_t addr, uint32_t& mapped) {
+bool Mapper000::ppuMapRead(uint16_t addr, uint32_t& mapped, bool readOnly) {
 	if(addr >= 0x2000 || chrBanks == 0)
 		return false;
 	

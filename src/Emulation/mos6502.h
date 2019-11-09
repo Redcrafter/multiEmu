@@ -112,7 +112,6 @@ enum class Instructions : uint8_t {
 };
 
 struct Instruction {
-	std::string name;
 	Instructions instruction;
 	AddressingModes addrMode;
 };
@@ -137,23 +136,7 @@ enum class State {
 	StackShit5
 };
 
-class cpu6502 {
-public:
-	bool IRQ;
-	
-	cpu6502(Bus* bus);
-	~cpu6502();
-
-	void Clock();
-	void Reset();
-
-	void Nmi();
-
-	void SaveState(saver& saver) const;
-	void LoadState(saver& saver);
-private:
-	Bus* bus;
-
+struct mos6502state {
 	bool NMI = false;
 
 	uint8_t A = 0;
@@ -185,8 +168,26 @@ private:
 	Instruction instruction;
 
 	uint64_t cycles = 0;
+};
 
-	State InstructionType() const;
+class mos6502 : mos6502state {
+	friend class CpuStateWindow;
+public:
+	bool IRQ = false;
+private:
+	Bus* bus;
+public:
+	mos6502(Bus* bus);
+	~mos6502();
+
+	void Clock();
+	void Reset();
+
+	void Nmi();
+
+	void SaveState(saver& saver) const;
+	void LoadState(saver& saver);
+private:
 	void PushStack(uint8_t val);
 	uint8_t PopStack();
 
@@ -195,7 +196,6 @@ private:
 #endif
 
 	void ORA(uint8_t val);
-	void ANC(uint8_t val);
 	void AND(uint8_t val);
 	void EOR(uint8_t val);
 	void ADC(uint8_t val);

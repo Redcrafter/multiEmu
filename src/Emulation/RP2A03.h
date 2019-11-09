@@ -10,8 +10,8 @@ struct Stuff {
 	uint8_t lengthCounterPeriod;
 	uint8_t lengthCounter;
 
-	uint16_t timer;
-	uint16_t timerPeriod;
+	uint16_t timer = 0;
+	uint16_t timerPeriod = 0;
 
 	void ClockLength();
 };
@@ -70,10 +70,6 @@ struct Noise : Envelope {
 };
 
 struct DMC {
-	DMC(Bus* bus);
-
-	Bus* bus;
-
 	bool enabled;
 	bool irq;
 
@@ -83,27 +79,29 @@ struct DMC {
 	bool silence;
 
 	uint8_t value = 0;
-	uint16_t sampleAddress;
-	uint16_t sampleLength;
+	uint16_t sampleAddress = 0;
+	uint16_t sampleLength = 0;
 
-	uint16_t currentAddress;
-	uint16_t currentLength;
+	uint16_t currentAddress = 0;
+	uint16_t currentLength = 0;
 
-	bool bufferEmpty;
-	uint8_t sampleBuffer;
+	bool bufferEmpty = true;
+	uint8_t sampleBuffer = 0;
 
-	uint8_t shiftRegister;
-	uint8_t bitCount;
+	uint8_t shiftRegister = 0;
+	uint8_t bitCount = 1;
 
-	uint16_t timer;
-	uint16_t timerPeriod;
+	uint16_t timer = 0;
+	uint16_t timerPeriod = 0;
 
-	void Clock();
+	void Clock(Bus* bus);
+	void Reload();
+	void FillBuffer(Bus* bus);
 };
 
-class RP2A03 {
-private:
-	static const int bufferLength = 1024 * 1024;
+static constexpr int bufferLength = 1024 * 1024; // 1 MiB
+
+struct RP2A03state {
 	bool Irq = false;
 
 	uint8_t last4017Write = 0;
@@ -115,6 +113,17 @@ private:
 	Triangle triangle;
 	Noise noise;
 	DMC dmc;
+};
+
+class RP2A03 : RP2A03state {
+private:
+	Bus* bus = nullptr;
+public:
+	int bufferPos = 0;
+	struct {
+		float sample;
+		uint8_t pulse1, pulse2, triangle, noise, dmc;
+	} waveBuffer[bufferLength];
 public:
 	RP2A03(Bus* bus);
 
@@ -122,7 +131,7 @@ public:
 	void Reset();
 
 	void CpuWrite(uint16_t addr, uint8_t data);
-	uint8_t CpuRead(uint16_t addr);
+	uint8_t ReadStatus(bool readOnly);
 
 	void ClockEnvelope();
 	void ClockLength();
@@ -132,10 +141,4 @@ public:
 
 	void SaveState(saver& saver);
 	void LoadState(saver& saver);
-
-	int bufferPos = 0;
-	struct {
-		float sample;
-		uint8_t pulse1, pulse2, triangle, noise;
-	} waveBuffer[bufferLength]; // 1 MiB
 };

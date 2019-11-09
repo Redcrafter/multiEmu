@@ -39,7 +39,7 @@ public:
 	bool cpuWrite(uint16_t addr, uint8_t data);
 
 	// Communication with ppu bus
-	bool ppuRead(uint16_t addr, uint8_t& data);
+	bool ppuRead(uint16_t addr, uint8_t& data, bool readOnly);
 	bool ppuWrite(uint16_t addr, uint8_t data);
 
 	void SaveState(saver& saver) { mapper->SaveState(saver); }
