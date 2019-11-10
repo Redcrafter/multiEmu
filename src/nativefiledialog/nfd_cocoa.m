@@ -1,15 +1,8 @@
-/*
-  Native File Dialog
-
-  http://www.frogtoss.com/labs
- */
-
 #include <AppKit/AppKit.h>
 #include "nfd.h"
 #include "nfd_common.h"
 
-static NSArray *BuildAllowedFileTypes( const char *filterList )
-{
+static NSArray *BuildAllowedFileTypes( const char *filterList ) {
     // Commas and semicolons are the same thing on this platform
 
     NSMutableArray *buildFilterList = [[NSMutableArray alloc] init];
@@ -18,10 +11,8 @@ static NSArray *BuildAllowedFileTypes( const char *filterList )
     
     size_t filterListLen = strlen(filterList);
     char *p_typebuf = typebuf;
-    for ( size_t i = 0; i < filterListLen+1; ++i )
-    {
-        if ( filterList[i] == ',' || filterList[i] == ';' || filterList[i] == '\0' )
-        {
+    for ( size_t i = 0; i < filterListLen+1; ++i ) {
+        if ( filterList[i] == ',' || filterList[i] == ';' || filterList[i] == '\0' ) {
             if (filterList[i] != '\0')
                 ++p_typebuf;
             *p_typebuf = '\0';
@@ -30,9 +21,7 @@ static NSArray *BuildAllowedFileTypes( const char *filterList )
             [buildFilterList addObject:thisType];
             p_typebuf = typebuf;
             *p_typebuf = '\0';
-        }
-        else
-        {
+        } else {
             *p_typebuf = filterList[i];
             ++p_typebuf;
 
@@ -45,21 +34,18 @@ static NSArray *BuildAllowedFileTypes( const char *filterList )
     return returnArray;
 }
 
-static void AddFilterListToDialog( NSSavePanel *dialog, const char *filterList )
-{
+static void AddFilterListToDialog( NSSavePanel *dialog, const char *filterList ) {
     if ( !filterList || strlen(filterList) == 0 )
         return;
 
     NSArray *allowedFileTypes = BuildAllowedFileTypes( filterList );
-    if ( [allowedFileTypes count] != 0 )
-    {
+    if ( [allowedFileTypes count] != 0 ) {
         [dialog setAllowedFileTypes:allowedFileTypes];
     }
 }
 
-static void SetDefaultPath( NSSavePanel *dialog, const nfdchar_t *defaultPath )
-{
-    if ( !defaultPath || strlen(defaultPath) == 0 )
+static void SetDefaultPath( NSSavePanel *dialog, const nfdchar_t *defaultPath ) {
+    if ( !defaultPath || strlen(defaultPath) == 0 ) 
         return;
 
     NSString *defaultPathString = [NSString stringWithUTF8String: defaultPath];
@@ -69,37 +55,32 @@ static void SetDefaultPath( NSSavePanel *dialog, const nfdchar_t *defaultPath )
 
 
 /* fixme: pathset should be pathSet */
-static nfdresult_t AllocPathSet( NSArray *urls, nfdpathset_t *pathset )
-{
+static Result AllocPathSet( NSArray *urls, nfdpathset_t *pathset ) {
     assert(pathset);
     assert([urls count]);
 
     pathset->count = (size_t)[urls count];
     pathset->indices = NFDi_Malloc( sizeof(size_t)*pathset->count );
-    if ( !pathset->indices ) 
-    {
+    if ( !pathset->indices ) {
         return NFD_ERROR;
     }
 
     // count the total space needed for buf
     size_t bufsize = 0;
-    for ( NSURL *url in urls )
-    {
+    for ( NSURL *url in urls ) {
         NSString *path = [url path];
         bufsize += [path lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1;
     }
 
     pathset->buf = NFDi_Malloc( sizeof(nfdchar_t) * bufsize );
-    if ( !pathset->buf )
-    {
+    if ( !pathset->buf ) {
         return NFD_ERROR;
     }
 
     // fill buf
     nfdchar_t *p_buf = pathset->buf;
     size_t count = 0;
-    for ( NSURL *url in urls )
-    {
+    for ( NSURL *url in urls ) {
         NSString *path = [url path];
         const nfdchar_t *utf8Path = [path UTF8String];
         size_t byteLen = [path lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1;
@@ -119,10 +100,7 @@ static nfdresult_t AllocPathSet( NSArray *urls, nfdpathset_t *pathset )
 /* public */
 
 
-nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
-                            const nfdchar_t *defaultPath,
-                            nfdchar_t **outPath )
-{
+Result NFD::OpenDialog( const nfdchar_t *filterList, const nfdchar_t *defaultPath, nfdchar_t **outPath ) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     NSWindow *keyWindow = [[NSApplication sharedApplication] keyWindow];    
@@ -135,9 +113,8 @@ nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
     // Set the starting directory
     SetDefaultPath(dialog, defaultPath);
 
-    nfdresult_t nfdResult = NFD_CANCEL;
-    if ( [dialog runModal] == NSModalResponseOK )
-    {
+    Result nfdResult = NFD_CANCEL;
+    if ( [dialog runModal] == NSModalResponseOK ) {
         NSURL *url = [dialog URL];
         const char *utf8Path = [[url path] UTF8String];
 
@@ -145,8 +122,7 @@ nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
         size_t len = strlen(utf8Path);//NFDi_UTF8_Strlen(utf8Path);
 
         *outPath = NFDi_Malloc( len+1 );
-        if ( !*outPath )
-        {
+        if ( !*outPath ) {
             [pool release];
             [keyWindow makeKeyAndOrderFront:nil];            
             return NFD_ERROR;
@@ -160,11 +136,7 @@ nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
     return nfdResult;
 }
 
-
-nfdresult_t NFD_OpenDialogMultiple( const nfdchar_t *filterList,
-                                    const nfdchar_t *defaultPath,
-                                    nfdpathset_t *outPaths )
-{
+Result NFD::OpenDialogMultiple( const nfdchar_t *filterList, const nfdchar_t *defaultPath, nfdpathset_t *outPaths ) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     NSWindow *keyWindow = [[NSApplication sharedApplication] keyWindow];
     
@@ -177,20 +149,17 @@ nfdresult_t NFD_OpenDialogMultiple( const nfdchar_t *filterList,
     // Set the starting directory
     SetDefaultPath(dialog, defaultPath);
     
-    nfdresult_t nfdResult = NFD_CANCEL;
-    if ( [dialog runModal] == NSModalResponseOK )
-    {
+    Result nfdResult = NFD_CANCEL;
+    if ( [dialog runModal] == NSModalResponseOK ) {
         NSArray *urls = [dialog URLs];
 
-        if ( [urls count] == 0 )
-        {
+        if ( [urls count] == 0 ) {
             [pool release];
             [keyWindow makeKeyAndOrderFront:nil];            
             return NFD_CANCEL;
         }
 
-        if ( AllocPathSet( urls, outPaths ) == NFD_ERROR )
-        {
+        if ( AllocPathSet( urls, outPaths ) == NFD_ERROR ) {
             [pool release];
             [keyWindow makeKeyAndOrderFront:nil];            
             return NFD_ERROR;
@@ -204,11 +173,7 @@ nfdresult_t NFD_OpenDialogMultiple( const nfdchar_t *filterList,
     return nfdResult;
 }
 
-
-nfdresult_t NFD_SaveDialog( const nfdchar_t *filterList,
-                            const nfdchar_t *defaultPath,
-                            nfdchar_t **outPath )
-{
+Result NFD_SaveDialog( const nfdchar_t *filterList, const nfdchar_t *defaultPath, nfdchar_t **outPath ) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     NSWindow *keyWindow = [[NSApplication sharedApplication] keyWindow];
     
@@ -221,17 +186,15 @@ nfdresult_t NFD_SaveDialog( const nfdchar_t *filterList,
     // Set the starting directory
     SetDefaultPath(dialog, defaultPath);
 
-    nfdresult_t nfdResult = NFD_CANCEL;
-    if ( [dialog runModal] == NSModalResponseOK )
-    {
+    Result nfdResult = NFD_CANCEL;
+    if ( [dialog runModal] == NSModalResponseOK ) {
         NSURL *url = [dialog URL];
         const char *utf8Path = [[url path] UTF8String];
 
         size_t byteLen = [url.path lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1;
         
         *outPath = NFDi_Malloc( byteLen );
-        if ( !*outPath )
-        {
+        if ( !*outPath ) {
             [pool release];
             [keyWindow makeKeyAndOrderFront:nil];            
             return NFD_ERROR;
@@ -245,9 +208,7 @@ nfdresult_t NFD_SaveDialog( const nfdchar_t *filterList,
     return nfdResult;
 }
 
-nfdresult_t NFD_PickFolder(const nfdchar_t *defaultPath,
-    nfdchar_t **outPath)
-{
+Result NFD::PickFolder(const nfdchar_t *defaultPath, nfdchar_t **outPath) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     NSWindow *keyWindow = [[NSApplication sharedApplication] keyWindow];
@@ -260,9 +221,8 @@ nfdresult_t NFD_PickFolder(const nfdchar_t *defaultPath,
     // Set the starting directory
     SetDefaultPath(dialog, defaultPath);
 
-    nfdresult_t nfdResult = NFD_CANCEL;
-    if ( [dialog runModal] == NSModalResponseOK )
-    {
+    Result nfdResult = NFD_CANCEL;
+    if ( [dialog runModal] == NSModalResponseOK ) {
         NSURL *url = [dialog URL];
         const char *utf8Path = [[url path] UTF8String];
 

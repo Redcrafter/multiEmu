@@ -588,11 +588,11 @@ int main() {
 		if(ImGui::BeginMainMenuBar()) {
 			if(ImGui::BeginMenu("File")) {
 				if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
-					char* outPath = nullptr;
-					const auto res = NFD_OpenDialog({"nes"}, nullptr, &outPath);
+					std::string outPath;
+					const auto res = NFD::OpenDialog("nes", nullptr, outPath);
 
-					if(res == NFD_OKAY) {
-						LoadRom(outPath);
+					if(res == NFD::Result::Okay) {
+						LoadRom(outPath.c_str());
 					}
 				}
 				if(ImGui::BeginMenu("Recent ROM")) {

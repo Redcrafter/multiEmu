@@ -3,7 +3,7 @@ project (NES C CXX)
 
 SET(CMAKE_CXX_STANDARD 17)
 
-file(GLOB Common_sources "./src/**/*.cpp" "./src/*.cpp" "./src/**/*.c") # somehow dosen't match all files
+file(GLOB Common_sources "./src/**/*.cpp" "./src/*.cpp")
 
 add_executable(nes ${Common_sources} ${Common_sources1}) 
 configure_file("./src/shaders/shader.fs" ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)

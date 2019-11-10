@@ -1,74 +1,31 @@
-/*
-  Native File Dialog
+#pragma once
+#include <string>
+#include <vector>
 
-  User API
+#define NFD_MAX_STRLEN 256
 
-  http://www.frogtoss.com/labs
- */
+namespace NFD {
+	enum class Result {
+		Error, /* programmatic error */
+		Okay,  /* user pressed okay, or successful return */
+		Cancel /* user pressed cancel */
+	};
+	
+	/* single file open dialog */
+	Result OpenDialog(const char* filterList, const char* defaultPath, std::string& outPath);
 
+	/* multiple file open dialog */
+	Result OpenDialogMultiple(const char* filterList, const char* defaultPath, std::vector<std::string>& outPaths);
 
-#ifndef _NFD_H
-#define _NFD_H
+	/* save dialog */
+	Result SaveDialog(const char* filterList, const char* defaultPath, std::string& outPath);
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+	/* select folder dialog */
+	Result PickFolder(const char* defaultPath, std::string& outPath);
 
-#include <stddef.h>
-
-/* denotes UTF-8 char */
-typedef char nfdchar_t;
-
-/* opaque data structure -- see NFD_PathSet_* */
-typedef struct {
-    nfdchar_t *buf;
-    size_t *indices; /* byte offsets into buf */
-    size_t count;    /* number of indices into buf */
-}nfdpathset_t;
-
-typedef enum {
-    NFD_ERROR,       /* programmatic error */
-    NFD_OKAY,        /* user pressed okay, or successful return */
-    NFD_CANCEL       /* user pressed cancel */
-}nfdresult_t;
-    
-
-/* nfd_<targetplatform>.c */
-
-/* single file open dialog */    
-nfdresult_t NFD_OpenDialog( const nfdchar_t *filterList,
-                            const nfdchar_t *defaultPath,
-                            nfdchar_t **outPath );
-
-/* multiple file open dialog */    
-nfdresult_t NFD_OpenDialogMultiple( const nfdchar_t *filterList,
-                                    const nfdchar_t *defaultPath,
-                                    nfdpathset_t *outPaths );
-
-/* save dialog */
-nfdresult_t NFD_SaveDialog( const nfdchar_t *filterList,
-                            const nfdchar_t *defaultPath,
-                            nfdchar_t **outPath );
-
-
-/* select folder dialog */
-nfdresult_t NFD_PickFolder( const nfdchar_t *defaultPath,
-                            nfdchar_t **outPath);
-
-/* nfd_common.c */
-
-/* get last error -- set when nfdresult_t returns NFD_ERROR */
-const char *NFD_GetError( void );
-/* get the number of entries stored in pathSet */
-size_t      NFD_PathSet_GetCount( const nfdpathset_t *pathSet );
-/* Get the UTF-8 path at offset index */
-nfdchar_t  *NFD_PathSet_GetPath( const nfdpathset_t *pathSet, size_t index );
-/* Free the pathSet */    
-void        NFD_PathSet_Free( nfdpathset_t *pathSet );
-
-
-#ifdef __cplusplus
+	/* get last error -- set when Result is NFD_ERROR */
+	std::string GetError();
 }
-#endif
 
-#endif
+void NFDi_SetError(const char* msg);
+int NFDi_IsFilterSegmentChar(char ch);
