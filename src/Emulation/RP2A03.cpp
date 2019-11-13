@@ -34,6 +34,9 @@ void Pulse::Clock() {
 }
 
 void Triangle::Clock() {
+	if(timerPeriod < 2) {
+		return; // High pass filter cheat
+	}
 	if(timer == 0) {
 		timer = timerPeriod;
 
@@ -197,14 +200,14 @@ void DMC::Clock(Bus* bus) {
 
 	if(bitCount == 0) {
 		bitCount = 8;
-		
+
 		if(bufferEmpty) {
 			silence = true;
 		} else {
 			silence = false;
 			shiftRegister = sampleBuffer;
 			bufferEmpty = true;
-			
+
 			FillBuffer(bus);
 		}
 	}
@@ -524,26 +527,26 @@ float RP2A03::GenerateSample() {
 
 	uint8_t tnd = 0;
 	if(triangle.enabled && triangle.lengthCounter > 0 && triangle.linearCounter > 0) {
-		buf.triangle = triangleTable[triangle.dutyValue] * 3;
-		tnd += buf.triangle;
+		buf.triangle = triangleTable[triangle.dutyValue];
+		tnd += buf.triangle * 3;
 	} else {
 		buf.triangle = 0;
 	}
 
 	if(noise.enabled && noise.lengthCounter > 0 && (noise.shiftRegister & 1) == 0) {
 		if(noise.envelopeEnabled) {
-			buf.noise = noise.constantVolume * 2;
+			buf.noise = noise.constantVolume;
 		} else {
-			buf.noise = noise.envelopeVolume * 2;
+			buf.noise = noise.envelopeVolume;
 		}
-		tnd += buf.noise;
+		tnd += buf.noise * 2;
 	} else {
 		buf.noise = 0;
 	}
 
-	tnd += dmc.value;
+	buf.dmc = dmc.value;
 
-	const auto val = pulseTable[buf.pulse1 + buf.pulse2] + tndTable[tnd];
+	const auto val = pulseTable[buf.pulse1 + buf.pulse2] + tndTable[tnd + dmc.value];
 
 	buf.sample = val;
 	bufferPos++;

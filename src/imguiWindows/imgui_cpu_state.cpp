@@ -8,15 +8,16 @@ void CpuStateWindow::Open() {
 }
 
 void CpuStateWindow::DrawWindow() {
-	if(!open) {
+	if(!open || !cpu) {
 		return;
 	}
 
 	if(ImGui::Begin(Title.c_str(), &open)) {
-		if(cpu) {
-			ImGui::Text("PC: $%04X\nSP: $%04X\nA: $%02X\nX: $%02X\nY: $%02X", cpu->PC, cpu->SP, cpu->A, cpu->X, cpu->Y);
-		}
+		ImGui::Text("PC: $%04X\nSP: $%04X\nA: $%02X\nX: $%02X\nY: $%02X", cpu->PC, cpu->SP, cpu->A, cpu->X, cpu->Y);
+		// TODO: print trace
 		
-		ImGui::End();
+
 	}
+
+	ImGui::End();
 }

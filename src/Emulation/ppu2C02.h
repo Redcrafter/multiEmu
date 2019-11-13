@@ -32,8 +32,11 @@ struct PpuState {
 
 	uint8_t writeState;
 	uint8_t readBuffer;
+	// Color palettes
 	uint8_t palettes[32]{};
+	// Nametables
 	uint8_t vram[2 * 1024]{};
+	// For cartridges without ChrRom
 	uint8_t chrRAM[8 * 1024]{};
 
 	Sprite oam[64], oam2[8];
@@ -89,6 +92,7 @@ struct PpuState {
 };
 
 class ppu2C02 : PpuState {
+	friend class MemoryEditor;
 public:
 	bool frameComplete = false;
 	int nmi;

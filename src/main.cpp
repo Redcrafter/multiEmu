@@ -34,6 +34,8 @@
 #include "imguiWindows/imgui_cpu_state.h"
 
 #include "nativefiledialog/nfd.h"
+#include "imgui/imgui_internal.h"
+#include "imguiWindows/imgui_apu_window.h"
 
 bool runningTas = false;
 std::shared_ptr<TasController> controller1, controller2;
@@ -68,10 +70,11 @@ static const GLfloat uvBuffer[] = {
 	0, 1,
 };
 
-MemoryEditor memEdit;
+MemoryEditor memEdit{"Memory Editor"};
 TasEditor tasEdit{"Tas Editor"};
 PatternTables tables{"Pattern Tables"};
 CpuStateWindow cpuWindow{"Cpu State"};
+ApuWindow apuWindow{"Apu Visuals"};
 
 bool speedUp = false;
 bool running = false;
@@ -102,8 +105,10 @@ void LoadRom(const char* path) {
 
 		nes->ppu.texture = mainTexture;
 		
+		memEdit.bus = nes.get();
 		tables.ppu = &nes->ppu;
 		cpuWindow.cpu = &nes->cpu;
+		apuWindow.apu = &nes->apu;
 	} else {
 		nes->InsertCartridge(cart);
 		nes->Reset();
@@ -164,22 +169,22 @@ void LoadState(int number) {
 	}
 }
 
+int samples = 0;
+
 void Resample() {
-	static float buffer[735];
-
 	const float requested = 735; // TODO: calculate requested by average frame time
-	const int available = nes->apu.bufferPos;
+	samples = nes->apu.bufferPos;
 
-	const float frac = available / requested;
+	const float frac = samples / requested;
 	int readPos = 0;
 	float mapped = 0;
 
 	int writePos = 0;
-	while(writePos < requested && writePos < sizeof(buffer) && readPos < available) {
+	while(writePos < requested && writePos < sizeof(buffer) && readPos < samples) {
 		float sample = 0;
 		int count = 0;
 
-		while(mapped <= frac && readPos < available) {
+		while(mapped <= frac && readPos < samples) {
 			mapped += 1;
 			sample += nes->apu.waveBuffer[readPos].sample;
 			readPos++;
@@ -191,133 +196,6 @@ void Resample() {
 		writePos++;
 	}
 	nes->apu.bufferPos = 0;
-
-	BASS_StreamPutData(audioStreamHandle, buffer, writePos * 4);
-
-	/*
-	if(drawAudio) {
-		auto& text = textures[AudioTexture];
-		text.Clear({0, 0, 0});
-
-		auto pps = 256.0 / available;
-		auto spp = available / 256.0;
-
-		// TODO: maybe search for first change
-
-		// Pulse 1
-		{
-			int startI = -1;
-			for(int i = 0; i < available; ++i) {
-				auto val = nes->apu.waveBuffer[i].pulse1;
-				if(val == 0) {
-					startI = i;
-					break;
-				}
-			}
-
-			if(startI != -1) {
-				int lastX = 0;
-				int lastY = 0;
-
-				for(int i = startI; i < available; ++i) {
-					auto val = nes->apu.waveBuffer[i].pulse1;
-					if(lastY != val) {
-						auto x = pps * (i - startI);
-
-						text.Line(lastX, lastY * 4 + 2, x, lastY * 4 + 2, {255, 255, 255});
-						text.Line(x, lastY * 4 + 2, x, val * 4 + 2, {255, 255, 255});
-
-						lastX = x;
-						lastY = val;
-					}
-				}
-
-				text.Line(lastX, lastY * 4 + 2, 256, lastY * 4 + 2, {255, 255, 255});
-			}
-		}
-
-		// Pulse 2
-		{
-			int startI = -1;
-			for(int i = 0; i < available; ++i) {
-				auto val = nes->apu.waveBuffer[i].pulse2;
-				if(val == 0) {
-					startI = i;
-					break;
-				}
-			}
-
-			if(startI != -1) {
-				int lastX = 0;
-				int lastY = 0;
-
-				for(int i = startI; i < available; ++i) {
-					auto val = nes->apu.waveBuffer[i].pulse2;
-					if(lastY != val) {
-						auto x = pps * (i - startI);
-
-						text.Line(lastX, lastY * 4 + 64 + 2, x, lastY * 4 + 64 + 2, {255, 255, 255});
-						text.Line(x, lastY * 4 + 64 + 2, x, val * 4 + 64 + 2, {255, 255, 255});
-
-						lastX = x;
-						lastY = val;
-					}
-				}
-
-				text.Line(lastX, lastY * 4 + 64 + 2, 256, lastY * 4 + 64 + 2, {255, 255, 255});
-			}
-		}
-
-		// Triangle
-		{
-			int startI = -1;
-			for(int i = 0; i < available; ++i) {
-				auto val = nes->apu.waveBuffer[i].triangle;
-				if(val == 0) {
-					startI = i;
-					break;
-				}
-			}
-
-			if(startI != -1) {
-				int lastX = 0;
-				int lastY = 0;
-
-				for(int x = 0; x < 256; ++x) {
-					auto val = nes->apu.waveBuffer[static_cast<int>(x * spp) + startI].triangle;
-
-					if(lastY != val) {
-						text.Line(lastX, lastY + 128 + 2, x, lastY + 128 + 2, {255, 255, 255});
-						text.Line(x, lastY + 128 + 2, x, val + 128 + 2, {255, 255, 255});
-
-						lastX = x;
-						lastY = val;
-					}
-				}
-				// TODO: draw to end
-			}
-		}
-
-		// TODO: Noise and DMC
-		// Noise
-		{
-			int lastX = 0;
-			int lastY = 0;
-
-			for(int i = 0; i < available; ++i) {
-				auto val = nes->apu.waveBuffer[i].noise;
-				if(lastY != val) {
-					auto x = size * i;
-
-					text.Line(lastX, lastY * 4 + 192 + 2, x, lastY * 4 + 192 + 2, {255, 255, 255});
-					text.Line(x, lastY * 4 + 192 + 2, x, val * 4 + 192 + 2, {255, 255, 255});
-
-					lastX = x;
-					lastY = val;
-				}
-			}
-		}
-	}*/
 }
 
 void Draw() {
@@ -555,20 +433,6 @@ int main() {
 	ImGui_ImplOpenGL3_Init("#version 330 core");
 
 	tables.Init();
-
-	memEdit.Open = false;
-	memEdit.ReadFn = [](const uint8_t* data, uint64_t addr) {
-		uint8_t res = 0;
-
-		if(nes) {
-			res = nes->CpuRead(addr, true);
-		}
-
-		return res;
-	};
-	memEdit.WriteFn = [](uint8_t* data, uint64_t addr, uint8_t value) {
-
-	};
 	#pragma endregion
 
 	#pragma region render loop
@@ -619,7 +483,8 @@ int main() {
 				if(ImGui::BeginMenu("Load State", enabled)) {
 					for(int i = 0; i < 10; ++i) {
 						std::string str = std::to_string(i);
-						if(ImGui::MenuItem(str.c_str(), ("Shift+" + str).c_str())) {
+
+						if(ImGui::MenuItem(str.c_str(), ("Shift+" + str).c_str(), false, saveStates[i] != nullptr)) {
 							LoadState(i);
 						}
 					}
@@ -670,19 +535,22 @@ int main() {
 			}
 
 			if(ImGui::BeginMenu("Tools")) {
-				if(ImGui::MenuItem("RAM Watch")) {
-					memEdit.Open = true;
-				}
+				bool active = nes != nullptr;
 
-				if(ImGui::MenuItem("Tas Editor")) {
+				if(ImGui::MenuItem("Hex Editor", nullptr, false, active)) {
+					memEdit.Open();
+				}
+				if(ImGui::MenuItem("Tas Editor", nullptr, false, active)) {
 					tasEdit.Open();
 				}
-
-				if(ImGui::MenuItem("CPU Viewer")) {
+				if(ImGui::MenuItem("CPU Viewer", nullptr, false, active)) {
 					cpuWindow.Open();
 				}
-				if(ImGui::MenuItem("PPU Viewer")) {
+				if(ImGui::MenuItem("PPU Viewer", nullptr, false, active)) {
 					tables.Open();
+				}
+				if(ImGui::MenuItem("APU Visuals", nullptr, false, active)) {
+					apuWindow.Open();
 				}
 
 				ImGui::EndMenu();
@@ -693,11 +561,9 @@ int main() {
 
 		cpuWindow.DrawWindow();
 		tables.DrawWindow();
-		tasEdit.DrawWindow();
-		
-		if(memEdit.Open) {
-			memEdit.DrawWindow("Memory Editor", nullptr, 0x10000);
-		}
+		tasEdit.DrawWindow(0);
+		memEdit.DrawWindow();
+		apuWindow.DrawWindow(samples);
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

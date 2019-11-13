@@ -14,49 +14,56 @@ void PatternTables::Init() {
 }
 
 void PatternTables::DrawWindow() {
-	if(!open) {
+	if(!open || !ppu) {
 		return;
 	}
 	
-	if(ImGui::Begin(Title.c_str(), &open, ImGuiWindowFlags_NoScrollbar)) {
+	if(ImGui::Begin(Title.c_str(), &open, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_AlwaysAutoResize)) {
 		if(ImGui::BeginMenuBar()) {
 			ImGui::EndMenuBar();
 		}
 
-		if(ppu) {
-			DrawPatternTable();
-			
-			glBindTexture(GL_TEXTURE_2D, textureID);
-			
-			if(changed) {
-				changed = false;
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 128, GL_RGB, GL_UNSIGNED_BYTE, imgData);
-			}
+		DrawPatternTable();
+		
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		
+		if(changed) {
+			changed = false;
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 128, GL_RGB, GL_UNSIGNED_BYTE, imgData);
 		}
 
-		ImGui::Image((void*)textureID, ImVec2(512, 256));
+		ImGui::Image(reinterpret_cast<void*>(textureID), ImVec2(512, 256));
+		const char* test[] = { "1", "2", "3", "4", "5", "6", "7", "8" };
+
+		ImGui::Columns(2);
+		ImGui::Combo("Patten1 pallet", &pallet1, test, 8);
+		
+		ImGui::NextColumn();
+		ImGui::Combo("Patten2 pallet", &pallet2, test, 8);
+
+		ImGui::Columns(1);
 
 		Color nesColor;
 		ImVec4 imColor;
 
-		if(ppu) {
-			for(int i = 0; i < 8; ++i) {
-				nesColor = ppu->GetPaletteColor(i, 0);
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+		for(int i = 0; i < 8; ++i) {
+			nesColor = ppu->GetPaletteColor(i, 0);
+			imColor = ImVec4(nesColor.R / 255.0, nesColor.G / 255.0, nesColor.B / 255.0, 1);
+			ImGui::ColorButton("Test", imColor);
+			
+			for(int j = 1; j < 4; ++j) {
+				nesColor = ppu->GetPaletteColor(i, j);
 				imColor = ImVec4(nesColor.R / 255.0, nesColor.G / 255.0, nesColor.B / 255.0, 1);
-				ImGui::ColorButton("Test", imColor);
-				
-				for(int j = 1; j < 4; ++j) {
-					nesColor = ppu->GetPaletteColor(i, j);
-					imColor = ImVec4(nesColor.R / 255.0, nesColor.G / 255.0, nesColor.B / 255.0, 1);
 
-					ImGui::SameLine();
-					ImGui::ColorButton("Test", imColor);
-				}
+				ImGui::SameLine();
+				ImGui::ColorButton("Test", imColor);
 			}
 		}
-
-		ImGui::End();
+		ImGui::PopStyleVar();
 	}
+
+	ImGui::End();
 }
 
 void PatternTables::DrawPatternTable() {
