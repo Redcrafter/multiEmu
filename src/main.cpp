@@ -21,7 +21,7 @@
 
 #include <iostream>
 #include <mutex>
-#include <bass.h>
+#include "RtAudio.h"
 #include "fs.h"
 
 #include "imgui/imgui.h"
@@ -79,8 +79,6 @@ ApuWindow apuWindow{"Apu Visuals"};
 bool speedUp = false;
 bool running = false;
 bool step = false;
-
-HSTREAM audioStreamHandle;
 
 int gameScale = 2;
 int WindowWidth = gameScale * 256;
@@ -170,17 +168,17 @@ void LoadState(int number) {
 }
 
 int samples = 0;
+uint64_t readBuf = 0, writeBuf = 0;
+float buffer[8][735];
 
 void Resample() {
-	const float requested = 735; // TODO: calculate requested by average frame time
 	samples = nes->apu.bufferPos;
 
-	const float frac = samples / requested;
+	const float frac = samples / 735.0;
 	int readPos = 0;
 	float mapped = 0;
 
-	int writePos = 0;
-	while(writePos < requested && writePos < sizeof(buffer) && readPos < samples) {
+	for(int writePos = 0; writePos < 735 && readPos < samples; writePos++) {
 		float sample = 0;
 		int count = 0;
 
@@ -192,10 +190,28 @@ void Resample() {
 		}
 		mapped -= frac;
 
-		buffer[writePos] = (sample / count);
-		writePos++;
+		buffer[writeBuf & 7][writePos] = (sample / count);
 	}
+	writeBuf++;
 	nes->apu.bufferPos = 0;
+}
+
+int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
+	auto outBuffer = static_cast<float*>(outputBuffer);
+
+	if(readBuf < writeBuf) {
+		for(int i = 0; i < nBufferFrames; i++) {
+			outBuffer[i] = buffer[readBuf & 7][i];
+		}
+		readBuf++;
+	} else {
+		auto last = buffer[(readBuf - 1) & 7][734];
+		for(int i = 0; i < nBufferFrames; ++i) {
+			outBuffer[i] = last;
+		}
+	}
+
+	return 0;
 }
 
 void Draw() {
@@ -315,24 +331,30 @@ void onGlfwError(int error, const char* description) {
 int main() {
 	Input::LoadKeyMap();
 
-	#pragma region Bass Init
-	{
-		BASS_SetConfig(BASS_CONFIG_VISTA_TRUEPOS, 0);
-		BASS_SetConfig(BASS_CONFIG_UPDATEPERIOD, 10);
+	#pragma region RtAudio Init
+	RtAudio dac;
 
-		if(!BASS_Init(-1, 44100, BASS_DEVICE_LATENCY, 0, NULL)) {
-			std::cerr << "Failed to initialize audio" << std::endl;
-			return -1;
+	if(dac.getDeviceCount() >= 1) {
+		RtAudio::StreamParameters parameters;
+		parameters.deviceId = dac.getDefaultOutputDevice();
+		parameters.nChannels = 1;
+		parameters.firstChannel = 0;
+
+		RtAudio::StreamOptions options;
+		options.flags = RTAUDIO_MINIMIZE_LATENCY;
+
+		unsigned int sampleRate = 44100;
+		unsigned int bufferFrames = 735;
+
+		try {
+			dac.openStream(&parameters, nullptr, RTAUDIO_FLOAT32, sampleRate, &bufferFrames, &AudioCallback, nullptr, &options);
+			dac.startStream();
+		} catch(RtAudioError& e) {
+			std::cout << e.what() << std::endl;
+			return 0;
 		}
-
-		BASS_INFO info;
-		BASS_GetInfo(&info);
-		BASS_SetConfig(BASS_CONFIG_BUFFER, 10 + info.minbuf + 1);
-
-		audioStreamHandle = BASS_StreamCreate(44100, 1, BASS_SAMPLE_FLOAT, STREAMPROC_PUSH, nullptr);
-
-		// nes->apu.streamHandle = streamHandle;
-		BASS_ChannelPlay(audioStreamHandle, FALSE);
+	} else {
+		std::cout << "No audio devices found!\n";
 	}
 	#pragma endregion
 
@@ -578,7 +600,15 @@ int main() {
 	}
 	delete mainTexture;
 
-	BASS_Free();
+	try {
+		dac.stopStream();
+	} catch(RtAudioError& e) {
+		std::cout << e.what() << std::endl;
+	}
+
+	if(dac.isStreamOpen()) {
+		dac.closeStream();
+	}
 
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();

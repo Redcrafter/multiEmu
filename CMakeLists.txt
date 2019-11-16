@@ -3,26 +3,54 @@ project (NES C CXX)
 
 SET(CMAKE_CXX_STANDARD 17)
 
-file(GLOB Common_sources "./src/**/*.cpp" "./src/*.cpp")
+if(WIN32)
+    set(audioLib "DirectSound" CACHE STRING "Audio Library to use")
+    set_property(CACHE audioLib PROPERTY STRINGS "DirectSound" "ASIO" "WASAPI")
+elseif(APPLE)
+    set(audioLib "CoreAudio" CACHE STRING "Audio Library to use")
+    set_property(CACHE audioLib PROPERTY STRINGS "Jack Audio Server" "CoreAudio")
+elseif(UNIX)
+    set(audioLib "ALSA" CACHE STRING "Audio Library to use")
+    set_property(CACHE audioLib PROPERTY STRINGS "ALSA" "PulseAudio" "OSS" "Jack Audio Server")
 
-add_executable(nes ${Common_sources} ${Common_sources1}) 
-configure_file("./src/shaders/shader.fs" ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
-configure_file("./src/shaders/shader.vs" ${CMAKE_CURRENT_BINARY_DIR} COPYONLY)
+    find_package(GTK2 REQUIRED gtk)
+
+    set(INCLUDES ${GTK2_INCLUDE_DIRS})
+    set(LIBS ${GTK2_LIBRARIES} stdc++fs pthread)
+endif()
+
+# TODO: find include files
+if(audioLib STREQUAL "DirectSound")
+add_definitions(-D__WINDOWS_DS__)
+    SET(LIBS dsound)
+elseif(audioLib STREQUAL "ASIO")
+    add_definitions(-D__WINDOWS_ASIO__)
+elseif(audioLib STREQUAL "WASAPI")
+    add_definitions(-D__WINDOWS_WASAPI__)
+elseif(audioLib STREQUAL "ALSA")
+add_definitions(-D__LINUX_ALSA__)
+find_package(ALSA)
+    list(APPEND LIBS ${ALSA_LIBRARIES})
+elseif(audioLib STREQUAL "PulseAudio")
+    add_definitions(-D__LINUX_PULSE__)
+elseif(audioLib STREQUAL "OSS")
+    add_definitions(-D__LINUX_OSS__)
+elseif(audioLib STREQUAL "Jack Audio Server")
+    add_definitions(-D__UNIX_JACK__)
+elseif(audioLib STREQUAL "CoreAudio")
+    add_definitions(-D__MACOSX_CORE__)
+else()
+    message(FATAL_ERROR "Unknown Audio Library")
+endif()
 
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(GLM REQUIRED)
-find_package(BASS REQUIRED)
-find_package(GTK2 REQUIRED gtk)
 
-include_directories("./src")
-target_include_directories(nes 
-                            PRIVATE OpenGL
-                            PRIVATE GLEW
-                            PRIVATE GLFW
-                            PRIVATE GLM
-                            ${GTK2_INCLUDE_DIRS} 
-                            ${BASS_INCLUDE_DIRS})
+file(GLOB Common_sources "./src/**/*.cpp" "./src/*.cpp")
 
-target_link_libraries(nes PRIVATE OpenGL GLEW glfw ${GTK2_LIBRARIES} ${BASS_LIBRARIES} stdc++fs)
+add_executable(nes ${Common_sources}) 
+
+target_include_directories(nes PRIVATE "./src" OpenGL GLEW glfw GLM ${INCLUDES})
+target_link_libraries(nes OpenGL GLEW glfw ${LIBS})
