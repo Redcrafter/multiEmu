@@ -15,12 +15,12 @@ uint8_t TasController::CpuRead(uint16_t addr, bool readOnly) {
 	if(ShiftStrobe) {
 		ControllerLatch = inputs[inputIndex];
 	}
-
+	
+	auto ret = ControllerLatch & 1;
 	if(!readOnly) {
-		auto ret = ControllerLatch & 1;
 		ControllerLatch >>= 1;
-		return ret;
 	}
+	return ret;
 }
 
 void TasController::Frame() {

@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <map>
-#include <GLFW/glfw3.h>
+#include "../json.hpp"
 
 enum class Action {
 	Controller1A,
@@ -22,9 +22,8 @@ enum class Action {
 	Controller2Left,
 	Controller2Right,
 	// TODO: spacial controllers
-	
+
 	Speedup,		 // Toggle speedup x5
-	ChangePallet, 	 // Change selected pallet
 	Step,			 // Start step & advance frame
 	ResumeRun,		 // Resume running normally
 
@@ -36,14 +35,28 @@ enum class Action {
 	SelectLastState, // Select previous savestate
 };
 
+union Key {
+	struct {
+		uint32_t key;
+		uint32_t mods;
+	} Info;
+	uint64_t Reg;
+};
+
 class Input {
 private:
 	static int keys[16];
-	static std::map<int, Action> keyMap;
+	static std::map<uint64_t, Action> keyMap;
+	static std::map<Action, uint64_t> revKeyMap;
 public:
-	static void LoadKeyMap();
 	static void OnKey(int key, int scancode, int action, int mods);
 
-	static bool TryGetAction(int key, Action& action);
+	static void Load(nlohmann::json& j);
+	static void Save(nlohmann::json& j);
+
+	static void ShowEditWindow();
+
+	static bool TryGetAction(Key val, Action& action);
+	static bool TryGetAction(int key, int mods, Action& action);
 	static uint8_t GetController(int id);
 };

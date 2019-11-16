@@ -12,7 +12,6 @@ Mapper001::Mapper001(uint8_t prgBanks, uint8_t chrBanks) : Mapper(prgBanks, chrB
 int Mapper001::cpuMapRead(uint16_t addr, uint32_t& mapped) {
 	lastWrite = false;
 	if(addr < 0x8000) {
-		// TODO: ram enable
 		if(ramEnable && addr >= 0x6000) {
 			mapped = prgRam[addr & 0x1FFF];
 			return 2;

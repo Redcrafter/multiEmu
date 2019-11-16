@@ -1,5 +1,5 @@
 #include "StandardController.h"
-#include "../Input.h"
+#include "Input.h"
 
 StandardController::StandardController(int number): number(number), ControllerLatch(0), ShiftStrobe(false) {
 }

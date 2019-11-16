@@ -428,7 +428,7 @@ void ppu2C02::Clock() {
 		}
 	}
 
-	texture->SetPixel(scanlineX, scanlineY, GetPaletteColor(palette, pixel));
+	texture->SetPixel(scanlineX - 1, scanlineY, GetPaletteColor(palette, pixel));
 
 	scanlineX++;
 	if(scanlineX >= 341) {

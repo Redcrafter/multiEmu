@@ -25,7 +25,8 @@ public:
 	void Clear(Color col);
 	void SetPixel(int x, int y, Color col);
 	void Line(int x0, int y0, int x1, int y1, Color col);
-	
+
+	GLuint GetTextureId() const { return textureID; };
 	void BufferImage();
 
 	md5 GetHashCode();

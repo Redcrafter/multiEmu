@@ -8,31 +8,36 @@
 
 #include <GL/glew.h>
 
-GLuint CreateShader(GLuint type, const char* path) {
-	GLuint shaderId = glCreateShader(type);
+GLuint CreateShader(GLuint type, const char* path, bool isPath) {
+	std::string code;
 
-	std::ifstream stream(path, std::ios::in);
-	if(!stream.is_open()) {
-		std::cerr << "Failed to open " << path << std::endl;
-		throw std::logic_error("Failed to open path");
+	if(isPath) {
+		std::ifstream stream(path, std::ios::in);
+		if(!stream.is_open()) {
+			std::cerr << "Failed to open " << path << std::endl;
+			throw std::logic_error("Failed to open path");
+		}
+
+		std::stringstream sstr;
+		sstr << stream.rdbuf();
+		code = sstr.str();
+
+		stream.close();
+	} else {
+		code = path;
 	}
 
-	std::string code;
-	std::stringstream sstr;
-	sstr << stream.rdbuf();
-	code = sstr.str();
-	
-	stream.close();
-
 	const char* cstr = code.c_str();
+
+	GLuint shaderId = glCreateShader(type);
 	glShaderSource(shaderId, 1, &cstr, NULL);
 	glCompileShader(shaderId);
 
 	GLint result = GL_FALSE;
 	int infoLogLength;
-	
+
 	glGetShaderiv(shaderId, GL_COMPILE_STATUS, &result);
-	glGetShaderiv(shaderId, GL_INFO_LOG_LENGTH, &infoLogLength);	
+	glGetShaderiv(shaderId, GL_INFO_LOG_LENGTH, &infoLogLength);
 	if(infoLogLength > 0) {
 		std::vector<char> errorMessage(infoLogLength + 1);
 		glGetShaderInfoLog(shaderId, infoLogLength, NULL, &errorMessage[0]);
@@ -44,10 +49,10 @@ GLuint CreateShader(GLuint type, const char* path) {
 	return shaderId;
 }
 
-GLuint LoadShaders(const char* vertex_file_path, const char* fragment_file_path) {
+GLuint LoadShaders(const char* vertex, const char* fragment, bool isPath) {
 	// Create the shaders
-	GLuint VertexShaderID = CreateShader(GL_VERTEX_SHADER, vertex_file_path);
-	GLuint FragmentShaderID = CreateShader(GL_FRAGMENT_SHADER, fragment_file_path);
+	GLuint VertexShaderID = CreateShader(GL_VERTEX_SHADER, vertex, isPath);
+	GLuint FragmentShaderID = CreateShader(GL_FRAGMENT_SHADER, fragment, isPath);
 
 	GLint Result = GL_FALSE;
 	int InfoLogLength;
@@ -76,4 +81,29 @@ GLuint LoadShaders(const char* vertex_file_path, const char* fragment_file_path)
 	glDeleteShader(FragmentShaderID);
 
 	return ProgramID;
+}
+
+// TODO: copy contents of shaders into this file automatically
+GLuint LoadShaders() {
+	const char* vs =
+		"#version 330 core\n"
+		"layout(location = 0) in vec3 vertexPos;\n"
+		"layout(location = 1) in vec2 vertexUV;\n"
+		"out vec2 UV;\n"
+		"uniform mat4 MVP;\n"
+		"void main() {\n"
+		"	gl_Position =  MVP * vec4(vertexPos, 1);\n"
+		"	UV = vertexUV;\n"
+		"}";
+
+	const char* fs =
+		"#version 330 core\n"
+		"in vec2 UV;\n"
+		"out vec3 color;\n"
+		"uniform sampler2D textureSampler;\n"
+		"void main() {\n"
+		"	color = texture(textureSampler, UV).rgb;\n"
+		"}";
+
+	return LoadShaders(vs, fs, false);
 }

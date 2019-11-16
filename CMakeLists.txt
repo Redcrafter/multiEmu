@@ -44,7 +44,6 @@ else()
 endif()
 
 find_package(OpenGL REQUIRED)
-find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(GLM REQUIRED)
 
@@ -52,5 +51,5 @@ file(GLOB Common_sources "./src/**/*.cpp" "./src/*.cpp")
 
 add_executable(nes ${Common_sources}) 
 
-target_include_directories(nes PRIVATE "./src" OpenGL GLEW glfw GLM ${INCLUDES})
-target_link_libraries(nes OpenGL GLEW glfw ${LIBS})
+target_include_directories(nes PRIVATE "./src" OpenGL glfw GLM ${INCLUDES})
+target_link_libraries(nes OpenGL glfw ${LIBS})

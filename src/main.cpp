@@ -1,28 +1,30 @@
-#include "Emulation/Bus.h"
-#include "Emulation/Cartridge.h"
-#include "Emulation/ppu2C02.h"
-#include "RenderImage.h"
+#include <iostream>
+#include <deque>
 
-#include "Input/TasController.h"
-#include "Input/StandardController.h"
-#include "tas.h"
-#include "saver.h"
-#include "Input.h"
-
-#include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include "shaders/shader.h"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
-#include <glm/gtx/string_cast.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/transform.hpp>
 
-#include <iostream>
-#include <mutex>
+#include "nativefiledialog/nfd.h"
 #include "RtAudio.h"
+#include "json.hpp"
+
 #include "fs.h"
+
+#include "RenderImage.h"
+#include "tas.h"
+#include "saver.h"
+
+#include "Emulation/Bus.h"
+#include "Emulation/Cartridge.h"
+
+#include "Input/TasController.h"
+#include "Input/StandardController.h"
+#include "Input/Input.h"
+
+#include "shaders/shader.h"
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_opengl3.h"
@@ -32,21 +34,28 @@
 #include "imguiWindows/imgui_tas_editor.h"
 #include "imguiWindows/imgui_pattern_tables.h"
 #include "imguiWindows/imgui_cpu_state.h"
-
-#include "nativefiledialog/nfd.h"
-#include "imgui/imgui_internal.h"
 #include "imguiWindows/imgui_apu_window.h"
 
 bool runningTas = false;
 std::shared_ptr<TasController> controller1, controller2;
 std::shared_ptr<Bus> nes = nullptr;
-std::string currentRom;
 int selectedSaveState = 0;
 saver* saveStates[10]{nullptr};
 
 GLuint programID;
 GLuint vaoID, vertexBufferID, uvBufferID;
 GLuint MatrixLocation;
+
+const char* const DrawModeNames[] = {"AutoSize", "x1", "x2", "x3", "x4", "Window"};
+
+enum DrawMode {
+	Auto = 0,
+	x1 = 1,
+	x2 = 2,
+	x3 = 3,
+	x4 = 4,
+	Window = 5,
+};
 
 RenderImage* mainTexture;
 glm::mat4 projection;
@@ -75,14 +84,49 @@ TasEditor tasEdit{"Tas Editor"};
 PatternTables tables{"Pattern Tables"};
 CpuStateWindow cpuWindow{"Cpu State"};
 ApuWindow apuWindow{"Apu Visuals"};
+bool settingsWindow = false;
+
+struct Settings {
+	bool EnableVsync = true;
+	DrawMode drawMode = Auto;
+
+	std::deque<std::string> RecentRoms;
+
+	void Load() {
+		nlohmann::json j;
+		if(!fs::exists("./settings.json")) {
+			Input::Load(j);
+			return;
+		}
+
+		std::ifstream file("./settings.json");
+		file >> j;
+
+		EnableVsync = j["enableVsync"];
+		drawMode = j["drawMode"];
+		j["recent"].get_to(RecentRoms);
+		Input::Load(j);
+	}
+
+	void Save() {
+		nlohmann::json j = {
+			{"enableVsync", EnableVsync},
+			{"drawMode", drawMode},
+			{"recent", RecentRoms},
+		};
+		Input::Save(j);
+
+		std::ofstream file("./settings.json");
+		file << j;
+	}
+} settings;
 
 bool speedUp = false;
 bool running = false;
 bool step = false;
 
-int gameScale = 2;
-int WindowWidth = gameScale * 256;
-int WindowHeight = WindowWidth * (7.0 / 8.0) + 19;
+int WindowWidth;
+int WindowHeight;
 
 void LoadRom(const char* path) {
 	std::shared_ptr<Cartridge> cart;
@@ -93,7 +137,19 @@ void LoadRom(const char* path) {
 		printf("Error loading %s\n%s\n", path, e.what());
 		return;
 	}
-	currentRom = path;
+
+	for(int i = 0; i < settings.RecentRoms.size(); ++i) {
+		if(settings.RecentRoms[i] == path) {
+			settings.RecentRoms.erase(settings.RecentRoms.begin() + i);
+			break;
+		}
+	}
+
+	if(settings.RecentRoms.size() >= 10) {
+		settings.RecentRoms.pop_back();
+	}
+
+	settings.RecentRoms.push_front(path);
 
 	if(nes == nullptr) {
 		nes = std::make_shared<Bus>(cart);
@@ -102,7 +158,7 @@ void LoadRom(const char* path) {
 		nes->controller2 = std::make_shared<StandardController>(1);
 
 		nes->ppu.texture = mainTexture;
-		
+
 		memEdit.bus = nes.get();
 		tables.ppu = &nes->ppu;
 		cpuWindow.cpu = &nes->cpu;
@@ -139,6 +195,9 @@ void SaveState(int number) {
 	nes->SaveState(*state);
 
 	try {
+		if(!fs::exists("./saves/")) {
+			fs::create_directory("./saves/");
+		}
 		auto path = "./saves/" + nes->cartridge->hash->ToString() + "-" + std::to_string(number) + ".sav";
 		if(fs::exists(path)) {
 			fs::copy(path, path + ".old", fs::copy_options::overwrite_existing);
@@ -170,6 +229,17 @@ void LoadState(int number) {
 int samples = 0;
 uint64_t readBuf = 0, writeBuf = 0;
 float buffer[8][735];
+
+void HelpMarker(const char* desc) {
+	// ImGui::TextDisabled("(?)");
+	if(ImGui::IsItemHovered()) {
+		ImGui::BeginTooltip();
+		ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+		ImGui::TextUnformatted(desc);
+		ImGui::PopTextWrapPos();
+		ImGui::EndTooltip();
+	}
+}
 
 void Resample() {
 	samples = nes->apu.bufferPos;
@@ -214,51 +284,31 @@ int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBufferFra
 	return 0;
 }
 
-void Draw() {
-	if(nes && (running || step)) {
-		int mapped = 1;
-		if(speedUp) {
-			mapped = 5;
-		}
+void Frame() {
+	if(!nes || !running && !step)
+		return;
 
-		for(int i = 0; i < mapped; ++i) {
-			int count = 0;
-			while(!nes->ppu.frameComplete) {
-				nes->Clock();
-				count++;
-			}
-			nes->ppu.frameComplete = false;
-
-			if(runningTas) {
-				// std::cout << frameCounter << ": " << controller1->GetInput() << "|" << controller2->GetInput() << std::endl;
-				controller1->Frame();
-				controller2->Frame();
-			}
-		}
-
-		step = false;
-		Resample();
+	int mapped = 1;
+	if(speedUp) {
+		mapped = 5;
 	}
 
-	int Width, Height, X = 0, Y = 19;
-	#if false
-	if(WindowWidth < WindowHeight * (8.0 / 7.0) - 19) {
-		Width = WindowWidth;
-		Height = Width * (7.0 / 8.0);
-	} else {
-		Height = WindowHeight - 19;
-		Width = Height * (8.0 / 7.0);
-		X = (WindowWidth - Width) / 2;
-	}
-	#else
-	Width = 512;
-	Height = Width * (7.0 / 8.0);
-	#endif
+	for(int i = 0; i < mapped; ++i) {
+		int count = 0;
+		while(!nes->ppu.frameComplete) {
+			nes->Clock();
+			count++;
+		}
+		nes->ppu.frameComplete = false;
 
-	mainTexture->BufferImage();
-	auto mat = projection * (translate(glm::vec3(X, Y, 0.0f)) * scale(glm::vec3(Width, Height, 1.0f)));
-	glUniformMatrix4fv(MatrixLocation, 1, GL_FALSE, &mat[0][0]);
-	glDrawArrays(GL_TRIANGLES, 0, 2 * 3);
+		if(runningTas) {
+			controller1->Frame();
+			controller2->Frame();
+		}
+	}
+
+	step = false;
+	Resample();
 }
 
 void onKeyCall(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -269,16 +319,13 @@ void onKeyCall(GLFWwindow* window, int key, int scancode, int action, int mods) 
 	}
 
 	Action mapped;
-	if(!Input::TryGetAction(key, mapped)) {
+	if(!Input::TryGetAction(key, mods, mapped)) {
 		return;
 	}
 
 	switch(mapped) {
 		case Action::Speedup:
 			speedUp = !speedUp;
-			break;
-		case Action::ChangePallet:
-			// displayPallet = (displayPallet + 1) % 8;
 			break;
 		case Action::Step:
 			step = true;
@@ -321,7 +368,29 @@ void onResize(GLFWwindow* window, int width, int height) {
 }
 
 void onDrop(GLFWwindow* window, int count, const char** paths) {
-	LoadRom(paths[0]);
+	auto asdf = fs::path(paths[0]);
+
+	if(!is_regular_file(asdf)) {
+		return;
+	}
+
+	auto ext = asdf.extension();
+	// std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
+
+	if(ext == L".nes") {
+		LoadRom(paths[0]);
+	} else if(ext == L".fm2") {
+		if(!nes) {
+			return;
+		}
+
+		runningTas = true;
+		auto inputs = TasInputs::LoadFM2(paths[0]);
+		nes->Reset();
+		nes->controller1 = controller1 = std::make_shared<TasController>(inputs.Controller1);
+		nes->controller2 = controller2 = std::make_shared<TasController>(inputs.Controller2);
+	}
+
 }
 
 void onGlfwError(int error, const char* description) {
@@ -329,7 +398,11 @@ void onGlfwError(int error, const char* description) {
 }
 
 int main() {
-	Input::LoadKeyMap();
+	try {
+		settings.Load();
+	} catch(std::exception& e) {
+		std::cout << "Failed to load settings: " << e.what() << std::endl;
+	}
 
 	#pragma region RtAudio Init
 	RtAudio dac;
@@ -371,6 +444,19 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);           // To make MacOS happy; should not be needed
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL 
 
+	WindowWidth = 256;;
+	WindowHeight = 240;
+	switch(settings.drawMode) {
+		case x3: break;
+		case x4: break;
+		default:
+			WindowWidth *= 2;
+			WindowHeight *= 2;
+			break;
+	}
+	WindowWidth *= 8.0 / 7.0;
+	WindowHeight += 19;
+	
 	// Open a window and create its OpenGL context
 	auto window = glfwCreateWindow(WindowWidth, WindowHeight, "NES emulator", NULL, NULL);
 	if(window == NULL) {
@@ -378,13 +464,8 @@ int main() {
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
-	// glfwSwapInterval(1); // Enable vsync
+	glfwSwapInterval(settings.EnableVsync);
 
-	// Initialize GLEW
-	if(glewInit() != GLEW_OK) {
-		fprintf(stderr, "Failed to initialize GLEW\n");
-		return -1;
-	}
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
@@ -396,7 +477,7 @@ int main() {
 	#pragma endregion
 
 	#pragma region opengl Init
-	programID = LoadShaders("shader.vs", "shader.fs");
+	programID = LoadShaders();
 	glUseProgram(programID);
 
 	mainTexture = new RenderImage(256, 240);
@@ -442,13 +523,12 @@ int main() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO();
-	(void)io;
+	// (void)io;
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
-	//ImGui::StyleColorsClassic();
 
 	// Setup Platform/Renderer bindings
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -457,9 +537,27 @@ int main() {
 	tables.Init();
 	#pragma endregion
 
+	auto lastTime = glfwGetTime();
+
 	#pragma region render loop
 	do {
-		bool enabled = nes != nullptr;
+		#pragma region Timing
+		auto time = glfwGetTime();
+		auto dt = time - lastTime;
+
+		if(dt >= 2 / 60.0) {
+			// dropped frame
+			// cause: slow cpu or float error
+			// causes emulation lag
+			lastTime = time;
+			printf("Dropped frame\n");
+		} else if(dt >= 1 / 60.0) {
+			lastTime += 1 / 60.0;
+		} else {
+			glfwPollEvents();
+			continue;
+		}
+		#pragma endregion
 
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -467,10 +565,58 @@ int main() {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		// ImGui::ShowDemoWindow();
+		ImGui::ShowMetricsWindow();
 
-		Draw();
+		Frame();
 
+		#pragma region GUI
+		mainTexture->BufferImage();
+		if(settings.drawMode == Window) {
+			bool open = true;
+			if(ImGui::Begin("NES", &open)) {
+				auto size = ImGui::GetWindowSize();
+
+				if(size.x * (7.0 / 8.0) < size.y) {
+					size.y = size.x * (7.0 / 8.0);
+				} else {
+					size.x = size.y * (8.0 / 7.0);
+				}
+
+				ImGui::Image((void*)(intptr_t)mainTexture->GetTextureId(), size);
+			}
+			ImGui::End();
+		} else {
+			float Width = 256 * (8.0 / 7.0);
+			float Height = 240;
+			int X = 0, Y = 19;
+
+			switch(settings.drawMode) {
+				case Auto:
+					if(WindowWidth * (7.0 / 8.0) < WindowHeight - 19) {
+						Width = WindowWidth;
+						Height = WindowWidth * (7.0 / 8.0);
+						Y = (WindowHeight - 19 - Height) / 2 + 19;
+					} else {
+						Height = WindowHeight - 19;
+						Width = Height * (8.0 / 7.0);
+						X = (WindowWidth - Width) / 2;
+					}
+					break;
+				case x1:
+				case x2:
+				case x3:
+				case x4:
+					Width *= settings.drawMode;
+					Height *= settings.drawMode;
+					break;
+			}
+
+			auto mat = projection * (translate(glm::vec3(X, Y, 0.0f)) * scale(glm::vec3(Width, Height, 1.0f)));
+			glUniformMatrix4fv(MatrixLocation, 1, GL_FALSE, &mat[0][0]);
+			glDrawArrays(GL_TRIANGLES, 0, 2 * 3);
+		}
+
+		bool enabled = nes != nullptr;
 		if(ImGui::BeginMainMenuBar()) {
 			if(ImGui::BeginMenu("File")) {
 				if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
@@ -481,11 +627,18 @@ int main() {
 						LoadRom(outPath.c_str());
 					}
 				}
-				if(ImGui::BeginMenu("Recent ROM")) {
+				if(ImGui::BeginMenu("Recent ROMs")) {
+					for(int i = 0; i < settings.RecentRoms.size(); ++i) {
+						std::string str = settings.RecentRoms[i];
+
+						if(ImGui::MenuItem(str.c_str())) {
+							LoadRom(str.c_str());
+						}
+					}
 
 					ImGui::Separator();
 					if(ImGui::MenuItem("Clear")) {
-
+						settings.RecentRoms.clear();
 					}
 
 					ImGui::EndMenu();
@@ -550,7 +703,7 @@ int main() {
 				}
 				if(ImGui::MenuItem("Hard Reset", nullptr, false, enabled)) {
 					nes = nullptr;
-					LoadRom(currentRom.c_str());
+					LoadRom(settings.RecentRoms[0].c_str());
 				}
 
 				ImGui::EndMenu();
@@ -559,6 +712,9 @@ int main() {
 			if(ImGui::BeginMenu("Tools")) {
 				bool active = nes != nullptr;
 
+				if(ImGui::MenuItem("Settings")) {
+					settingsWindow = true;
+				}
 				if(ImGui::MenuItem("Hex Editor", nullptr, false, active)) {
 					memEdit.Open();
 				}
@@ -586,6 +742,36 @@ int main() {
 		tasEdit.DrawWindow(0);
 		memEdit.DrawWindow();
 		apuWindow.DrawWindow(samples);
+		if(settingsWindow) {
+			if(ImGui::Begin("Settings", &settingsWindow)) {
+				if(ImGui::BeginTabBar("tabBar")) {
+					if(ImGui::BeginTabItem("General")) {
+						bool old = settings.EnableVsync;
+						ImGui::Checkbox("Vsync", &settings.EnableVsync);
+
+						HelpMarker("Toggle Vsync.\nAlso reduces cpu usage on fast cpu's");
+
+						if(settings.EnableVsync != old) {
+							glfwSwapInterval(settings.EnableVsync);
+						}
+						ImGui::Combo("DrawMode", (int*)&settings.drawMode, DrawModeNames, 6);
+						ImGui::EndTabItem();
+					}
+
+					if(ImGui::BeginTabItem("Inputs")) {
+						ImGui::BeginChild("inputs");
+						Input::ShowEditWindow();
+						ImGui::EndChild();
+
+						ImGui::EndTabItem();
+					}
+					ImGui::EndTabBar();
+				}
+			}
+			ImGui::End();
+		}
+		
+		#pragma endregion
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -594,6 +780,8 @@ int main() {
 		glfwPollEvents();
 	} while(glfwWindowShouldClose(window) == 0);
 	#pragma endregion
+
+	settings.Save();
 
 	for(auto saveState : saveStates) {
 		delete saveState;

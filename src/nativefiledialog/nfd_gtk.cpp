@@ -51,7 +51,7 @@ static void AddFiltersToDialog(GtkWidget* dialog, const char* filterList) {
 			/* end of filter -- add it to the dialog */
 
 			gtk_file_filter_set_name(filter, filterName);
-			gtk_file_chooser_add_filter(dialog, filter);
+			gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
 
 			filterName[0] = '\0';
 
@@ -74,7 +74,7 @@ static void AddFiltersToDialog(GtkWidget* dialog, const char* filterList) {
 	filter = gtk_file_filter_new();
 	gtk_file_filter_set_name(filter, "*.*");
 	gtk_file_filter_add_pattern(filter, "*");
-	gtk_file_chooser_add_filter(dialog, filter);
+	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
 }
 
 static void SetDefaultPath(GtkWidget* dialog, const char* defaultPath) {
@@ -86,7 +86,7 @@ static void SetDefaultPath(GtkWidget* dialog, const char* defaultPath) {
 
 	   If consistency with the native OS is preferred, this is the line
 	   to comment out. -ml */
-	gtk_file_chooser_set_current_folder(dialog, defaultPath);
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), defaultPath);
 }
 
 static void WaitForCleanup() {
@@ -105,12 +105,7 @@ Result NFD::OpenDialog(const char* filterList, const char* defaultPath, std::str
 		return Result::Error;
 	}
 
-	dialog = gtk_file_chooser_dialog_new("Open File",
-	                                     NULL,
-	                                     GTK_FILE_CHOOSER_ACTION_OPEN,
-	                                     "_Cancel", GTK_RESPONSE_CANCEL,
-	                                     "_Open", GTK_RESPONSE_ACCEPT,
-	                                     NULL);
+	dialog = gtk_file_chooser_dialog_new("Open File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
 
 	/* Build the filter list */
 	AddFiltersToDialog(dialog, filterList);
@@ -119,21 +114,11 @@ Result NFD::OpenDialog(const char* filterList, const char* defaultPath, std::str
 	SetDefaultPath(dialog, defaultPath);
 
 	result = Result::Cancel;
-	if(gtk_dialog_run(dialog) == GTK_RESPONSE_ACCEPT) {
+	if(gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 		char* filename;
 
-		filename = gtk_file_chooser_get_filename(dialog);
-
-		{
-			size_t len = strlen(filename);
-			*outPath = NFDi_Malloc(len + 1);
-			memcpy(*outPath, filename, len + 1);
-			if(!*outPath) {
-				g_free(filename);
-				gtk_widget_destroy(dialog);
-				return Result::Error;
-			}
-		}
+		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		outPath = filename;
 		g_free(filename);
 
 		result = Result::Okay;
@@ -156,7 +141,7 @@ Result NFD::OpenDialogMultiple(const char* filterList, const char* defaultPath, 
 	}
 
 	dialog = gtk_file_chooser_dialog_new("Open Files", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
-	gtk_file_chooser_set_select_multiple(dialog, TRUE);
+	gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
 
 	/* Build the filter list */
 	AddFiltersToDialog(dialog, filterList);
@@ -164,14 +149,14 @@ Result NFD::OpenDialogMultiple(const char* filterList, const char* defaultPath, 
 	/* Set the default path */
 	SetDefaultPath(dialog, defaultPath);
 
-	if(gtk_dialog_run(dialog) == GTK_RESPONSE_ACCEPT) {
-		GSList* fileList = gtk_file_chooser_get_filenames(dialog);
+	if(gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		GSList* fileList = gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(dialog));
 
 		GSList* node;
 
 		/* fill buf */
 		for(node = fileList; node; node = node->next) {
-			outPaths.push_back(node->data);
+			outPaths.push_back((char*)node->data);
 			g_free(node->data);
 		}
 
@@ -197,13 +182,8 @@ Result NFD::SaveDialog(const char* filterList, const char* defaultPath, std::str
 		return Result::Error;
 	}
 
-	dialog = gtk_file_chooser_dialog_new("Save File",
-	                                     NULL,
-	                                     GTK_FILE_CHOOSER_ACTION_SAVE,
-	                                     "_Cancel", GTK_RESPONSE_CANCEL,
-	                                     "_Save", GTK_RESPONSE_ACCEPT,
-	                                     NULL);
-	gtk_file_chooser_set_do_overwrite_confirmation(dialog, TRUE);
+	dialog = gtk_file_chooser_dialog_new("Save File", NULL, GTK_FILE_CHOOSER_ACTION_SAVE, "_Cancel", GTK_RESPONSE_CANCEL, "_Save", GTK_RESPONSE_ACCEPT, NULL);
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
 
 	/* Build the filter list */
 	AddFiltersToDialog(dialog, filterList);
@@ -212,20 +192,10 @@ Result NFD::SaveDialog(const char* filterList, const char* defaultPath, std::str
 	SetDefaultPath(dialog, defaultPath);
 
 	result = Result::Cancel;
-	if(gtk_dialog_run(dialog) == GTK_RESPONSE_ACCEPT) {
+	if(gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 		char* filename;
-		filename = gtk_file_chooser_get_filename(dialog);
-
-		{
-			size_t len = strlen(filename);
-			*outPath = NFDi_Malloc(len + 1);
-			memcpy(*outPath, filename, len + 1);
-			if(!*outPath) {
-				g_free(filename);
-				gtk_widget_destroy(dialog);
-				return Result::Error;
-			}
-		}
+		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		outPath = filename;
 		g_free(filename);
 
 		result = Result::Okay;
@@ -239,43 +209,25 @@ Result NFD::SaveDialog(const char* filterList, const char* defaultPath, std::str
 }
 
 Result NFD_PickFolder(const char* defaultPath, std::string& outPath) {
-	GtkWidget* dialog;
-	Result result;
-
 	if(!gtk_init_check(NULL, NULL)) {
 		NFDi_SetError(INIT_FAIL_MSG);
 		return Result::Error;
 	}
 
-	dialog = gtk_file_chooser_dialog_new("Select folder",
-	                                     NULL,
-	                                     GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER,
-	                                     "_Cancel", GTK_RESPONSE_CANCEL,
-	                                     "_Select", GTK_RESPONSE_ACCEPT,
-	                                     NULL);
-	gtk_file_chooser_set_do_overwrite_confirmation(dialog, TRUE);
+	GtkWidget* dialog = gtk_file_chooser_dialog_new("Select folder", NULL, GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, "_Cancel", GTK_RESPONSE_CANCEL, "_Select", GTK_RESPONSE_ACCEPT, NULL);
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
 
 
 	/* Set the default path */
 	SetDefaultPath(dialog, defaultPath);
 
-	result = Result::Cancel;
-	if(gtk_dialog_run(dialog) == GTK_RESPONSE_ACCEPT) {
+	Result result = Result::Cancel;
+	if(gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 		char* filename;
-		filename = gtk_file_chooser_get_filename(dialog);
-
-		{
-			size_t len = strlen(filename);
-			*outPath = NFDi_Malloc(len + 1);
-			memcpy(*outPath, filename, len + 1);
-			if(!*outPath) {
-				g_free(filename);
-				gtk_widget_destroy(dialog);
-				return Result::Error;
-			}
-		}
+		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		outPath = filename;
 		g_free(filename);
-
+		
 		result = Result::Okay;
 	}
 
