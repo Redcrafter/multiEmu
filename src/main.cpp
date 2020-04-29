@@ -8,9 +8,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 
+#include <nlohmann/json.hpp>
+
 #include "nativefiledialog/nfd.h"
 #include "RtAudio.h"
-#include "json.hpp"
 
 #include "fs.h"
 

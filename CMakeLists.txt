@@ -9,6 +9,10 @@ find_package(glfw3 REQUIRED)
 # find_package(glm REQUIRED)
 add_subdirectory("./extern/glm")
 
+set(JSON_BuildTests OFF CACHE INTERNAL "")
+set(JSON_Install OFF CACHE INTERNAL "")
+add_subdirectory("./extern/json")
+
 if(WIN32)
     option(direct "DirectSound" ON)
     option(asio "ASIO" OFF)
@@ -86,4 +90,4 @@ file(GLOB_RECURSE Common_sources "./src/**/*.cpp" "./src/*.cpp")
 add_executable(nes WIN32 ${Common_sources})
 
 target_include_directories(nes PRIVATE "./src" OpenGL ${GLEW_INCLUDE_DIRS} glfw ${INCLUDES})
-target_link_libraries(nes ${GLEW_LIBRARIES} glfw glm ${LIBS})
+target_link_libraries(nes PRIVATE ${GLEW_LIBRARIES} glfw glm::glm nlohmann_json::nlohmann_json ${LIBS})
