@@ -9,10 +9,9 @@
 #include <glm/gtx/transform.hpp>
 
 #include <nlohmann/json.hpp>
+#include <RtAudio.h>
 
 #include "nativefiledialog/nfd.h"
-#include "RtAudio.h"
-
 #include "fs.h"
 
 #include "RenderImage.h"

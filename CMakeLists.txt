@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
-# find_package(glm REQUIRED)
+
 add_subdirectory("./extern/glm")
 
 set(JSON_BuildTests OFF CACHE INTERNAL "")
@@ -87,7 +87,8 @@ endif()
 #endif()
 
 file(GLOB_RECURSE Common_sources "./src/**/*.cpp" "./src/*.cpp")
-add_executable(nes WIN32 ${Common_sources})
+add_executable(nes WIN32 ${Common_sources} "./extern/rtaudio/RtAudio.cpp")
 
+target_include_directories(nes PRIVATE "./extern/rtaudio")
 target_include_directories(nes PRIVATE "./src" OpenGL ${GLEW_INCLUDE_DIRS} glfw ${INCLUDES})
 target_link_libraries(nes PRIVATE ${GLEW_LIBRARIES} glfw glm::glm nlohmann_json::nlohmann_json ${LIBS})

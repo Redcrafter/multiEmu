@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <map>
-#include "../json.hpp"
+#include <nlohmann/json.hpp>
 
 enum class Action {
 	Controller1A,
