@@ -6,8 +6,7 @@
 
 static const char* names[] = {"Pulse1", "Pulse2", "Triangle", "Noise", "DMC"};
 
-ApuWindow::ApuWindow(std::string title) : Title(std::move(title)) {
-}
+ApuWindow::ApuWindow(std::string title) : Title(std::move(title)) {}
 
 void ApuWindow::DrawWindow(int available) {
 	if(!open || !apu) {
@@ -21,31 +20,8 @@ void ApuWindow::DrawWindow(int available) {
 		ImGuiContext& g = *GImGui;
 		const ImGuiStyle& style = g.Style;
 
-		int startP1 = -1, startP2 = -1, startTriangle = -1;
-		for(int i = 0; i < available; ++i) {
-			auto val = apu->waveBuffer[i];
-
-			bool done = true;
-			if(startP1 == -1) {
-				done = false;
-				if(val.pulse1 == 0)
-					startP1 = i;
-			}
-			if(startP2 == -1) {
-				done = false;
-				if(val.pulse2 == 0)
-					startP2 = i;
-			}
-			if(startTriangle == -1) {
-				done = false;
-				if(val.triangle == 0)
-					startTriangle = i;
-			}
-
-			if(done) {
-				break;
-			}
-		}
+		const auto DrawList = window->DrawList;
+		const auto col = ImGui::GetColorU32(ImVec4(1, 1, 1, 1));
 
 		for(int i = 0; i < 5; ++i) {
 			const char* label = names[i];
@@ -63,77 +39,145 @@ void ApuWindow::DrawWindow(int available) {
 
 			ImGui::RenderFrame(frame_bb.Min, frame_bb.Max, ImGui::GetColorU32(ImGuiCol_FrameBg), true, style.FrameRounding);
 
-			auto DrawList = window->DrawList;
-			auto pps = inner_bb.GetWidth() / (float)available;
-			auto pph = inner_bb.GetHeight() / 15;
-			auto col = ImGui::GetColorU32(ImVec4(1, 1, 1, 1));
+			const auto width = inner_bb.GetWidth();
+			const auto height = inner_bb.GetHeight();
 
-			int lastY = inner_bb.Min.y;
-			int last = 0;
-
-			DrawList->PathLineTo(inner_bb.Min);
+			const auto pps = inner_bb.GetWidth() / (float)available;
+			const auto pph = inner_bb.GetHeight() / 15.0;
+			auto lastY = inner_bb.Min.y;
 
 			switch(i) {
 				case 0: {
-					if(startP1 != -1) {
-						for(int i = startP1; i < available; i += 8) {
-							auto val = apu->waveBuffer[i].pulse1;
-							if(last != val) {
-								auto x = inner_bb.Min.x + pps * (i - startP1);
-								auto y = inner_bb.Min.y + pph * val;
+					if(apu->pulse1.enabled && !(apu->pulse1.lengthCounter == 0 || apu->pulse1.timerPeriod < 8 || apu->pulse1.timerPeriod > 0x7FF)) {
+						int val = apu->pulse1.dutyCycle;
+						double dutyLen = val == 0 ? 0.125 : val * 0.25;
 
-								DrawList->PathLineTo(ImVec2(x, lastY));
-								DrawList->PathLineTo(ImVec2(x, y));
+						float x = inner_bb.Min.x;
+						float w = width * (apu->pulse1.timerPeriod * 16.0 / available);
 
-								lastY = y;
-								last = val;
+						// test
+						float off = fmod(width / 2, w);
+						x += off;
+						
+						float h = inner_bb.Min.y;
+						if(apu->pulse1.envelopeEnabled) {
+							h += (height / 15) * apu->pulse1.constantVolume;
+						} else {
+							h += (height / 15) * apu->pulse1.envelopeVolume;
+						}
+
+						if(x - w * dutyLen <= inner_bb.Min.x) {
+							DrawList->PathLineTo(ImVec2(inner_bb.Min.x, h));
+						} else {
+							DrawList->PathLineTo(inner_bb.Min);
+							DrawList->PathLineTo(ImVec2(x - w * dutyLen, inner_bb.Min.y));
+							DrawList->PathLineTo(ImVec2(x - w * dutyLen, h));
+						}
+						DrawList->PathLineTo(ImVec2(x, h));
+						DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
+
+						while(true) {
+							x += w * (1 - dutyLen);
+							if(x > inner_bb.Max.x) {
+								DrawList->PathLineTo(ImVec2(inner_bb.Max.x, inner_bb.Min.y));
+								break;
 							}
+
+							DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
+							DrawList->PathLineTo(ImVec2(x, h));
+
+							x += w * dutyLen;
+							if(x > inner_bb.Max.x) {
+								DrawList->PathLineTo(ImVec2(inner_bb.Max.x, h));
+								break;
+							}
+
+							DrawList->PathLineTo(ImVec2(x, h));
+							DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
 						}
 					}
 
-					DrawList->PathLineTo(ImVec2(inner_bb.Max.x, lastY));
 					DrawList->PathStroke(col, false, 2);
 					break;
 				}
 				case 1: {
-					if(startP2 != -1) {
-						for(int i = startP2; i < available; i += 8) {
-							auto val = apu->waveBuffer[i].pulse2;
-							if(last != val) {
-								auto x = inner_bb.Min.x + pps * (i - startP2);
-								auto y = inner_bb.Min.y + pph * val;
+					if(!(!apu->pulse2.enabled || apu->pulse2.lengthCounter == 0 || apu->pulse2.timerPeriod < 8 || apu->pulse2.timerPeriod > 0x7FF)) {
+						int val = apu->pulse2.dutyCycle;
+						double dutyLen = val == 0 ? 0.125 : val * 0.25;
 
-								DrawList->PathLineTo(ImVec2(x, lastY));
-								DrawList->PathLineTo(ImVec2(x, y));
+						float x = inner_bb.Min.x;
+						float w = width * (apu->pulse2.timerPeriod * 16.0 / available);
+						
+						float off = fmod(width / 2, w);
+						x += off;
 
-								lastY = y;
-								last = val;
+						float h = inner_bb.Min.y;
+						if(apu->pulse2.envelopeEnabled) {
+							h += (height / 15) * apu->pulse2.constantVolume;
+						} else {
+							h += (height / 15) * apu->pulse2.envelopeVolume;
+						}
+						if(x - w * dutyLen <= inner_bb.Min.x) {
+							DrawList->PathLineTo(ImVec2(inner_bb.Min.x, h));
+						} else {
+							DrawList->PathLineTo(inner_bb.Min);
+							DrawList->PathLineTo(ImVec2(x - w * dutyLen, inner_bb.Min.y));
+							DrawList->PathLineTo(ImVec2(x - w * dutyLen, h));
+						}
+						DrawList->PathLineTo(ImVec2(x, h));
+						DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
+
+						while(true) {
+							x += w * (1 - dutyLen);
+							if(x > inner_bb.Max.x) {
+								DrawList->PathLineTo(ImVec2(inner_bb.Max.x, inner_bb.Min.y));
+								break;
 							}
+
+							DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
+							DrawList->PathLineTo(ImVec2(x, h));
+
+							x += w * dutyLen;
+							if(x > inner_bb.Max.x) {
+								DrawList->PathLineTo(ImVec2(inner_bb.Max.x, h));
+								break;
+							}
+
+							DrawList->PathLineTo(ImVec2(x, h));
+							DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
 						}
 					}
 
-					DrawList->PathLineTo(ImVec2(inner_bb.Max.x, lastY));
 					DrawList->PathStroke(col, false, 2);
 					break;
 				}
 				case 2: {
-					if(startTriangle != -1) {
-						for(int i = startTriangle; i < available; i += 8) {
-							auto val = apu->waveBuffer[i].triangle;
-							if(last != val) {
-								auto x = inner_bb.Min.x + pps * (i - startTriangle);
-								auto y = inner_bb.Min.y + pph * val;
-
-								DrawList->PathLineTo(ImVec2(x, lastY));
-								DrawList->PathLineTo(ImVec2(x, y));
-
-								lastY = y;
-								last = val;
+					if(apu->triangle.enabled && apu->triangle.lengthCounter > 0 && apu->triangle.linearCounter > 0 && apu->triangle.timerPeriod >= 2) {
+						DrawList->PathLineTo(inner_bb.Min);
+						
+						float x = inner_bb.Min.x;
+						float w = width * (apu->triangle.timerPeriod * 32.0 / available);
+						// float off = fmod(width / 2, w);
+						// x += off;
+						while(true) {
+							x += w / 2;
+							if(x > inner_bb.Max.x) {
+								DrawList->PathLineTo(ImVec2(inner_bb.Max.x, inner_bb.Min.y + height * (1 - (x - inner_bb.Max.x) / (w / 2))));
+								break;
 							}
+
+							DrawList->PathLineTo(ImVec2(x, inner_bb.Max.y));
+
+							x += w / 2;
+							if(x > inner_bb.Max.x) {
+								DrawList->PathLineTo(ImVec2(inner_bb.Max.x, inner_bb.Min.y + height * ((x - inner_bb.Max.x) / (w / 2))));
+								break;
+							}
+
+							DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
 						}
 					}
 
-					DrawList->PathLineTo(ImVec2(inner_bb.Max.x, lastY));
 					DrawList->PathStroke(col, false, 2);
 					break;
 				}

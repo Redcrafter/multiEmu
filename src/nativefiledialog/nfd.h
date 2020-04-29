@@ -26,6 +26,3 @@ namespace NFD {
 	/* get last error -- set when Result is NFD_ERROR */
 	std::string GetError();
 }
-
-void NFDi_SetError(const char* msg);
-int NFDi_IsFilterSegmentChar(char ch);

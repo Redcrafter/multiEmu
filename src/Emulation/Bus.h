@@ -12,6 +12,7 @@
 class Bus {
 public:
 	uint64_t systemClockCounter = 0;
+	int CpuStall = 0;
 
 	std::shared_ptr<Cartridge> cartridge;
 	mos6502 cpu;

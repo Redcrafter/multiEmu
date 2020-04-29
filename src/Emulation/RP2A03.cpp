@@ -522,15 +522,9 @@ void RP2A03::ClockLength() {
 float RP2A03::GenerateSample() {
 	auto& buf = waveBuffer[bufferPos];
 
-	buf.pulse1 = pulse1.Output();
-	buf.pulse2 = pulse2.Output();
-
 	uint8_t tnd = 0;
 	if(triangle.enabled && triangle.lengthCounter > 0 && triangle.linearCounter > 0) {
-		buf.triangle = triangleTable[triangle.dutyValue];
-		tnd += buf.triangle * 3;
-	} else {
-		buf.triangle = 0;
+		tnd += triangleTable[triangle.dutyValue] * 3;
 	}
 
 	if(noise.enabled && noise.lengthCounter > 0 && (noise.shiftRegister & 1) == 0) {
@@ -546,7 +540,7 @@ float RP2A03::GenerateSample() {
 
 	buf.dmc = dmc.value;
 
-	const auto val = pulseTable[buf.pulse1 + buf.pulse2] + tndTable[tnd + dmc.value];
+	const auto val = pulseTable[pulse1.Output() + pulse2.Output()] + tndTable[tnd + dmc.value];
 
 	buf.sample = val;
 	bufferPos++;

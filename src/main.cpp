@@ -1,6 +1,7 @@
 #include <iostream>
 #include <deque>
 
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
 #define GLM_ENABLE_EXPERIMENTAL
@@ -40,11 +41,14 @@ bool runningTas = false;
 std::shared_ptr<TasController> controller1, controller2;
 std::shared_ptr<Bus> nes = nullptr;
 int selectedSaveState = 0;
-saver* saveStates[10]{nullptr};
+saver* saveStates[10]{};
 
 GLuint programID;
 GLuint vaoID, vertexBufferID, uvBufferID;
 GLuint MatrixLocation;
+
+RenderImage* mainTexture;
+glm::mat4 projection;
 
 const char* const DrawModeNames[] = {"AutoSize", "x1", "x2", "x3", "x4", "Window"};
 
@@ -56,9 +60,6 @@ enum DrawMode {
 	x4 = 4,
 	Window = 5,
 };
-
-RenderImage* mainTexture;
-glm::mat4 projection;
 
 static const GLfloat vertexBuffer[] = {
 	0, 0, 0,
@@ -85,26 +86,26 @@ PatternTables tables{"Pattern Tables"};
 CpuStateWindow cpuWindow{"Cpu State"};
 ApuWindow apuWindow{"Apu Visuals"};
 bool settingsWindow = false;
+bool metricsWindow = false;
 
 struct Settings {
-	bool EnableVsync = true;
+	bool EnableVsync = false;
 	DrawMode drawMode = Auto;
 
 	std::deque<std::string> RecentRoms;
 
 	void Load() {
 		nlohmann::json j;
-		if(!fs::exists("./settings.json")) {
-			Input::Load(j);
-			return;
+
+		if(fs::exists("./settings.json")) {
+			std::ifstream file("./settings.json");
+			file >> j;
+
+			EnableVsync = j["enableVsync"];
+			drawMode = j["drawMode"];
+			j["recent"].get_to(RecentRoms);
 		}
 
-		std::ifstream file("./settings.json");
-		file >> j;
-
-		EnableVsync = j["enableVsync"];
-		drawMode = j["drawMode"];
-		j["recent"].get_to(RecentRoms);
 		Input::Load(j);
 	}
 
@@ -125,8 +126,13 @@ bool speedUp = false;
 bool running = false;
 bool step = false;
 
-int WindowWidth;
-int WindowHeight;
+int WindowWidth = 512 * (8.0 / 7.0);
+int WindowHeight = 512;
+
+int samples = 0;
+uint64_t readBuf = 0, writeBuf = 0;
+uint32_t readPos = 0;
+float buffer[8][735];
 
 void LoadRom(const char* path) {
 	std::shared_ptr<Cartridge> cart;
@@ -226,10 +232,6 @@ void LoadState(int number) {
 	}
 }
 
-int samples = 0;
-uint64_t readBuf = 0, writeBuf = 0;
-float buffer[8][735];
-
 void HelpMarker(const char* desc) {
 	// ImGui::TextDisabled("(?)");
 	if(ImGui::IsItemHovered()) {
@@ -269,15 +271,21 @@ void Resample() {
 int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
 	auto outBuffer = static_cast<float*>(outputBuffer);
 
-	if(readBuf < writeBuf) {
-		for(int i = 0; i < nBufferFrames; i++) {
-			outBuffer[i] = buffer[readBuf & 7][i];
+	int i = 0;
+	for(; i < nBufferFrames && readBuf < writeBuf; i++) {
+		outBuffer[i * 2] = outBuffer[i * 2 + 1] = buffer[readBuf & 7][readPos];
+		readPos++;
+		if(readPos >= 735) {
+			readBuf++;
+			readPos = 0;
 		}
-		readBuf++;
-	} else {
+	}
+
+	if(i < nBufferFrames) {
+		// Repeat last sample to prevent popping
 		auto last = buffer[(readBuf - 1) & 7][734];
 		for(int i = 0; i < nBufferFrames; ++i) {
-			outBuffer[i] = last;
+			outBuffer[i * 2] = outBuffer[i * 2 + 1] = last;
 		}
 	}
 
@@ -311,11 +319,15 @@ void Frame() {
 	Resample();
 }
 
-void onKeyCall(GLFWwindow* window, int key, int scancode, int action, int mods) {
+void onKey(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	Input::OnKey(key, scancode, action, mods);
 
 	if(action != GLFW_PRESS) {
 		return;
+	}
+
+	if(key == GLFW_KEY_F12) {
+		metricsWindow = !metricsWindow;
 	}
 
 	Action mapped;
@@ -390,14 +402,37 @@ void onDrop(GLFWwindow* window, int count, const char** paths) {
 		nes->controller1 = controller1 = std::make_shared<TasController>(inputs.Controller1);
 		nes->controller2 = controller2 = std::make_shared<TasController>(inputs.Controller2);
 	}
-
 }
 
 void onGlfwError(int error, const char* description) {
 	fprintf(stderr, "Glfw Error: %d: %s\n", error, description);
 }
 
+void CalcWindowSize() {
+	if(settings.drawMode == Auto || settings.drawMode == Window) {
+		return;
+	}
+
+	WindowWidth = 256;;
+	WindowHeight = 256;
+	switch(settings.drawMode) {
+		case Auto:
+		case Window: break;
+		default:
+			WindowWidth *= settings.drawMode;
+			WindowHeight *= settings.drawMode;
+			break;
+	}
+	WindowWidth *= 8.0 / 7.0;
+	WindowHeight += 19;
+}
+
+#ifdef WIN32
+#include <windows.h>
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+#else
 int main() {
+#endif
 	try {
 		settings.Load();
 	} catch(std::exception& e) {
@@ -410,11 +445,11 @@ int main() {
 	if(dac.getDeviceCount() >= 1) {
 		RtAudio::StreamParameters parameters;
 		parameters.deviceId = dac.getDefaultOutputDevice();
-		parameters.nChannels = 1;
+		parameters.nChannels = 2;
 		parameters.firstChannel = 0;
 
 		RtAudio::StreamOptions options;
-		options.flags = RTAUDIO_MINIMIZE_LATENCY;
+		// options.flags = RTAUDIO_MINIMIZE_LATENCY; // breaks mac TODO: handle non fixed sample request
 
 		unsigned int sampleRate = 44100;
 		unsigned int bufferFrames = 735;
@@ -423,8 +458,7 @@ int main() {
 			dac.openStream(&parameters, nullptr, RTAUDIO_FLOAT32, sampleRate, &bufferFrames, &AudioCallback, nullptr, &options);
 			dac.startStream();
 		} catch(RtAudioError& e) {
-			std::cout << e.what() << std::endl;
-			return 0;
+			std::cout << __FILE__ << ':' << __LINE__ << ": " << e.what() << std::endl;
 		}
 	} else {
 		std::cout << "No audio devices found!\n";
@@ -444,19 +478,7 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);           // To make MacOS happy; should not be needed
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL 
 
-	WindowWidth = 256;;
-	WindowHeight = 240;
-	switch(settings.drawMode) {
-		case x3: break;
-		case x4: break;
-		default:
-			WindowWidth *= 2;
-			WindowHeight *= 2;
-			break;
-	}
-	WindowWidth *= 8.0 / 7.0;
-	WindowHeight += 19;
-	
+	CalcWindowSize();
 	// Open a window and create its OpenGL context
 	auto window = glfwCreateWindow(WindowWidth, WindowHeight, "NES emulator", NULL, NULL);
 	if(window == NULL) {
@@ -466,10 +488,16 @@ int main() {
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(settings.EnableVsync);
 
+	// Initialize GLEW
+	if(glewInit() != GLEW_OK) {
+		fprintf(stderr, "Failed to initialize GLEW\n");
+		return -1;
+	}
+
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
-	glfwSetKeyCallback(window, onKeyCall); // TODO: support controllers
+	glfwSetKeyCallback(window, onKey); // TODO: support controllers
 	glfwSetWindowSizeCallback(window, onResize);
 	glfwSetDropCallback(window, onDrop);
 
@@ -547,10 +575,7 @@ int main() {
 
 		if(dt >= 2 / 60.0) {
 			// dropped frame
-			// cause: slow cpu or float error
-			// causes emulation lag
 			lastTime = time;
-			printf("Dropped frame\n");
 		} else if(dt >= 1 / 60.0) {
 			lastTime += 1 / 60.0;
 		} else {
@@ -565,15 +590,13 @@ int main() {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		ImGui::ShowMetricsWindow();
-
 		Frame();
 
 		#pragma region GUI
 		mainTexture->BufferImage();
 		if(settings.drawMode == Window) {
 			bool open = true;
-			if(ImGui::Begin("NES", &open)) {
+			if(ImGui::Begin("NES", &open, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar)) {
 				auto size = ImGui::GetWindowSize();
 
 				if(size.x * (7.0 / 8.0) < size.y) {
@@ -582,22 +605,22 @@ int main() {
 					size.x = size.y * (8.0 / 7.0);
 				}
 
-				ImGui::Image((void*)(intptr_t)mainTexture->GetTextureId(), size);
+				ImGui::Image((void*)mainTexture->GetTextureId(), size);
 			}
 			ImGui::End();
 		} else {
 			float Width = 256 * (8.0 / 7.0);
-			float Height = 240;
-			int X = 0, Y = 19;
+			float Height = 256;
+			int X = 0, Y = 0;
 
 			switch(settings.drawMode) {
 				case Auto:
-					if(WindowWidth * (7.0 / 8.0) < WindowHeight - 19) {
+					if(WindowWidth * (7.0 / 8.0) < WindowHeight) {
 						Width = WindowWidth;
 						Height = WindowWidth * (7.0 / 8.0);
-						Y = (WindowHeight - 19 - Height) / 2 + 19;
+						Y = (WindowHeight - Height) / 2;
 					} else {
-						Height = WindowHeight - 19;
+						Height = WindowHeight;
 						Width = Height * (8.0 / 7.0);
 						X = (WindowWidth - Width) / 2;
 					}
@@ -617,7 +640,7 @@ int main() {
 		}
 
 		bool enabled = nes != nullptr;
-		if(ImGui::BeginMainMenuBar()) {
+		if(/*glfwGetWindowAttrib(window, GLFW_HOVERED) &&*/ ImGui::BeginMainMenuBar()) {
 			if(ImGui::BeginMenu("File")) {
 				if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
 					std::string outPath;
@@ -742,6 +765,10 @@ int main() {
 		tasEdit.DrawWindow(0);
 		memEdit.DrawWindow();
 		apuWindow.DrawWindow(samples);
+
+		if(metricsWindow) {
+			ImGui::ShowMetricsWindow(&metricsWindow);
+		}
 		if(settingsWindow) {
 			if(ImGui::Begin("Settings", &settingsWindow)) {
 				if(ImGui::BeginTabBar("tabBar")) {
@@ -749,12 +776,15 @@ int main() {
 						bool old = settings.EnableVsync;
 						ImGui::Checkbox("Vsync", &settings.EnableVsync);
 
-						HelpMarker("Toggle Vsync.\nAlso reduces cpu usage on fast cpu's");
+						HelpMarker("Toggle Vsync.\nReduces cpu usage on fast cpu's but can cause stuttering");
 
 						if(settings.EnableVsync != old) {
 							glfwSwapInterval(settings.EnableVsync);
 						}
-						ImGui::Combo("DrawMode", (int*)&settings.drawMode, DrawModeNames, 6);
+						if(ImGui::Combo("DrawMode", (int*)&settings.drawMode, DrawModeNames, 6)) {
+							CalcWindowSize();
+							glfwSetWindowSize(window, WindowWidth, WindowHeight);
+						}
 						ImGui::EndTabItem();
 					}
 
@@ -770,7 +800,7 @@ int main() {
 			}
 			ImGui::End();
 		}
-		
+
 		#pragma endregion
 
 		ImGui::Render();

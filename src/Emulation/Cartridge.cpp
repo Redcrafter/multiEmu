@@ -1,6 +1,6 @@
 #include "Cartridge.h"
 #include <fstream>
-#include "../Mappers/Mappers.h"
+#include "Mappers/Mappers.h"
 
 struct INESheader {
 	char name[4];

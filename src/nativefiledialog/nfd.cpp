@@ -1,11 +1,30 @@
-#ifdef _WIN32
+#include "nfd.h"
+#include <string>
+#include <cstdio>
+#include <cassert>
+
+using namespace NFD;
+
+static std::string g_errorstr;
+
+/* public routines */
+std::string NFD::GetError() {
+	return g_errorstr;
+}
+
+/* internal routines */
+static void NFDi_SetError(const char* msg) {
+	g_errorstr = msg;
+}
+
+static int NFDi_IsFilterSegmentChar(char ch) {
+	return (ch == ',' || ch == ';' || ch == '\0');
+}
+
+#if defined(_WIN32)
 #include <wchar.h>
-#include <stdio.h>
-#include <assert.h>
 #include <windows.h>
 #include <shobjidl.h>
-
-#include "nfd.h"
 
 #ifdef __MINGW32__
 // Explicitly setting NTDDI version, this is necessary for the MinGW compiler
@@ -19,8 +38,6 @@
 #ifndef UNICODE
 #define UNICODE
 #endif
-
-using namespace NFD;
 
 static BOOL COMIsInitialized(HRESULT coResult) {
 	if(coResult == RPC_E_CHANGED_MODE) {
@@ -75,7 +92,7 @@ static void CopyNFDCharToWChar(const char* inStr, wchar_t** outStr) {
 /* ext is in format "jpg", no wildcards or separators */
 static Result AppendExtensionToSpecBuf(const char* ext, char* specBuf, size_t specBufLen) {
 	const char SEP[] = ";";
-	assert(specBufLen > strlen(ext)+3);
+	assert(specBufLen > strlen(ext) + 3);
 
 	if(strlen(specBuf) > 0) {
 		strncat_s(specBuf, specBufLen, SEP, specBufLen - strlen(specBuf) - 1);
@@ -84,7 +101,7 @@ static Result AppendExtensionToSpecBuf(const char* ext, char* specBuf, size_t sp
 
 	char extWildcard[NFD_MAX_STRLEN];
 	int bytesWritten = sprintf_s(extWildcard, NFD_MAX_STRLEN, "*.%s", ext);
-	assert(bytesWritten == (int)(strlen(ext)+2));
+	assert(bytesWritten == (int)(strlen(ext) + 2));
 
 	strncat_s(specBuf, specBufLen, extWildcard, specBufLen - strlen(specBuf) - 1);
 
@@ -123,10 +140,10 @@ static Result AddFiltersToDialog(IFileDialog* fileOpenDialog, const char* filter
 
 	size_t specIdx = 0;
 	p_filterList = filterList;
-	char typebuf[NFD_MAX_STRLEN] = {0}; /* one per comma or semicolon */
+	char typebuf[NFD_MAX_STRLEN] = { 0 }; /* one per comma or semicolon */
 	char* p_typebuf = typebuf;
 
-	char specbuf[NFD_MAX_STRLEN] = {0}; /* one per semicolon */
+	char specbuf[NFD_MAX_STRLEN] = { 0 }; /* one per semicolon */
 
 	while(true) {
 		if(NFDi_IsFilterSegmentChar(*p_filterList)) {
@@ -184,7 +201,7 @@ static Result AllocPathSet(IShellItemArray* shellItems, std::vector<std::string>
 		NFDi_SetError(ERRORMSG);
 		return Result::Error;
 	}
-	
+
 	/* fill buf */
 	for(DWORD i = 0; i < numShellItems; ++i) {
 		IShellItem* shellItem;
@@ -218,7 +235,7 @@ static Result SetDefaultPath(IFileDialog* dialog, const char* defaultPath) {
 	if(!defaultPath || strlen(defaultPath) == 0)
 		return Result::Okay;
 
-	wchar_t* defaultPathW = {0};
+	wchar_t* defaultPathW = { 0 };
 	CopyNFDCharToWChar(defaultPath, &defaultPathW);
 
 	IShellItem* folder;
@@ -258,7 +275,7 @@ Result NFD::OpenDialog(const char* filterList, const char* defaultPath, std::str
 
 	// Create dialog
 	IFileOpenDialog* fileOpenDialog(nullptr);
-	HRESULT result =CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL,IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpenDialog));
+	HRESULT result = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpenDialog));
 
 	if(!SUCCEEDED(result)) {
 		NFDi_SetError("Could not create dialog.");
@@ -326,7 +343,7 @@ Result NFD::OpenDialogMultiple(const char* filterList, const char* defaultPath, 
 
 	// Create dialog
 	IFileOpenDialog* fileOpenDialog(nullptr);
-	HRESULT result =CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL,IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpenDialog));
+	HRESULT result = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpenDialog));
 
 	if(!SUCCEEDED(result)) {
 		fileOpenDialog = nullptr;
@@ -403,7 +420,7 @@ Result NFD::SaveDialog(const char* filterList, const char* defaultPath, std::str
 
 	// Create dialog
 	::IFileSaveDialog* fileSaveDialog(nullptr);
-	HRESULT result =CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_ALL,IID_IFileSaveDialog, reinterpret_cast<void**>(&fileSaveDialog));
+	HRESULT result = CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_ALL, IID_IFileSaveDialog, reinterpret_cast<void**>(&fileSaveDialog));
 
 	if(!SUCCEEDED(result)) {
 		fileSaveDialog = nullptr;
@@ -538,4 +555,264 @@ end:
 
 	return nfdResult;
 }
+#elif defined(__linux)
+#include <gtk-2.0/gtk/gtk.h>
+
+const char INIT_FAIL_MSG[] = "gtk_init_check failed to initilaize GTK+";
+using namespace NFD;
+
+static void AddTypeToFilterName(const char* typebuf, char* filterName, size_t bufsize) {
+	const char SEP[] = ", ";
+
+	size_t len = strlen(filterName);
+	if(len != 0) {
+		strncat(filterName, SEP, bufsize - len - 1);
+		len += strlen(SEP);
+	}
+
+	strncat(filterName, typebuf, bufsize - len - 1);
+}
+
+static void AddFiltersToDialog(GtkWidget* dialog, const char* filterList) {
+	GtkFileFilter* filter;
+	char typebuf[NFD_MAX_STRLEN] = { 0 };
+	const char* p_filterList = filterList;
+	char* p_typebuf = typebuf;
+	char filterName[NFD_MAX_STRLEN] = { 0 };
+
+	if(!filterList || strlen(filterList) == 0)
+		return;
+
+	filter = gtk_file_filter_new();
+	while(true) {
+		if(NFDi_IsFilterSegmentChar(*p_filterList)) {
+			char typebufWildcard[NFD_MAX_STRLEN];
+			/* add another type to the filter */
+			assert(strlen(typebuf) > 0);
+			assert(strlen(typebuf) < NFD_MAX_STRLEN - 1);
+
+			snprintf(typebufWildcard, NFD_MAX_STRLEN, "*.%s", typebuf);
+			AddTypeToFilterName(typebuf, filterName, NFD_MAX_STRLEN);
+
+			gtk_file_filter_add_pattern(filter, typebufWildcard);
+
+			p_typebuf = typebuf;
+			memset(typebuf, 0, sizeof(char) * NFD_MAX_STRLEN);
+		}
+
+		if(*p_filterList == ';' || *p_filterList == '\0') {
+			/* end of filter -- add it to the dialog */
+
+			gtk_file_filter_set_name(filter, filterName);
+			gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+
+			filterName[0] = '\0';
+
+			if(*p_filterList == '\0')
+				break;
+
+			filter = gtk_file_filter_new();
+		}
+
+		if(!NFDi_IsFilterSegmentChar(*p_filterList)) {
+			*p_typebuf = *p_filterList;
+			p_typebuf++;
+		}
+
+		p_filterList++;
+	}
+
+	/* always append a wildcard option to the end*/
+
+	filter = gtk_file_filter_new();
+	gtk_file_filter_set_name(filter, "*.*");
+	gtk_file_filter_add_pattern(filter, "*");
+	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+}
+
+static void SetDefaultPath(GtkWidget* dialog, const char* defaultPath) {
+	if(!defaultPath || strlen(defaultPath) == 0)
+		return;
+
+	/* GTK+ manual recommends not specifically setting the default path.
+	   We do it anyway in order to be consistent across platforms.
+
+	   If consistency with the native OS is preferred, this is the line
+	   to comment out. -ml */
+	gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), defaultPath);
+}
+
+static void WaitForCleanup() {
+	while(gtk_events_pending())
+		gtk_main_iteration();
+}
+
+/* public */
+
+Result NFD::OpenDialog(const char* filterList, const char* defaultPath, std::string& outPath) {
+	GtkWidget* dialog;
+	Result result;
+
+	if(!gtk_init_check(NULL, NULL)) {
+		NFDi_SetError(INIT_FAIL_MSG);
+		return Result::Error;
+	}
+
+	dialog = gtk_file_chooser_dialog_new("Open File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
+
+	/* Build the filter list */
+	AddFiltersToDialog(dialog, filterList);
+
+	/* Set the default path */
+	SetDefaultPath(dialog, defaultPath);
+
+	result = Result::Cancel;
+	if(gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		char* filename;
+
+		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		outPath = filename;
+		g_free(filename);
+
+		result = Result::Okay;
+	}
+
+	WaitForCleanup();
+	gtk_widget_destroy(dialog);
+	WaitForCleanup();
+
+	return result;
+}
+
+Result NFD::OpenDialogMultiple(const char* filterList, const char* defaultPath, std::vector<std::string>& outPaths) {
+	GtkWidget* dialog;
+	Result result;
+
+	if(!gtk_init_check(NULL, NULL)) {
+		NFDi_SetError(INIT_FAIL_MSG);
+		return Result::Error;
+	}
+
+	dialog = gtk_file_chooser_dialog_new("Open Files", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
+	gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), TRUE);
+
+	/* Build the filter list */
+	AddFiltersToDialog(dialog, filterList);
+
+	/* Set the default path */
+	SetDefaultPath(dialog, defaultPath);
+
+	if(gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		GSList* fileList = gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(dialog));
+
+		GSList* node;
+
+		/* fill buf */
+		for(node = fileList; node; node = node->next) {
+			outPaths.push_back((char*)node->data);
+			g_free(node->data);
+		}
+
+		g_slist_free(fileList);
+		result = Result::Okay;
+	} else {
+		result = Result::Cancel;
+	}
+
+	WaitForCleanup();
+	gtk_widget_destroy(dialog);
+	WaitForCleanup();
+
+	return result;
+}
+
+Result NFD::SaveDialog(const char* filterList, const char* defaultPath, std::string& outPath) {
+	GtkWidget* dialog;
+	Result result;
+
+	if(!gtk_init_check(NULL, NULL)) {
+		NFDi_SetError(INIT_FAIL_MSG);
+		return Result::Error;
+	}
+
+	dialog = gtk_file_chooser_dialog_new("Save File", NULL, GTK_FILE_CHOOSER_ACTION_SAVE, "_Cancel", GTK_RESPONSE_CANCEL, "_Save", GTK_RESPONSE_ACCEPT, NULL);
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
+
+	/* Build the filter list */
+	AddFiltersToDialog(dialog, filterList);
+
+	/* Set the default path */
+	SetDefaultPath(dialog, defaultPath);
+
+	result = Result::Cancel;
+	if(gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		char* filename;
+		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		outPath = filename;
+		g_free(filename);
+
+		result = Result::Okay;
+	}
+
+	WaitForCleanup();
+	gtk_widget_destroy(dialog);
+	WaitForCleanup();
+
+	return result;
+}
+
+Result NFD_PickFolder(const char* defaultPath, std::string& outPath) {
+	if(!gtk_init_check(NULL, NULL)) {
+		NFDi_SetError(INIT_FAIL_MSG);
+		return Result::Error;
+	}
+
+	GtkWidget* dialog = gtk_file_chooser_dialog_new("Select folder", NULL, GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, "_Cancel", GTK_RESPONSE_CANCEL, "_Select", GTK_RESPONSE_ACCEPT, NULL);
+	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
+
+
+	/* Set the default path */
+	SetDefaultPath(dialog, defaultPath);
+
+	Result result = Result::Cancel;
+	if(gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+		char* filename;
+		filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		outPath = filename;
+		g_free(filename);
+
+		result = Result::Okay;
+	}
+
+	WaitForCleanup();
+	gtk_widget_destroy(dialog);
+	WaitForCleanup();
+
+	return result;
+}
+
+#else
+#pragma warning("No nfd found")
+// TODO: use imgui to draw dialog
+
+Result OpenDialog(const char* filterList, const char* defaultPath, std::string& outPath) {
+	NFDi_SetError("No native framework found");
+	return Result::Error;
+}
+
+Result OpenDialogMultiple(const char* filterList, const char* defaultPath, std::vector<std::string>& outPaths) {
+	NFDi_SetError("No native framework found");
+	return Result::Error;
+}
+
+Result SaveDialog(const char* filterList, const char* defaultPath, std::string& outPath) {
+	NFDi_SetError("No native framework found");
+	return Result::Error;
+}
+
+Result PickFolder(const char* defaultPath, std::string& outPath) {
+	NFDi_SetError("No native framework found");
+	return Result::Error;
+}
+
 #endif

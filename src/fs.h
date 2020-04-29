@@ -1,9 +1,13 @@
 #pragma once
 
-#ifdef _WIN32
+#if defined(__cpp_lib_filesystem) || __has_include("filesystem")
 #include <filesystem>
 namespace fs = std::filesystem;
-#else
+
+#elif defined(__cpp_lib_experimental_filesystem) || __has_include("experimental/filesystem")
 #include <experimental/filesystem>
 namespace fs = std::experimental::filesystem;
+
+#else
+#error "no filesystem support ='("
 #endif

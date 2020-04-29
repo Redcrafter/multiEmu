@@ -116,13 +116,14 @@ struct RP2A03state {
 };
 
 class RP2A03 : RP2A03state {
+	friend class ApuWindow;
 private:
 	Bus* bus = nullptr;
 public:
 	int bufferPos = 0;
 	struct {
 		float sample;
-		uint8_t pulse1, pulse2, triangle, noise, dmc;
+		uint8_t noise, dmc;
 	} waveBuffer[bufferLength];
 public:
 	RP2A03(Bus* bus);

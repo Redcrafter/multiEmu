@@ -185,13 +185,21 @@ void mos6502::Clock() {
 							state = State::StackShit1;
 							break;
 						case Instructions::ASL:
-							A = ASL(A);
+							Status.C = A & 0x80;
+
+							A <<= 1;
+							Status.Z = A == 0;
+							Status.N = A & 0x80;
 							break;
 						case Instructions::ROL:
 							A = ROL(A);
 							break;
 						case Instructions::LSR:
-							A = LSR(A);
+							Status.C = A & 1;
+						
+							A >>= 1;
+							Status.Z = A == 0;
+							Status.N = A & 0x80;
 							break;
 						case Instructions::ROR:
 							A = ROR(A);
@@ -273,7 +281,9 @@ void mos6502::Clock() {
 					#endif
 					switch(instruction.instruction) {
 						case Instructions::ORA:
-							ORA(fetched);
+							A |= fetched;
+							Status.Z = A == 0;
+							Status.N = A & 0x80;
 							break;
 						case Instructions::ANC:
 							A &= fetched;
@@ -282,10 +292,16 @@ void mos6502::Clock() {
 							Status.C = Status.N = A & 0x80;
 							break;
 						case Instructions::AND:
-							AND(fetched);
+							A &= fetched;
+
+							Status.Z = A == 0;
+							Status.N = A & 0x80;
 							break;
 						case Instructions::EOR:
-							EOR(fetched);
+							A ^= fetched;
+
+							Status.Z = A == 0;
+							Status.N = A & 0x80;
 							break;
 						case Instructions::ALR:
 							A &= fetched;
@@ -301,25 +317,40 @@ void mos6502::Clock() {
 							ADC(fetched);
 							break;
 						case Instructions::LDA:
-							LDA(fetched);
+							A = fetched;
+							Status.Z = A == 0;
+							Status.N = A & 0x80;
 							break;
 						case Instructions::LDX:
-							LDX(fetched);
+							X = fetched;
+							Status.Z = X == 0;
+							Status.N = X & 0x80;
 							break;
 						case Instructions::LDY:
-							LDY(fetched);
+							Y = fetched;
+							Status.Z = Y == 0;
+							Status.N = Y & 0x80;
 							break;
 						case Instructions::LAX:
-							LAX(fetched);
+							X = A = fetched;
+
+							Status.Z = X == 0;
+							Status.N = X & 0x80;
 							break;
 						case Instructions::CMP:
-							CMP(fetched);
+							Status.C = A >= fetched;
+							Status.Z = A == fetched;
+							Status.N = (A - fetched) & 0x80;
 							break;
 						case Instructions::CPX:
-							CPX(fetched);
+							Status.C = X >= fetched;
+							Status.Z = X == fetched;
+							Status.N = (X - fetched) & 0x80;
 							break;
 						case Instructions::CPY:
-							CPY(fetched);
+							Status.C = Y >= fetched;
+							Status.Z = Y == fetched;
+							Status.N = (Y - fetched) & 0x80;
 							break;
 						case Instructions::AXS:
 							Status.C = (A & X) >= fetched;
@@ -610,27 +641,41 @@ void mos6502::Clock() {
 
 			switch(instruction.instruction) {
 				case Instructions::LDA:
-					LDA(fetched);
+					A = fetched;
+					Status.Z = A == 0;
+					Status.N = A & 0x80;
 					state = State::FetchOpcode;
 					break;
 				case Instructions::LDX:
-					LDX(fetched);
+					X = fetched;
+					Status.Z = X == 0;
+					Status.N = X & 0x80;
 					state = State::FetchOpcode;
 					break;
 				case Instructions::LDY:
-					LDY(fetched);
+					Y = fetched;
+					Status.Z = Y == 0;
+					Status.N = Y & 0x80;
 					state = State::FetchOpcode;
 					break;
 				case Instructions::EOR:
-					EOR(fetched);
+					A ^= fetched;
+
+					Status.Z = A == 0;
+					Status.N = A & 0x80;
 					state = State::FetchOpcode;
 					break;
 				case Instructions::AND:
-					AND(fetched);
+					A &= fetched;
+
+					Status.Z = A == 0;
+					Status.N = A & 0x80;
 					state = State::FetchOpcode;
 					break;
 				case Instructions::ORA:
-					ORA(fetched);
+					A |= fetched;
+					Status.Z = A == 0;
+					Status.N = A & 0x80;
 					state = State::FetchOpcode;
 					break;
 				case Instructions::ADC:
@@ -642,15 +687,21 @@ void mos6502::Clock() {
 					state = State::FetchOpcode;
 					break;
 				case Instructions::CMP:
-					CMP(fetched);
+					Status.C = A >= fetched;
+					Status.Z = A == fetched;
+					Status.N = (A - fetched) & 0x80;
 					state = State::FetchOpcode;
 					break;
 				case Instructions::CPX:
-					CPX(fetched);
+					Status.C = X >= fetched;
+					Status.Z = X == fetched;
+					Status.N = (X - fetched) & 0x80;
 					state = State::FetchOpcode;
 					break;
 				case Instructions::CPY:
-					CPY(fetched);
+					Status.C = Y >= fetched;
+					Status.Z = Y == fetched;
+					Status.N = (Y - fetched) & 0x80;
 					state = State::FetchOpcode;
 					break;
 				case Instructions::BIT:
@@ -660,7 +711,10 @@ void mos6502::Clock() {
 					state = State::FetchOpcode;
 					break;
 				case Instructions::LAX:
-					LAX(fetched);
+					X = A = fetched;
+
+					Status.Z = X == 0;
+					Status.N = X & 0x80;
 					state = State::FetchOpcode;
 					break;
 				case Instructions::NOP:
@@ -709,10 +763,18 @@ void mos6502::Clock() {
 					toWrite = A & X;
 					break;
 				case Instructions::ASL:
-					toWrite = ASL(ptr);
+					Status.C = ptr & 0x80;
+
+					toWrite = ptr << 1;
+					Status.Z = toWrite == 0;
+					Status.N = toWrite & 0x80;
 					break;
 				case Instructions::LSR:
-					toWrite = LSR(ptr);
+					Status.C = ptr & 1;
+					toWrite = ptr >> 1;
+
+					Status.Z = toWrite == 0;
+					Status.N = toWrite & 0x80;
 					break;
 				case Instructions::ROL:
 					toWrite = ROL(ptr);
@@ -993,13 +1055,7 @@ void mos6502::Clock() {
 			break;
 	}
 
-	cycles++;
-}
-
-void mos6502::ORA(uint8_t val) {
-	A |= val;
-	Status.Z = A == 0;
-	Status.N = A & 0x80;
+	// cycles++;
 }
 
 void mos6502::PushStack(uint8_t val) {
@@ -1012,25 +1068,11 @@ uint8_t mos6502::PopStack() {
 	return bus->CpuRead(0x0100 + SP);
 }
 
-void mos6502::AND(uint8_t val) {
-	A &= val;
-
-	Status.Z = A == 0;
-	Status.N = A & 0x80;
-}
-
-void mos6502::EOR(uint8_t val) {
-	A ^= val;
-
-	Status.Z = A == 0;
-	Status.N = A & 0x80;
-}
-
 void mos6502::ADC(uint8_t val) {
 	uint16_t temp = A + val + Status.C;
 
 	Status.C = temp > 255;
-	Status.V = (~(A ^ val) & (A ^ temp)) & 0x0080;
+	Status.V = ~(A ^ val) & (A ^ temp) & 0x80;
 
 	A = temp;
 
@@ -1040,9 +1082,9 @@ void mos6502::ADC(uint8_t val) {
 
 void mos6502::SBC(uint8_t val) {
 	val ^= 0xFF;
-	const uint16_t temp = A + val + Status.C;
+	uint16_t temp = A + val + Status.C;
 
-	Status.C = temp > 255;
+	Status.C = temp & 0xFF00;
 	Status.V = (temp ^ A) & (temp ^ val) & 0x0080;
 
 	A = temp;
@@ -1051,91 +1093,22 @@ void mos6502::SBC(uint8_t val) {
 	Status.N = A & 0x80;
 }
 
-uint8_t mos6502::ASL(uint8_t val) {
-	Status.C = val & 0x80;
-
-	val = val << 1;
-	Status.Z = val == 0;
-	Status.N = val & 0x80;
-
-	return val;
-}
-
 uint8_t mos6502::ROL(uint8_t val) {
-	uint16_t tmp = (val << 1) | Status.C;
+	uint8_t tmp = (val << 1) | Status.C;
 
-	Status.C = tmp & 0xFF00;
-	Status.Z = (tmp & 0xFF) == 0;
+	Status.C = val & 0x80;
+	Status.Z = tmp == 0;
 	Status.N = tmp & 0x80;
 
 	return tmp;
-}
-
-uint8_t mos6502::LSR(uint8_t val) {
-	Status.C = val & 1;
-	val >>= 1;
-
-	Status.Z = val == 0;
-	Status.N = val & 0x80;
-
-	return val;
 }
 
 uint8_t mos6502::ROR(uint8_t val) {
-	uint16_t tmp = (Status.C << 7) | (val >> 1);
+	uint8_t tmp = (Status.C << 7) | (val >> 1);
 	Status.C = val & 1;
 
-	Status.Z = (tmp & 0xFF) == 0;
+	Status.Z = tmp == 0;
 	Status.N = tmp & 0x80;
 
 	return tmp;
-}
-
-void mos6502::CMP(uint8_t val) {
-	Status.C = A >= val;
-
-	val = A - val;
-	Status.Z = (val & 0x00FF) == 0;
-	Status.N = val & 0x80;
-}
-
-void mos6502::CPX(uint8_t val) {
-	Status.C = X >= val;
-
-	val = X - val;
-	Status.Z = (val & 0xFF) == 0;
-	Status.N = val & 0x80;
-}
-
-void mos6502::CPY(uint8_t val) {
-	Status.C = Y >= val;
-
-	val = Y - val;
-	Status.Z = (val & 0xFF) == 0;
-	Status.N = val & 0x80;
-}
-
-void mos6502::LDA(uint8_t val) {
-	A = val;
-	Status.Z = A == 0;
-	Status.N = A & 0x80;
-}
-
-void mos6502::LDX(uint8_t val) {
-	X = val;
-	Status.Z = X == 0;
-	Status.N = X & 0x80;
-}
-
-void mos6502::LDY(uint8_t val) {
-	Y = val;
-	Status.Z = Y == 0;
-	Status.N = Y & 0x80;
-}
-
-void mos6502::LAX(uint8_t val) {
-	X = A = val;
-
-	Status.Z = X == 0;
-	Status.N = X & 0x80;
 }

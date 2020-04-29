@@ -13,7 +13,7 @@ saver::saver(std::string path) {
 	stream.read(reinterpret_cast<char*>(&size), 8);
 
 	if(size >= 1024 * 1024) {
-		throw new std::runtime_error("Save file too big"); // Prevent loading files > 1 Mb
+		throw std::runtime_error("Save file too big"); // Prevent loading files > 1 Mb
 	}
 	data.resize(size);
 	stream.read(reinterpret_cast<char*>(data.data()), size);
@@ -42,16 +42,6 @@ void saver::Read(char* data, int size) {
 	}
 }
 
-char* saver::ReadString() {
-	uint64_t size;
-	(*this) >> size;
-
-	char* str = new char[size];
-	Read(str, size);
-
-	return str;
-}
-
 void saver::operator<<(bool val) {
 	Write(reinterpret_cast<char*>(&val), 1);
 }
@@ -74,11 +64,6 @@ void saver::operator<<(uint32_t val) {
 
 void saver::operator<<(uint64_t val) {
 	Write(reinterpret_cast<char*>(&val), 8);
-}
-
-void saver::operator<<(std::string str) {
-	(*this) << str.length();
-	Write(str.c_str(), str.length());
 }
 
 void saver::operator>>(bool& val) {

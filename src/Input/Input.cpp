@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include "../imgui/imgui.h"
+#include <GLFW/glfw3.h>
 
 int Input::keys[16]{0};
 std::map<uint64_t, Action> Input::keyMap;

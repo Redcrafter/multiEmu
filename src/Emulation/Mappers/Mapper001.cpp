@@ -1,5 +1,5 @@
 #include "Mapper001.h"
-#include "../Emulation/Cartridge.h"
+#include "../Cartridge.h"
 
 Mapper001::Mapper001(uint8_t prgBanks, uint8_t chrBanks) : Mapper(prgBanks, chrBanks) {
 	prgBankOffset[0] = 0;

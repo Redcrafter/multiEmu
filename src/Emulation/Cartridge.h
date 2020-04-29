@@ -4,7 +4,7 @@
 #include <string>
 #include <memory>
 
-#include "../Mappers/Mapper.h"
+#include "Mappers/Mapper.h"
 #include "../saver.h"
 #include "../md5.h"
 

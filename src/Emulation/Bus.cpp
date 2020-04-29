@@ -1,6 +1,5 @@
 #include "Bus.h"
 #include "../Input/StandardController.h"
-#include "../Mappers/Mapper004.h"
 
 Bus::Bus(std::shared_ptr<Cartridge>& cartridge) : cartridge(cartridge), cpu(mos6502(this)), apu(RP2A03(this)) {
 	ppu.cartridge = cartridge;
@@ -57,6 +56,9 @@ void Bus::Clock() {
 				}
 			}
 		} else {
+			if(CpuStall) {
+				CpuStall--;
+			}
 			cpu.Clock();
 			cpu.IRQ = irqDelay | cartridge->GetIrq();
 			irqDelay = apu.GetIrq();

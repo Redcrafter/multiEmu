@@ -1,5 +1,5 @@
 #include "Mapper004.h"
-#include "../Emulation/Cartridge.h"
+#include "../Cartridge.h"
 
 Mapper004::Mapper004(uint8_t prgBanks, uint8_t chrBanks): Mapper(prgBanks, chrBanks) {
 	prgBankOffset[0] = (prgBanks * 2 - 2) * 0x2000;

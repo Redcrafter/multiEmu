@@ -166,8 +166,6 @@ struct mos6502state {
 	uint16_t addr_abs;
 
 	Instruction instruction;
-
-	uint64_t cycles = 0;
 };
 
 class mos6502 : mos6502state {
@@ -195,24 +193,9 @@ private:
 	std::ofstream file;
 #endif
 
-	void ORA(uint8_t val);
-	void AND(uint8_t val);
-	void EOR(uint8_t val);
 	void ADC(uint8_t val);
 	void SBC(uint8_t val);
 	
-	uint8_t ASL(uint8_t val);
 	uint8_t ROL(uint8_t val);
-	uint8_t LSR(uint8_t val);
 	uint8_t ROR(uint8_t val);
-
-	void CMP(uint8_t val);
-	void CPX(uint8_t val);
-	void CPY(uint8_t val);
-
-	void LDA(uint8_t val);
-	void LDX(uint8_t val);
-	void LDY(uint8_t val);
-
-	void LAX(uint8_t val);
 };

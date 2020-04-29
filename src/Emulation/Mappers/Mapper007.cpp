@@ -1,5 +1,5 @@
 #include "Mapper007.h"
-#include "../Emulation/Cartridge.h"
+#include "../Cartridge.h"
 
 Mapper007::Mapper007(uint8_t prgBanks, uint8_t chrBanks) : Mapper(prgBanks, chrBanks) {
 	prgBank = 0;
