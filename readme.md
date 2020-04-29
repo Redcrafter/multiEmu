@@ -1,6 +1,6 @@
 # Nes Emulator
-A fairly accurate Nes emulator written in C++.  
-Works for about 75% of games. And 17% of Games have missing mappers
+A cycle accurate Nes emulator written in C++.
+Works for around 75% of games and around 17% of Games have missing mappers.
 
 ## Dependencies
 - OpenGL
@@ -11,8 +11,9 @@ Works for about 75% of games. And 17% of Games have missing mappers
 # Compilation
 ## Windows
 Good luck getting cmake to find all packages
-Install GLEW from http://glew.sourceforge.net/\
-Install glfw3 from https://www.glfw.org/\
+
+Install GLEW from http://glew.sourceforge.net/ \
+Install glfw3 from https://www.glfw.org/ \
 You will have to rename the folder\
 `"C:\Program Files (x86)\GLFW"` to `"C:\Program Files (x86)\glfw3"`\
 since cmake can't find it otherwise.
