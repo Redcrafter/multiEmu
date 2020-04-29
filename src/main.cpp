@@ -11,6 +11,10 @@
 #include <nlohmann/json.hpp>
 #include <RtAudio.h>
 
+#include <imgui.h>
+#include <examples/imgui_impl_opengl3.h>
+#include <examples/imgui_impl_glfw.h>
+
 #include "nativefiledialog/nfd.h"
 #include "fs.h"
 
@@ -26,10 +30,6 @@
 #include "Input/Input.h"
 
 #include "shaders/shader.h"
-
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_opengl3.h"
-#include "imgui/imgui_impl_glfw.h"
 
 #include "imguiWindows/imgui_memory_editor.h"
 #include "imguiWindows/imgui_tas_editor.h"

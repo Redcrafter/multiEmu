@@ -1,5 +1,5 @@
 #include "imgui_pattern_tables.h"
-#include "../imgui/imgui.h"
+#include <imgui.h>
 
 PatternTables::PatternTables(std::string title) : Title(std::move(title)) { }
 

@@ -1,8 +1,8 @@
 #include "imgui_apu_window.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "../imgui/imgui.h"
-#include "../imgui/imgui_internal.h"
+#include <imgui.h>
+#include <imgui_internal.h>
 
 static const char* names[] = {"Pulse1", "Pulse2", "Triangle", "Noise", "DMC"};
 

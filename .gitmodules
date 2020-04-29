@@ -7,3 +7,6 @@
 [submodule "extern/rtaudio"]
 	path = extern/rtaudio
 	url = https://github.com/thestk/rtaudio.git
+[submodule "extern/imgui"]
+	path = extern/imgui
+	url = https://github.com/ocornut/imgui.git

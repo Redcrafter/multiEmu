@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 
-#include "../imgui/imgui.h"
 #include "../Emulation/RP2A03.h"
 
 class ApuWindow {
