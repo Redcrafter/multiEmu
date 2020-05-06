@@ -182,6 +182,7 @@ static Result AddFiltersToDialog(IFileDialog* fileOpenDialog, const char* filter
 
 	/* free speclist */
 	for(size_t i = 0; i < filterCount; ++i) {
+		delete specList[i].pszName;
 		delete specList[i].pszSpec;
 	}
 	delete[] specList;

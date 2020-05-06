@@ -78,30 +78,8 @@ void MemoryEditor::DrawWindow() {
 		return;
 	}
 
-	int memorySize = 0;
-	switch(domain) {
-		case CpuRam:
-			memorySize = 0x800;
-			break;
-		case CpuBus:
-			memorySize = 0x10000;
-			break;
-		case PpuBus:
-			memorySize = 0x8000;
-			break;
-		case CIRam:
-			memorySize = 0x800;
-			break;
-		case Oam:
-			memorySize = 0x100;
-			break;
-		case PrgRom: break;
-		case ChrRom: break;
-		default: ;
-	}
-
 	Sizes s;
-	CalcSizes(s, memorySize, 0);
+	CalcSizes(s, GetDomainSize(), 0);
 	ImGui::SetNextWindowSizeConstraints(ImVec2(0.0f, 0.0f), ImVec2(s.WindowWidth, FLT_MAX));
 
 	if(ImGui::Begin(Title.c_str(), &open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar)) {
@@ -139,6 +117,7 @@ void MemoryEditor::DrawWindow() {
 			ImGui::EndMenuBar();
 		}
 
+		const auto memorySize = GetDomainSize();
 		DrawContents(memorySize);
 		if(ContentsWidthChanged) {
 			CalcSizes(s, memorySize, 0);
@@ -159,8 +138,8 @@ uint8_t MemoryEditor::ReadFn(size_t addr) const {
 		case PpuBus: return bus->ppu.ppuRead(addr, true);
 		case CIRam: return bus->ppu.vram[addr];
 		case Oam: return bus->ppu.pOAM[addr];
-		case PrgRom: break;
-		case ChrRom: break;
+		case PrgRom: return bus->cartridge->prg[addr];
+		case ChrRom: return bus->cartridge->chr[addr];
 		default: ;
 	}
 	return 0;
@@ -178,6 +157,20 @@ void MemoryEditor::WriteFn(size_t addr, uint8_t val) {
 			bus->ppu.pOAM[addr] = val;
 			break;
 	}
+}
+
+uint32_t MemoryEditor::GetDomainSize() const {
+	switch(domain) {
+		case CpuRam: return 0x800;
+		case CpuBus: return 0x10000;
+		case PpuBus: return 0x8000;
+		case CIRam: return 0x800;
+		case Oam: return 0x100;
+		case PrgRom: return bus->cartridge->prg.size();
+		case ChrRom: return bus->cartridge->chr.size();
+	}
+
+	return 0;
 }
 
 void MemoryEditor::DrawContents(size_t mem_size) {

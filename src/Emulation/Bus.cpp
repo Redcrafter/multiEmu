@@ -1,7 +1,7 @@
 #include "Bus.h"
 #include "../Input/StandardController.h"
 
-Bus::Bus(std::shared_ptr<Cartridge>& cartridge) : cartridge(cartridge), cpu(mos6502(this)), apu(RP2A03(this)) {
+Bus::Bus(std::shared_ptr<Mapper>& cartridge) : cartridge(cartridge), cpu(mos6502(this)), apu(RP2A03(this)) {
 	ppu.cartridge = cartridge;
 
 	for(unsigned char& i : CpuRam) {
@@ -9,7 +9,7 @@ Bus::Bus(std::shared_ptr<Cartridge>& cartridge) : cartridge(cartridge), cpu(mos6
 	}
 }
 
-void Bus::InsertCartridge(std::shared_ptr<Cartridge>& cartridge) {
+void Bus::InsertCartridge(std::shared_ptr<Mapper>& cartridge) {
 	this->cartridge = cartridge;
 	ppu.cartridge = cartridge;
 }
@@ -26,15 +26,16 @@ void Bus::Reset() {
 
 	dmaTransfer = false;
 	dmaDummy = true;
+
+	irqDelay = 0;
 }
-static int irqDelay = 0;
-static int last4017 = 0;
+// TODO: static int last4017 = 0; why is this even here?
 
 void Bus::Clock() {
 	ppu.Clock();
 
 	if(systemClockCounter % 3 == 0) {
-		last4017++;
+		// last4017++;
 		apu.Clock();
 
 		if(dmaTransfer) {
@@ -60,7 +61,9 @@ void Bus::Clock() {
 				CpuStall--;
 			}
 			cpu.Clock();
-			cpu.IRQ = irqDelay | cartridge->GetIrq();
+			cartridge->CpuClock();
+			
+			cpu.IRQ = irqDelay || cartridge->Irq;
 			irqDelay = apu.GetIrq();
 		}
 	}
@@ -105,7 +108,9 @@ void Bus::CpuWrite(uint16_t addr, uint8_t data) {
 			controller2->CpuWrite(addr, data);
 		}
 	} else if(addr == 0x4017) {
-		last4017 = 0;
+		// last4017 = 0;
+		apu.CpuWrite(addr, data);
+	} else {
 		apu.CpuWrite(addr, data);
 	}
 }
@@ -147,7 +152,7 @@ void Bus::SaveState(saver& saver) {
 
 	cartridge->SaveState(saver);
 
-	saver.Write(reinterpret_cast<char*>(&CpuRam), sizeof(CpuRam));
+	saver.Write(CpuRam, sizeof(CpuRam));
 	saver << dmaPage;
 	saver << dmaAddr;
 	saver << dmaData;
@@ -165,7 +170,7 @@ void Bus::LoadState(saver& saver) {
 
 	cartridge->LoadState(saver);
 	
-	saver.Read(reinterpret_cast<char*>(&CpuRam), sizeof(CpuRam));
+	saver.Read(CpuRam, sizeof(CpuRam));
 	saver >> dmaPage;
 	saver >> dmaAddr;
 	saver >> dmaData;

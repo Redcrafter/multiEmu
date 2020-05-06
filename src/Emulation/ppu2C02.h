@@ -8,8 +8,8 @@ class PatternTables;
 class Bus;
 
 struct Sprite {
-	uint8_t y;
-	uint8_t id;
+	uint8_t y = 0;
+	uint8_t id = 0;
 
 	union {
 		struct {
@@ -20,31 +20,31 @@ struct Sprite {
 			bool FlipVertical : 1;
 		};
 
-		uint8_t reg;
+		uint8_t reg = 0;
 	} Attributes;
 
-	uint8_t x;
+	uint8_t x = 0;
 };
 
 struct PpuState {
 	bool oddFrame = false;
 	int last2002Read = 0;
 
-	uint8_t writeState;
-	uint8_t readBuffer;
+	uint8_t writeState = 0;
+	uint8_t readBuffer = 0;
 	// Color palettes
 	uint8_t palettes[32]{};
 	// Nametables
-	uint8_t vram[2 * 1024]{};
+	uint8_t vram[0x1000]{};
 	// For cartridges without ChrRom
 	uint8_t chrRAM[8 * 1024]{};
 
-	Sprite oam[64], oam2[8];
-	uint8_t spriteCount;
-	uint8_t spriteShifterLo[8], spriteShifterHi[8];
-	bool spriteZeroPossible, spriteZeroBeingRendered;
+	Sprite oam[64]{}, oam2[8]{};
+	uint8_t spriteCount = 0;
+	uint8_t spriteShifterLo[8]{}, spriteShifterHi[8]{};
+	bool spriteZeroPossible = false, spriteZeroBeingRendered = false;
 
-	int scanlineX = 0, scanlineY = 0;
+	int scanlineX = 0, scanlineY = 241;
 
 	union {
 		struct {
@@ -58,7 +58,7 @@ struct PpuState {
 			bool emphasizeBlue : 1;
 		};
 
-		uint8_t reg;
+		uint8_t reg = 0;
 	} Mask;
 
 	union {
@@ -69,13 +69,13 @@ struct PpuState {
 			uint8_t VerticalBlank : 1;
 		};
 
-		uint8_t reg;
+		uint8_t reg = 0xA0;
 	} Status;
 
-	uint8_t fineX;
+	uint8_t fineX = 0;
 
-	uint8_t bgNextTileId, bgNextTileAttrib, bgNextTileLsb, bgNextTileMsb;
-	uint16_t bgShifterPatternLo, bgShifterPatternHi, bgShifterAttribLo, bgShifterAttribHi;
+	uint8_t bgNextTileId = 0, bgNextTileAttrib = 0, bgNextTileLsb = 0, bgNextTileMsb = 0;
+	uint16_t bgShifterPatternLo = 0, bgShifterPatternHi = 0, bgShifterAttribLo = 0, bgShifterAttribHi = 0;
 
 	union {
 		struct {
@@ -87,7 +87,7 @@ struct PpuState {
 			uint16_t unused : 1;
 		};
 
-		uint16_t reg;
+		uint16_t reg = 0;
 	} vramAddr, tramAddr;
 };
 
@@ -95,7 +95,7 @@ class ppu2C02 : PpuState {
 	friend class MemoryEditor;
 public:
 	bool frameComplete = false;
-	int nmi;
+	int nmi = 0;
 	uint8_t oamAddr = 0;
 
 	union {
@@ -110,12 +110,12 @@ public:
 			uint8_t enableNMI : 1;
 		};
 
-		uint8_t reg;
+		uint8_t reg = 0;
 	} Control;
 
 public:
 	RenderImage* texture;
-	std::shared_ptr<Cartridge> cartridge;
+	std::shared_ptr<Mapper> cartridge;
 	uint8_t* pOAM = reinterpret_cast<uint8_t*>(oam);
 
 	ppu2C02();
@@ -137,4 +137,5 @@ public:
 	Color GetPaletteColor(uint8_t palette, uint8_t pixel) const;
 private:
 	void LoadBackgroundShifters();
+	uint8_t& getRef(uint16_t addr);	
 };

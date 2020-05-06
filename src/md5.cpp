@@ -66,7 +66,7 @@ md5::md5(const char* data, uint64_t length) {
 
 md5::md5(std::istream& stream) {
 	if(!stream.good()) {
-		throw new std::runtime_error("Bad stream");
+		throw std::runtime_error("Bad stream");
 	}
 	
 	uint8_t message[64];
@@ -105,9 +105,9 @@ md5::md5(std::istream& stream) {
 
 std::string md5::ToString() const {
 	const char hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
-	char* str = new char[33];
+	char str[33];
 
-	auto test = [=](uint32_t val, int pos) {
+	const auto toHex = [&](uint32_t val, int pos) {
 		for(int i = 0; i < 4; i++) {
 			str[pos + 0] = hexChars[(val >> 4) & 0xF];
 			str[pos + 1] = hexChars[val & 0xF];
@@ -117,10 +117,10 @@ std::string md5::ToString() const {
 		}
 	};
 
-	test(A, 0);
-	test(B, 8);
-	test(C, 16);
-	test(D, 24);
+	toHex(A, 0);
+	toHex(B, 8);
+	toHex(C, 16);
+	toHex(D, 24);
 	str[32] = '\0';
 
 	return str;

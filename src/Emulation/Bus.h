@@ -10,19 +10,21 @@
 #include "mos6502.h"
 
 class Bus {
+private:
+	bool irqDelay = false;
 public:
 	uint64_t systemClockCounter = 0;
 	int CpuStall = 0;
 
-	std::shared_ptr<Cartridge> cartridge;
+	std::shared_ptr<Mapper> cartridge;
 	mos6502 cpu;
 	ppu2C02 ppu;
 	RP2A03 apu;
 	std::shared_ptr<Controller> controller1, controller2;
 	
-	Bus(std::shared_ptr<Cartridge>& cartridge);
+	Bus(std::shared_ptr<Mapper>& cartridge);
 
-	void InsertCartridge(std::shared_ptr<Cartridge>& cartridge);
+	void InsertCartridge(std::shared_ptr<Mapper>& cartridge);
 	void Reset();
 	void Clock();
 

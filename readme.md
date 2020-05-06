@@ -3,10 +3,11 @@ A cycle accurate Nes emulator written in C++.
 Works for around 75% of games and around 17% of Games have missing mappers.
 
 ## Dependencies
-- OpenGL
 - GLEW
 - glfw3
-- glm
+- nlohmann-json
+- rtaudio
+- imgui
 
 # Compilation
 ## Windows
@@ -47,6 +48,7 @@ make
 Open file dialog currently doesn't work because i don't know how to use cocoa
 ```sh
 brew install glew glfw
+git submodule update --init
 
 mkdir build
 cd build

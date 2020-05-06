@@ -33,6 +33,52 @@ void Pulse::Clock() {
 	}
 }
 
+void vrc6Pulse::Clock(uint8_t freqShift) {
+	if(!enabled) {
+		return;
+	}
+	if(timer == 0) {
+		timer = timerPeriod >> freqShift;
+
+		if(dutyValue == 0) {
+			dutyValue = 15;
+		} else {
+			dutyValue--;
+		}
+	} else {
+		timer--;
+	}
+}
+
+uint8_t vrc6Pulse::Output() {
+	return enabled && (mode || dutyValue <= dutyCycle) ? Volume : 0;
+}
+
+void vrc6Sawtooth::Clock(uint8_t freqShift) {
+	if(!enabled) {
+		return;
+	}
+	if(timer == 0) {
+		timer = timerPeriod >> freqShift;
+
+		if(step != 0 && step % 2 == 0) {
+			accumulator += accumRate;
+		}
+
+		step++;
+		if(step == 14) {
+			step = 0;
+			accumulator = 0;
+		}
+	} else {
+		timer--;
+	}
+}
+
+uint8_t vrc6Sawtooth::Output() {
+	return enabled ? accumulator >> 3 : 0;
+}
+
 void Triangle::Clock() {
 	if(timerPeriod < 2) {
 		return; // High pass filter cheat
@@ -237,8 +283,6 @@ void DMC::FillBuffer(Bus* bus) {
 				irq = irqEnable;
 			}
 		}
-
-		// printf("Current length: %i\n", currentLength);
 	}
 }
 
@@ -282,7 +326,8 @@ void RP2A03::Clock() {
 		}
 	}
 
-	GenerateSample();
+	if(frameCounter % 20 == 0)
+		GenerateSample();
 
 	if(frameCounter % 2 == 0) {
 		pulse1.Clock();
@@ -291,6 +336,11 @@ void RP2A03::Clock() {
 		dmc.Clock(bus);
 	}
 	triangle.Clock();
+	if(vrc6 && !vrc6Halt) {
+		vrc6Pulse1.Clock(vrc6FreqShift);
+		vrc6Pulse2.Clock(vrc6FreqShift);
+		vrc6Saw.Clock(vrc6FreqShift);
+	}
 
 	frameCounter++;
 	if(frameCounterMode) {
@@ -326,37 +376,37 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 			#pragma region Pulse
 		case 0x4000:
 			pulse1.WriteControl(data);
-			break;
+			return;
 		case 0x4001:
 			pulse1.WriteSweep(data);
-			break;
+			return;
 		case 0x4002:
 			pulse1.WriteTimerLow(data);
-			break;
+			return;
 		case 0x4003:
 			pulse1.WriteTimerHigh(data);
-			break;
+			return;
 		case 0x4004:
 			pulse2.WriteControl(data);
-			break;
+			return;
 		case 0x4005:
 			pulse2.WriteSweep(data);
-			break;
+			return;
 		case 0x4006:
 			pulse2.WriteTimerLow(data);
-			break;
+			return;
 		case 0x4007:
 			pulse2.WriteTimerHigh(data);
-			break;
+			return;
 			#pragma endregion
 			#pragma region Triangle
 		case 0x4008:
 			triangle.lengthCounterEnabled = ((data >> 7) & 1);
 			triangle.linearCounterPeriod = data & 0x7F;
-			break;
+			return;
 		case 0x400A:
 			triangle.timerPeriod = (triangle.timerPeriod & 0xFF00) | data;
-			break;
+			return;
 		case 0x400B:
 			if(triangle.enabled)
 				triangle.lengthCounter = lengthTable[data >> 3];
@@ -364,7 +414,7 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 			triangle.timerPeriod = (triangle.timerPeriod & 0x00FF) | ((data & 7) << 8);
 			triangle.timer = triangle.timerPeriod;
 			triangle.linearCounterReload = true;
-			break;
+			return;
 			#pragma endregion
 			#pragma region noise
 		case 0x400C:
@@ -375,17 +425,17 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 			noise.envelopePeriod = data & 0xF;
 			noise.constantVolume = data & 0xF;
 			noise.envelopeStart = true;
-			break;
+			return;
 		case 0x400E:
 			noise.mode = data & 0x80;
 			noise.timerPeriod = noiseTable[data & 0xF];
-			break;
+			return;
 		case 0x400F:
 			if(noise.enabled)
 				noise.lengthCounter = lengthTable[data >> 3];
 
 			noise.envelopeStart = true;
-			break;
+			return;
 			#pragma endregion
 		case 0x4010:
 			dmc.irqEnable = data & 0x80;
@@ -395,18 +445,18 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 			if(!dmc.irqEnable) {
 				dmc.irq = false;
 			}
-			break;
+			return;
 		case 0x4011:
 			dmc.value = data & 0x7F;
-			break;
+			return;
 		case 0x4012:
 			dmc.sampleAddress = 0xC000 | (data << 6);
-			break;
+			return;
 		case 0x4013:
 			dmc.sampleLength = (data << 4) | 1;
 
 			// dmc.Reload();
-			break;
+			return;
 		case 0x4015: {
 			pulse1.enabled = data & 0x1;
 			pulse2.enabled = data & 0x2;
@@ -437,7 +487,7 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 			}
 
 			dmc.irq = false;
-			break;
+			return;
 		}
 		case 0x4017:
 			last4017Write = data;
@@ -457,7 +507,64 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 			if(frameCounterMode) {
 				ClockLength();
 			}
-			break;
+			return;
+	}
+
+	if(vrc6) {
+		switch(addr) {
+			case 0x9000:
+				vrc6Pulse1.Volume = data & 0xF;
+				vrc6Pulse1.dutyCycle = (data >> 4) & 7;
+				vrc6Pulse1.mode = data >> 7;
+				return;
+			case 0x9001:
+				vrc6Pulse1.timerPeriod = (vrc6Pulse1.timerPeriod & 0xFF00) | data;
+				return;
+			case 0x9002:
+				vrc6Pulse1.timerPeriod = (vrc6Pulse1.timerPeriod & 0xFF) | ((data & 0xF) << 8);
+				vrc6Pulse1.enabled = data >> 7;
+				if(!vrc6Pulse1.enabled) {
+					vrc6Pulse1.dutyValue = 15;
+				}
+				return;
+			case 0xA000:
+				vrc6Pulse2.Volume = data & 0xF;
+				vrc6Pulse2.dutyCycle = (data >> 4) & 7;
+				vrc6Pulse2.mode = data >> 7;
+				return;
+			case 0xA001:
+				vrc6Pulse2.timerPeriod = (vrc6Pulse2.timerPeriod & 0xFF00) | data;
+				return;
+			case 0xA002:
+				vrc6Pulse2.timerPeriod = (vrc6Pulse2.timerPeriod & 0xFF) | ((data & 0xF) << 8);
+				vrc6Pulse2.enabled = data >> 7;
+				if(!vrc6Pulse2.enabled) {
+					vrc6Pulse2.dutyValue = 15;
+				}
+				return;
+			case 0xB000:
+				vrc6Saw.accumRate = data & 0x3F;
+				return;
+			case 0xB001:
+				vrc6Saw.timerPeriod = (vrc6Saw.timerPeriod & 0xFF00) | data;
+				return;
+			case 0xB002:
+				vrc6Saw.timerPeriod = (vrc6Saw.timerPeriod & 0xFF) | ((data & 0xF) << 8);
+				vrc6Saw.enabled = data >> 7;
+				if(!vrc6Saw.enabled) {
+					vrc6Saw.accumulator = 0;
+				}
+				return;
+			case 0x9003:
+				vrc6Halt = data & 1;
+				if((data & 2) != 0) {
+					vrc6FreqShift = 4;
+				}
+				if((data & 4) != 0) {
+					vrc6FreqShift = 8;
+				}
+				return;
+		}
 	}
 }
 
@@ -540,7 +647,11 @@ float RP2A03::GenerateSample() {
 
 	buf.dmc = dmc.value;
 
-	const auto val = pulseTable[pulse1.Output() + pulse2.Output()] + tndTable[tnd + dmc.value];
+	float val = pulseTable[pulse1.Output() + pulse2.Output()] + tndTable[tnd + dmc.value];
+	
+	if(vrc6) {
+		val += (vrc6Pulse1.Output() + vrc6Pulse2.Output() + vrc6Saw.Output()) / 100.0;
+	}
 
 	buf.sample = val;
 	bufferPos++;

@@ -1,8 +1,7 @@
 #include "StandardController.h"
 #include "Input.h"
 
-StandardController::StandardController(int number): number(number), ControllerLatch(0), ShiftStrobe(false) {
-}
+StandardController::StandardController(int number): number(number) { }
 
 void StandardController::CpuWrite(uint16_t addr, uint8_t data) {
 	if(ShiftStrobe) {

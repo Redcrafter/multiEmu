@@ -1,32 +1,37 @@
 #include "Mapper003.h"
 
-int Mapper003::cpuMapRead(uint16_t addr, uint32_t& mapped) {
+Mapper003::Mapper003(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
+	if(this->prg.size() == 0x4000) {
+		prgMask = 0x3FFF;
+	} else if(this->prg.size() == 0x8000) {
+		prgMask = 0x7FFF;
+	} else {
+		throw std::logic_error("Invalid prg size");
+	}
+}
+
+int Mapper003::cpuRead(uint16_t addr, uint8_t& data) {
 	if(addr >= 0x8000) {
-		mapped = addr & (prgBanks > 1 ? 0x7FFF : 0x3FFF);
+		data = prg[addr & prgMask];
 		return true;
 	}
 	
 	return false;
 }
 
-bool Mapper003::cpuMapWrite(uint16_t addr, uint8_t data) {
+bool Mapper003::cpuWrite(uint16_t addr, uint8_t data) {
 	if(addr >= 0x8000) {
-		selectedBank = data & 3;
+		selectedBank = data;
 	}
 
 	return false;
 }
 
-bool Mapper003::ppuMapRead(uint16_t addr, uint32_t& mapped, bool readOnly) {
+bool Mapper003::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 	if(addr < 0x2000) {
-		mapped = (addr & 0x1FFF) + (selectedBank * 0x2000);
-		
+		data = chr[((addr & 0x1FFF) | (selectedBank * 0x2000)) & chrMask];
 		return true;
 	}
-	return false;
-}
-
-bool Mapper003::ppuMapWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 

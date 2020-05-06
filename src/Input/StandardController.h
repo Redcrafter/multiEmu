@@ -10,6 +10,6 @@ public:
 private:
 	int number;
 	
-	uint8_t ControllerLatch;
-	bool ShiftStrobe;
+	uint8_t ControllerLatch = 0;
+	bool ShiftStrobe = false;
 };

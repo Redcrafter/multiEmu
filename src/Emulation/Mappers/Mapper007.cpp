@@ -1,17 +1,21 @@
 #include "Mapper007.h"
 #include "../Cartridge.h"
 
-Mapper007::Mapper007(uint8_t prgBanks, uint8_t chrBanks) : Mapper(prgBanks, chrBanks) {
-	prgBank = 0;
+Mapper007::Mapper007(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr): Mapper(prg, chr) {
+	if(chr.size() > 0x2000) {
+		throw std::invalid_argument("Invalid chr size");
+	}
 }
 
-int Mapper007::cpuMapRead(uint16_t addr, uint32_t& mapped) {
-	mapped = (addr & 0x7FFF) | (prgBank * 0x8000);
-
-	return addr >= 0x8000;
+int Mapper007::cpuRead(uint16_t addr, uint8_t& data) {
+	if(addr >= 0x8000) {
+		data = prg[((addr & 0x7FFF) | (prgBank * 0x8000)) & prgMask];
+		return true;
+	}
+	return false;
 }
 
-bool Mapper007::cpuMapWrite(uint16_t addr, uint8_t data) {
+bool Mapper007::cpuWrite(uint16_t addr, uint8_t data) {
 	if(addr < 0x8000) {
 		return false;
 	}
@@ -27,15 +31,11 @@ bool Mapper007::cpuMapWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper007::ppuMapRead(uint16_t addr, uint32_t& mapped, bool readOnly) {
-	if(addr < 0x2000) {
-		mapped = addr;
+bool Mapper007::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
+	if(addr < 0x2000 && !chr.empty()) {
+		data = chr[addr];
 		return true;
 	}
-	return false;
-}
-
-bool Mapper007::ppuMapWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 

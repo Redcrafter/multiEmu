@@ -4,7 +4,7 @@
 #include <string>
 #include <fstream>
 
-// #define printDebug
+// #define printDebug 1
 
 class Bus;
 
@@ -116,7 +116,7 @@ struct Instruction {
 	AddressingModes addrMode;
 };
 
-enum class State {
+enum class State: uint8_t {
 	FetchOpcode = 0,
 	FetchOperator,
 	WeirdRead,
@@ -136,7 +136,11 @@ enum class State {
 	StackShit5
 };
 
-struct mos6502state {
+class mos6502 {
+	friend class CpuStateWindow;
+public:
+	bool IRQ = false;
+private:
 	bool NMI = false;
 
 	uint8_t A = 0;
@@ -166,14 +170,12 @@ struct mos6502state {
 	uint16_t addr_abs;
 
 	Instruction instruction;
-};
 
-class mos6502 : mos6502state {
-	friend class CpuStateWindow;
-public:
-	bool IRQ = false;
-private:
 	Bus* bus;
+
+#ifdef printDebug
+	std::ofstream file;
+#endif
 public:
 	mos6502(Bus* bus);
 	~mos6502();
@@ -188,10 +190,6 @@ public:
 private:
 	void PushStack(uint8_t val);
 	uint8_t PopStack();
-
-#ifdef printDebug
-	std::ofstream file;
-#endif
 
 	void ADC(uint8_t val);
 	void SBC(uint8_t val);

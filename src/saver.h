@@ -14,9 +14,22 @@ public:
 	~saver();
 
 	void Save(std::string path);
-	
-	void Write(const char* data, int size);
-	void Read(char* data, int size);
+
+	template <typename T>
+	void Write(T* data, size_t size) {
+		char* ptr = (char*)data;
+		for(size_t i = 0; i < size * sizeof(T); i++) {
+			this->data.push_back(ptr[i]);
+		}
+	}
+	template <typename T>
+	void Read(T* data, size_t size) {
+		char* ptr = (char*)data;
+		for(int i = 0; i < size * sizeof(T); ++i) {
+			ptr[i] = this->data[readPos];
+			readPos++;
+		}
+	}
 
 	void operator <<(bool val);
 	void operator <<(uint8_t val);

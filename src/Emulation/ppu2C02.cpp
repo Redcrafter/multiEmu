@@ -79,26 +79,7 @@ static uint8_t FlipByte(uint8_t b) {
 	return b;
 }
 
-ppu2C02::ppu2C02() {
-	Status.reg = 0xA0;
-
-	nmi = 0;
-
-	spriteCount = 0;
-
-	vramAddr.reg = 0;
-	tramAddr.reg = 0;
-
-	bgNextTileId = 0;
-	bgNextTileAttrib = 0;
-	bgNextTileLsb = 0;
-	bgNextTileMsb = 0;
-
-	bgShifterPatternLo = 0;
-	bgShifterPatternHi = 0;
-	bgShifterAttribLo = 0;
-	bgShifterAttribHi = 0;
-}
+ppu2C02::ppu2C02() { }
 
 void ppu2C02::Reset() {
 	Control.reg = 0;
@@ -449,7 +430,7 @@ void ppu2C02::SaveState(saver& saver) {
 	saver << nmi;
 	saver << oamAddr;
 	saver << Control.reg;
-	
+
 	saver.Write(reinterpret_cast<char*>(this), sizeof(PpuState));
 }
 
@@ -478,17 +459,17 @@ uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {
 				}
 			}
 			break;
-		case 0x2004:
-			res = pOAM[oamAddr];
-			break;
+		case 0x2004: return pOAM[oamAddr];
 		case 0x2007:
 			res = readBuffer;
 			if(!readOnly) {
 				readBuffer = ppuRead(vramAddr.reg);
-
+				
 				if(vramAddr.reg >= 0x3F00) {
-					res = readBuffer;                            // palette
-					readBuffer = ppuRead(vramAddr.reg - 0x1000); // Read buffer is mirrored into vram
+					res = readBuffer; // palette
+					// Read buffer is mirrored into vram
+					// using getRef to not trigger cartridge
+					readBuffer = getRef(vramAddr.reg - 0x1000);
 				}
 
 				vramAddr.reg += Control.vramIncrement ? 32 : 1;
@@ -547,7 +528,7 @@ void ppu2C02::cpuWrite(uint16_t addr, uint8_t data) {
 
 			vramAddr.reg += Control.vramIncrement ? 32 : 1;
 			break;
-			// case 0x4014: // Handled by bus
+		// case 0x4014: // Handled by bus
 	}
 }
 
@@ -555,53 +536,10 @@ uint8_t ppu2C02::ppuRead(uint16_t addr, bool readOnly) {
 	uint8_t data = 0;
 
 	addr &= 0x3FFF;
-
 	if(cartridge->ppuRead(addr, data, readOnly)) {
 		// Patten tables: 0x000 - 0x1FFF
-	} else if(addr <= 0x1FFF) {
-		data = chrRAM[addr]; // in case cartridge doesn't have rom
-	} else if(addr <= 0x3EFF) {
-		// Nametables 0x2000 - 0x3EFF
-		switch(cartridge->GetMirror()) {
-			case MirrorMode::Horizontal:
-				if(addr < 0x2800) {
-					addr &= 0x3ff;
-				} else {
-					addr = (addr & 0x3ff) + 0x400;
-				}
-				break;
-			case MirrorMode::Vertical:
-				addr &= 0x7ff;
-				break;
-			case MirrorMode::OnescreenLo:
-				addr &= 0x3ff;
-				break;
-			case MirrorMode::OnescreenHi:
-				addr &= 0x3ff + 0x400;
-				break;
-		}
-
-		data = vram[addr];
-	} else if(addr <= 0x3FFF) {
-		// 0x3F00 - 0x3FFF
-		addr &= 0x001F;
-
-		switch(addr) {
-			case 0x10:
-				addr = 0x0000;
-				break;
-			case 0x14:
-				addr = 0x0004;
-				break;
-			case 0x18:
-				addr = 0x0008;
-				break;
-			case 0x1C:
-				addr = 0x000C;
-				break;
-		}
-
-		data = palettes[addr];
+	} else {
+		return getRef(addr);
 	}
 
 	return data;
@@ -611,11 +549,26 @@ void ppu2C02::ppuWrite(uint16_t addr, uint8_t data) {
 	addr &= 0x3FFF;
 	if(cartridge->ppuWrite(addr, data)) {
 		// 0x000 - 0x1FFF
-	} else if(addr <= 0x1FFF) {
-		chrRAM[addr] = data; // in case cartridge doesn't have rom
-	} else if(addr >= 0x2000 && addr <= 0x3EFF) {
+	} else {
+		getRef(addr) = data;
+	}
+}
+
+void ppu2C02::LoadBackgroundShifters() {
+	bgShifterPatternLo = (bgShifterPatternLo & 0xFF00) | bgNextTileLsb;
+	bgShifterPatternHi = (bgShifterPatternHi & 0xFF00) | bgNextTileMsb;
+
+	bgShifterAttribLo = (bgShifterAttribLo & 0xFF00) | ((bgNextTileAttrib & 0b01) ? 0xFF : 0x00);
+	bgShifterAttribHi = (bgShifterAttribHi & 0xFF00) | ((bgNextTileAttrib & 0b10) ? 0xFF : 0x00);
+}
+
+uint8_t& ppu2C02::getRef(uint16_t addr) {
+	if(addr <= 0x1FFF) {
+		return chrRAM[addr]; // in case cartridge doesn't have rom
+	}
+	if(addr <= 0x3EFF) {
 		// 0x2000 - 0x3EFF
-		switch(cartridge->GetMirror()) {
+		switch(cartridge->mirror) {
 			case MirrorMode::Horizontal:
 				if(addr < 0x2800) {
 					addr &= 0x3ff;
@@ -632,11 +585,14 @@ void ppu2C02::ppuWrite(uint16_t addr, uint8_t data) {
 			case MirrorMode::OnescreenHi:
 				addr &= 0x3ff + 0x400;
 				break;
-			default: ;
+			case MirrorMode::FourScreen:
+				addr &= 0xFFF;
+				break;
 		}
 
-		vram[addr] = data;
-	} else if(addr <= 0x3FFF) {
+		return vram[addr];
+	}
+	if(addr <= 0x3FFF) {
 		// 0x3F00 - 0x3FFF
 		addr &= 0x001F;
 		switch(addr) {
@@ -653,16 +609,10 @@ void ppu2C02::ppuWrite(uint16_t addr, uint8_t data) {
 				addr = 0x000C;
 				break;
 		}
-		palettes[addr] = data;
+		return palettes[addr];
 	}
-}
 
-void ppu2C02::LoadBackgroundShifters() {
-	bgShifterPatternLo = (bgShifterPatternLo & 0xFF00) | bgNextTileLsb;
-	bgShifterPatternHi = (bgShifterPatternHi & 0xFF00) | bgNextTileMsb;
-
-	bgShifterAttribLo = (bgShifterAttribLo & 0xFF00) | ((bgNextTileAttrib & 0b01) ? 0xFF : 0x00);
-	bgShifterAttribHi = (bgShifterAttribHi & 0xFF00) | ((bgNextTileAttrib & 0b10) ? 0xFF : 0x00);
+	throw std::logic_error("unreachable");
 }
 
 Color ppu2C02::GetPaletteColor(uint8_t palette, uint8_t pixel) const {

@@ -171,7 +171,7 @@ bool Input::TryGetAction(const int key, const int mods, Action& action) {
 
 uint8_t Input::GetController(int id) {
 	assert(id == 0 || id == 1);
-	const int offset = id * 10;
+	const int offset = id * 8;
 	uint8_t val = 0;
 
 	for(int i = 0; i < 8; ++i) {

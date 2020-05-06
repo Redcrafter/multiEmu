@@ -15,5 +15,5 @@ public:
 	void Open() { open = true; };
 	void Close() { open = false; };
 
-	void DrawWindow(int available);
+	void DrawWindow();
 };

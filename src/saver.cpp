@@ -29,41 +29,28 @@ void saver::Save(std::string path) {
 	stream.close();
 }
 
-void saver::Write(const char* data, int size) {
-	for(int i = 0; i < size; ++i) {
-		this->data.push_back(data[i]);
-	}
-}
-
-void saver::Read(char* data, int size) {
-	for(int i = 0; i < size; ++i) {
-		data[i] = this->data[readPos];
-		readPos++;
-	}
-}
-
 void saver::operator<<(bool val) {
-	Write(reinterpret_cast<char*>(&val), 1);
+	Write(&val, 1);
 }
 
 void saver::operator<<(uint8_t val) {
-	Write(reinterpret_cast<char*>(&val), 1);
+	Write(&val, 1);
 }
 
 void saver::operator<<(uint16_t val) {
-	Write(reinterpret_cast<char*>(&val), 2);
+	Write(&val, 2);
 }
 
 void saver::operator<<(int32_t val) {
-	Write(reinterpret_cast<char*>(&val), 4);
+	Write(&val, 4);
 }
 
 void saver::operator<<(uint32_t val) {
-	Write(reinterpret_cast<char*>(&val), 4);
+	Write(&val, 4);
 }
 
 void saver::operator<<(uint64_t val) {
-	Write(reinterpret_cast<char*>(&val), 8);
+	Write(&val, 8);
 }
 
 void saver::operator>>(bool& val) {

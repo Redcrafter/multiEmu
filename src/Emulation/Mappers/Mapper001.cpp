@@ -1,29 +1,29 @@
 #include "Mapper001.h"
 #include "../Cartridge.h"
 
-Mapper001::Mapper001(uint8_t prgBanks, uint8_t chrBanks) : Mapper(prgBanks, chrBanks) {
+Mapper001::Mapper001(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
 	prgBankOffset[0] = 0;
-	prgBankOffset[1] = (prgBanks - 1) * 0x4000;
+	prgBankOffset[1] = prg.size() - 0x4000;
 
 	chrBankOffset[0] = 0;
 	chrBankOffset[1] = 0x1000;
 }
 
-int Mapper001::cpuMapRead(uint16_t addr, uint32_t& mapped) {
+int Mapper001::cpuRead(uint16_t addr, uint8_t& data) {
 	lastWrite = false;
 	if(addr < 0x8000) {
 		if(ramEnable && addr >= 0x6000) {
-			mapped = prgRam[addr & 0x1FFF];
-			return 2;
+			data = prgRam[addr & 0x1FFF];
+			return true;
 		}
 		return false;
 	}
 
-	mapped = (addr & 0x3FFF) | prgBankOffset[(addr >> 14) & 1];
+	data = prg[((addr & 0x3FFF) | prgBankOffset[(addr >> 14) & 1]) & prgMask];
 	return true;
 }
 
-bool Mapper001::cpuMapWrite(uint16_t addr, uint8_t data) {
+bool Mapper001::cpuWrite(uint16_t addr, uint8_t data) {
 	if(addr < 0x8000) {
 		if(addr >= 0x6000) {
 			prgRam[addr & 0x1FFF] = data;
@@ -92,7 +92,7 @@ bool Mapper001::cpuMapWrite(uint16_t addr, uint8_t data) {
 				break;
 			case 3:
 				prgBankOffset[0] = prgBank * 0x4000;
-				prgBankOffset[1] = (prgBanks - 1) * 0x4000;
+				prgBankOffset[1] = prg.size() - 0x4000;
 				break;
 		}
 
@@ -110,48 +110,46 @@ bool Mapper001::cpuMapWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper001::ppuMapRead(uint16_t addr, uint32_t& mapped, bool readOnly) {
-	if(addr < 0x2000) {
-		mapped = (addr & 0x0FFF) + chrBankOffset[(addr >> 12) & 1];
+bool Mapper001::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
+	if(addr < 0x2000 && !chr.empty()) {
+		data = chr[((addr & 0x0FFF) | chrBankOffset[addr >> 12 & 1]) & chrMask];
 		return true;
 	}
 	return false;
 }
 
-bool Mapper001::ppuMapWrite(uint16_t addr, uint8_t data) {
-	return false;
-}
-
 void Mapper001::SaveState(saver& saver) {
+	saver << lastWrite;
+	
 	saver << Control;
 	saver << shiftRegister;
+	
 	saver << chrBank0;
 	saver << chrBank1;
 	saver << prgBank;
 
-	saver << prgBankOffset[0];
-	saver << prgBankOffset[1];
+	saver.Write(prgBankOffset, 2);
+	saver.Write(chrBankOffset, 2);
 
-	saver << chrBankOffset[0];
-	saver << chrBankOffset[1];
+	saver << ramEnable;
 
-	saver.Write((char*)prgRam, sizeof(prgRam));
+	saver.Write(prgRam, sizeof(prgRam));
 }
 
 void Mapper001::LoadState(saver& saver) {
-	// uint8_t temp = 0;
-	// saver >> temp;
+	saver >> lastWrite;
+	
 	saver >> Control;
 	saver >> shiftRegister;
+	
 	saver >> chrBank0;
 	saver >> chrBank1;
 	saver >> prgBank;
 
-	saver >> prgBankOffset[0];
-	saver >> prgBankOffset[1];
+	saver.Read(prgBankOffset, 2);
+	saver.Read(chrBankOffset, 2);
 
-	saver >> chrBankOffset[0];
-	saver >> chrBankOffset[1];
+	saver >> ramEnable;
 
-	saver.Read((char*)prgRam, sizeof(prgRam));
+	saver.Read(prgRam, sizeof(prgRam));
 }

@@ -1,6 +1,91 @@
 #include "mos6502.h"
 #include "Bus.h"
 
+const char* names[77] = {
+	"NMI",
+	"IRQ",
+
+	"ORA",
+	"AND",
+	"EOR",
+	"ADC",
+	"SBC",
+	"CMP",
+	"CPX",
+	"CPY",
+	"DEC",
+	"DEX",
+	"DEY",
+	"INC",
+	"INX",
+	"INY",
+	"ASL",
+	"ROL",
+	"LSR",
+	"ROR",
+
+	"LDA",
+	"STA",
+	"LDX",
+	"STX",
+	"LDY",
+	"STY",
+	"TAX",
+	"TXA",
+	"TAY",
+	"TYA",
+	"TSX",
+	"TXS",
+	"PLA",
+	"PHA",
+	"PLP",
+	"PHP",
+
+	"BPL",
+	"BMI",
+	"BVC",
+	"BVS",
+	"BCC",
+	"BCS",
+	"BNE",
+	"BEQ",
+	"BRK",
+	"RTI",
+	"JSR",
+	"RTS",
+	"JMP",
+	"BIT",
+	"CLC",
+	"SEC",
+	"CLD",
+	"SED",
+	"CLI",
+	"SEI",
+	"CLV",
+	"NOP",
+
+	"KIL",
+
+	"SLO",
+	"RLA",
+	"SRE",
+	"RRA",
+	"SAX",
+	"DCP",
+	"ISC",
+	"ANC",
+	"ALR",
+	"ARR",
+	"XAA",
+	"LAX",
+	"AXS",
+	"AHX",
+	"SHY",
+	"SHX",
+	"TAS",
+	"LAS"
+};
+
 // address mode of jsr changed
 const Instruction lookup[] = {
 	{Instructions::BRK, IMP}, {Instructions::ORA, IZX}, {Instructions::KIL, IMM}, {Instructions::SLO, IZX}, {Instructions::NOP, ZP0}, {Instructions::ORA, ZP0}, {Instructions::ASL, ZP0}, {Instructions::SLO, ZP0}, {Instructions::PHP, IMP}, {Instructions::ORA, IMM}, {Instructions::ASL, IMP}, {Instructions::ANC, IMM}, {Instructions::NOP, ABS}, {Instructions::ORA, ABS}, {Instructions::ASL, ABS}, {Instructions::SLO, ABS},
@@ -96,11 +181,43 @@ void mos6502::Nmi() {
 }
 
 void mos6502::SaveState(saver& saver) const {
-	saver.Write(reinterpret_cast<const char*>(this), sizeof(mos6502state));
+	saver << IRQ;
+	saver << NMI;
+
+	saver << A;
+	saver << X;
+	saver << Y;
+	saver << SP;
+	saver << PC;
+
+	saver << Status.reg;
+	saver.Write(&state, 1);
+
+	saver << ptr;
+	saver << addr_abs;
+
+	saver.Write(&instruction.instruction, 1);
+	saver.Write(&instruction.addrMode, 1);
 }
 
 void mos6502::LoadState(saver& saver) {
-	saver.Read(reinterpret_cast<char*>(this), sizeof(mos6502state));
+	saver >> IRQ;
+	saver >> NMI;
+
+	saver >> A;
+	saver >> X;
+	saver >> Y;
+	saver >> SP;
+	saver >> PC;
+
+	saver >> Status.reg;
+	saver.Read(&state, 1);
+
+	saver >> ptr;
+	saver >> addr_abs;
+
+	saver.Read(&instruction.instruction, 1);
+	saver.Read(&instruction.addrMode, 1);
 }
 
 void mos6502::Clock() {
@@ -118,7 +235,7 @@ void mos6502::Clock() {
 					instrStr[i] = ' ';
 				}
 
-				printf(instrStr);
+				// printf(instrStr);
 				file << instrStr;
 			}
 			#endif
@@ -127,27 +244,27 @@ void mos6502::Clock() {
 				instruction.addrMode = IMP;
 
 				#ifdef printDebug
-				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, 0, instruction.name.c_str());
+				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, 0, names[(int)instruction.instruction]);
 				#endif
 			} else if(IRQ && !Status.I) {
 				instruction.instruction = Instructions::IRQ;
 				instruction.addrMode = IMP;
 
 				#ifdef printDebug
-				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, 0, instruction.name.c_str());
+				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, 0, names[(int)instruction.instruction]);
 				#endif
 			} else {
 				fetched = bus->CpuRead(PC);
 				instruction = lookup[fetched];
 
 				#ifdef printDebug
-				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, fetched, instruction.name.c_str());
+				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, fetched, names[(int)instruction.instruction]);
 				#endif
 
 				PC++;
 			}
 			#ifdef printDebug
-			sprintf_s((instrStr + 27), sizeof(instrStr) - 27, "A:%02X X:%02X Y:%02X P:%02X SP:%02X Cy:%i\n", A, X, Y, Status.reg, SP, cycles + 1);
+			sprintf_s((instrStr + 27), sizeof(instrStr) - 27, "A:%02X X:%02X Y:%02X P:%02X SP:%02X Cy:%i\n", A, X, Y, Status.reg, SP, bus->systemClockCounter + 1);
 			#endif
 			state = State::FetchOperator;
 			break;

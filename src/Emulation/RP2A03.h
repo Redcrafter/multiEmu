@@ -1,5 +1,4 @@
 #pragma once
-#include <cstdint>
 #include "../saver.h"
 
 class Bus;
@@ -69,6 +68,36 @@ struct Noise : Envelope {
 	void Clock();
 };
 
+struct vrc6Pulse {
+	bool enabled = false;
+	uint8_t Volume = 0;
+
+	uint8_t dutyCycle = 0;
+	uint8_t dutyValue = 15;
+
+	bool mode = false;
+
+	uint16_t timer = 0;
+	uint16_t timerPeriod = 0;
+
+	void Clock(uint8_t freqShift);
+	uint8_t Output();
+};
+
+struct vrc6Sawtooth {
+	bool enabled = false;
+
+	uint8_t step = 0;
+	uint8_t accumulator = 0;
+	uint8_t accumRate = 0;
+
+	uint16_t timer = 0;
+	uint16_t timerPeriod = 0;
+
+	void Clock(uint8_t freqShift);
+	uint8_t Output();
+};
+
 struct DMC {
 	bool enabled;
 	bool irq;
@@ -99,7 +128,7 @@ struct DMC {
 	void FillBuffer(Bus* bus);
 };
 
-static constexpr int bufferLength = 1024 * 1024; // 1 MiB
+static constexpr int bufferLength = 32 * 1024; // 32 KiB
 
 struct RP2A03state {
 	bool Irq = false;
@@ -113,14 +142,22 @@ struct RP2A03state {
 	Triangle triangle;
 	Noise noise;
 	DMC dmc;
+
+	bool vrc6 = false;
+	bool vrc6Halt = false;
+	uint8_t vrc6FreqShift = 0;
+	vrc6Pulse vrc6Pulse1;
+	vrc6Pulse vrc6Pulse2;
+	vrc6Sawtooth vrc6Saw;
 };
 
-class RP2A03 : RP2A03state {
+class RP2A03 : public RP2A03state {
 	friend class ApuWindow;
 private:
 	Bus* bus = nullptr;
 public:
 	int bufferPos = 0;
+	int lastBufferPos = 0;
 	struct {
 		float sample;
 		uint8_t noise, dmc;

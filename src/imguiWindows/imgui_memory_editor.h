@@ -146,7 +146,8 @@ private:
 	bool HighlightFn(size_t addr) const;
 	uint8_t ReadFn(size_t addr) const;
 	void WriteFn(size_t addr, uint8_t val);
-	
+
+	uint32_t GetDomainSize() const;
 protected:
 	// Memory Editor contents only
 	void DrawContents(size_t mem_size);
