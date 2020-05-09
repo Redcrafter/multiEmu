@@ -10,4 +10,5 @@
 #include "Mapper007.h"
 #include "Mapper011.h"
 #include "Mapper065.h"
+#include "Mapper079.h"
 #include "VRC6Mapper.h"

@@ -173,6 +173,7 @@ std::shared_ptr<Mapper> LoadCart(const std::string& path) {
 		// case 24: mapper = std::make_shared<VRC6Mapper>(prgRom, chrRom, false);
 		// case 26: mapper = std::make_shared<VRC6Mapper>(prgRom, chrRom, true);
 		case 65: mapper = std::make_shared<Mapper065>(prgRom, chrRom); break;
+		case 79: mapper = std::make_shared<Mapper079>(prgRom, chrRom); break;
 		default: throw std::logic_error("Mapper not implemented");
 	}
 	mapper->mirror = header.Flags6 & 1 ? MirrorMode::Vertical : MirrorMode::Horizontal;
