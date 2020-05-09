@@ -1,10 +1,9 @@
 #include <iostream>
 #include <deque>
+#include <array>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-
-#include <nlohmann/json.hpp>
 
 #include <imgui.h>
 #include <examples/imgui_impl_opengl3.h>
@@ -12,6 +11,7 @@
 
 #include "nativefiledialog/nfd.h"
 #include "fs.h"
+#include "json.h"
 
 #include "RenderImage.h"
 #include "tas.h"
@@ -54,13 +54,13 @@ bool settingsWindow = false;
 bool metricsWindow = false;
 
 struct Settings {
-	bool EnableVsync = false;
+	bool EnableVsync = true;
 	int windowScale = 2;
 	
 	std::deque<std::string> RecentFiles;
 
 	void Load() {
-		nlohmann::json j;
+		Json j;
 
 		if(fs::exists("./settings.json")) {
 			try {
@@ -69,9 +69,10 @@ struct Settings {
 
 				EnableVsync = j["enableVsync"];
 				windowScale = j["windowScale"];
-				j["recent"].get_to(RecentFiles);
+				std::vector<std::string> asdf = j["recent"];
+				RecentFiles = std::deque<std::string>(asdf.begin(), asdf.end());
 			} catch(std::exception& e) {
-				
+				logger.Log("Failed to load settings.json %s\n", e.what());
 			}
 		}
 		
@@ -79,7 +80,7 @@ struct Settings {
 	}
 
 	void Save() {
-		nlohmann::json j = {
+		Json j = {
 			{"enableVsync", EnableVsync},
 			{"windowScale", windowScale},
 			{"recent", RecentFiles},
@@ -103,6 +104,12 @@ struct Settings {
 		}
 
 		RecentFiles.push_front(path);
+
+		Save();
+	}
+	void ClearRecent() {
+		RecentFiles.clear();
+		Save();
 	}
 } settings;
 
@@ -389,12 +396,12 @@ static void drawSettings(bool& display) {
 	}
 	if(ImGui::BeginTabBar("tabBar")) {
 		if(ImGui::BeginTabItem("General")) {
-			bool old = settings.EnableVsync;
-			ImGui::Checkbox("Vsync", &settings.EnableVsync);
-			HelpMarker("Toggle Vsync.\nReduces cpu usage on fast cpu's but can cause stuttering");
-			if(settings.EnableVsync != old) {
+			
+			if(ImGui::Checkbox("Vsync", &settings.EnableVsync)) {
 				glfwSwapInterval(settings.EnableVsync);
+				settings.Save();
 			}
+			HelpMarker("Toggle Vsync.\nReduces cpu usage on fast cpu's but can cause stuttering");
 
 			int val = settings.windowScale - 1;
 			static const char* drawModeNames[] = { "x1", "x2", "x3", "x4" };
@@ -402,13 +409,16 @@ static void drawSettings(bool& display) {
 				settings.windowScale = val + 1;
 				auto s = CalcWindowSize();
 				glfwSetWindowSize(window, s.x, s.y);
+				settings.Save();
 			}
 			ImGui::EndTabItem();
 		}
 
 		if(ImGui::BeginTabItem("Inputs")) {
 			ImGui::BeginChild("inputs");
-			Input::ShowEditWindow();
+			if(Input::ShowEditWindow()) {
+				settings.Save();
+			}
 			ImGui::EndChild();
 
 			ImGui::EndTabItem();
@@ -491,7 +501,7 @@ static void drawGui() {
 
 				ImGui::Separator();
 				if(ImGui::MenuItem("Clear", nullptr, false, !settings.RecentFiles.empty())) {
-					settings.RecentFiles.clear();
+					settings.ClearRecent();
 				}
 
 				ImGui::EndMenu();
@@ -694,17 +704,19 @@ int main() {
 	#pragma region render loop
 	do {
 		#pragma region Timing
-		auto time = glfwGetTime();
-		auto dt = time - lastTime;
+		if(!settings.EnableVsync) {
+			auto time = glfwGetTime();
+			auto dt = time - lastTime;
 
-		if(dt >= 2 / 60.0) {
-			// dropped frame
-			lastTime = time;
-		} else if(dt >= 1 / 60.0) {
-			lastTime += 1 / 60.0;
-		} else {
-			glfwPollEvents();
-			continue;
+			if(dt >= 2 / 60.0) {
+				// dropped frame
+				lastTime = time;
+			} else if(dt >= 1 / 60.0) {
+				lastTime += 1 / 60.0;
+			} else {
+				glfwPollEvents();
+				continue;
+			}
 		}
 		#pragma endregion
 
@@ -733,8 +745,6 @@ int main() {
 		glfwPollEvents();
 	} while(glfwWindowShouldClose(window) == 0);
 	#pragma endregion
-
-	settings.Save();
 
 	Audio::Dispose();
 

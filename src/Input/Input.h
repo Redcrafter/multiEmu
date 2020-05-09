@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <map>
-#include <nlohmann/json.hpp>
+#include "json.h"
 
 enum class Action {
 	Controller1A,
@@ -45,16 +45,17 @@ union Key {
 
 class Input {
 private:
+	static bool changed;
 	static int keys[16];
 	static std::map<uint64_t, Action> keyMap;
 	static std::map<Action, uint64_t> revKeyMap;
 public:
 	static void OnKey(int key, int scancode, int action, int mods);
 
-	static void Load(nlohmann::json& j);
-	static void Save(nlohmann::json& j);
+	static void Load(Json& j);
+	static void Save(Json& j);
 
-	static void ShowEditWindow();
+	static bool ShowEditWindow();
 
 	static bool TryGetAction(Key val, Action& action);
 	static bool TryGetAction(int key, int mods, Action& action);

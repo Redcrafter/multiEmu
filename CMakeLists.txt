@@ -7,10 +7,6 @@ find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glfw3 REQUIRED)
 
-set(JSON_BuildTests OFF CACHE INTERNAL "")
-set(JSON_Install OFF CACHE INTERNAL "")
-add_subdirectory("./extern/json")
-
 if(WIN32)
     option(direct "DirectSound" ON)
     option(asio "ASIO" OFF)
@@ -92,4 +88,4 @@ add_executable(nes WIN32 ${Common_sources} ${imgui_sources}
                          "./extern/rtaudio/RtAudio.cpp")
 
 target_include_directories(nes PRIVATE "src" "extern/imgui" "extern/rtaudio" ${GLEW_INCLUDE_DIRS} glfw ${INCLUDES})
-target_link_libraries(nes PRIVATE ${GLEW_LIBRARIES} glfw nlohmann_json::nlohmann_json ${LIBS})
+target_link_libraries(nes PRIVATE ${GLEW_LIBRARIES} glfw ${LIBS})

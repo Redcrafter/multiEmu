@@ -1,10 +1,12 @@
 #include "Input.h"
 
 #include <cassert>
+#include <string>
 #include "../imgui/imgui.h"
 #include <GLFW/glfw3.h>
 
 int Input::keys[16]{0};
+bool Input::changed = false;
 std::map<uint64_t, Action> Input::keyMap;
 std::map<Action, uint64_t> Input::revKeyMap;
 
@@ -13,6 +15,33 @@ const char* ActionString[] = {
 	"Controller2 A", "Controller2 B", "Controller2 Start", "Controller2 Select", "Controller2 Up", "Controller2 Down", "Controller2 Left", "Controller2 Right",
 	"Speedup", "Step", "ResumeRun", "Reset", "SaveState", "LoadState", "SelectNextState", "SelectLastState"
 };
+std::map<std::string, Action> StringAction = {
+	{"Controller1 A", Action::Controller1A},
+	{"Controller1 B", Action::Controller1B},
+	{"Controller1 Start", Action::Controller1Start},
+	{"Controller1 Select", Action::Controller1Select},
+	{"Controller1 Up", Action::Controller1Up},
+	{"Controller1 Down", Action::Controller1Down},
+	{"Controller1 Left", Action::Controller1Left},
+	{"Controller1 Right", Action::Controller1Right},
+	{"Controller2 A", Action::Controller2A},
+	{"Controller2 B", Action::Controller2B},
+	{"Controller2 Start", Action::Controller2Start},
+	{"Controller2 Select", Action::Controller2Select},
+	{"Controller2 Up", Action::Controller2Up},
+	{"Controller2 Down", Action::Controller2Down},
+	{"Controller2 Left", Action::Controller2Left},
+	{"Controller2 Right", Action::Controller2Right},
+	{"Speedup", Action::Speedup},
+	{"Step", Action::Step},
+	{"ResumeRun", Action::ResumeRun},
+	{"Reset", Action::Reset},
+	{"SaveState", Action::SaveState},
+	{"LoadState", Action::LoadState},
+	{"SelectNextState", Action::SelectNextState},
+	{"SelectLastState", Action::SelectLastState}
+};
+
 const int modMask = (GLFW_MOD_SHIFT | GLFW_MOD_CONTROL | GLFW_MOD_ALT);
 static int selected = -1;
 
@@ -21,7 +50,10 @@ void Input::OnKey(int key, int scancode, int action, int mods) {
 		return;
 	}
 
+	// TODO: somehow get keys from other viewports
 	if(selected != -1) {
+		changed = true;
+
 		if(revKeyMap.count((Action)selected)) {
 			keyMap.erase(revKeyMap.at((Action)selected));
 		}
@@ -64,9 +96,11 @@ void Input::OnKey(int key, int scancode, int action, int mods) {
 	}
 }
 
-void Input::Load(nlohmann::json& j) {
+void Input::Load(Json& j) {
 	if(j.contains("keymap")) {
-		j["keymap"].get_to(keyMap);
+		for(const auto& item : *j["keymap"].asObject()) {
+			keyMap[item.second] = StringAction[item.first];
+		}
 	} else {
 		keyMap[GLFW_KEY_A] = Action::Controller1A;
 		keyMap[GLFW_KEY_B] = Action::Controller1B;
@@ -95,14 +129,19 @@ void Input::Load(nlohmann::json& j) {
 	}
 }
 
-void Input::Save(nlohmann::json& j) {
-	j["keymap"] = keyMap;
+void Input::Save(Json& j) {
+	std::map<std::string, uint64_t> map;
+
+	for(auto item : keyMap) {
+		map[ActionString[(int)item.second]] = item.first;
+	}
+
+	j["keymap"] = map;
 }
 
-void Input::ShowEditWindow() {
-
+bool Input::ShowEditWindow() {
 	for(int i = 0; i < 24; ++i) {
-		char* map;
+		// char* map;
 
 		ImGui::Text("%s: ", ActionString[i]);
 
@@ -115,30 +154,30 @@ void Input::ShowEditWindow() {
 			key.Reg = revKeyMap.at((Action)i);
 
 			if(key.Info.mods & GLFW_MOD_SHIFT) {
-				text += "shift + ";
+				text = "shift + ";
 			}
 			if(key.Info.mods & GLFW_MOD_CONTROL) {
-				text += "ctrl + ";
+				text = "ctrl + ";
 			}
 			if(key.Info.mods & GLFW_MOD_ALT) {
-				text += "alt + ";
+				text = "alt + ";
 			}
 
 			switch(key.Info.key) {
 				case GLFW_KEY_UP:
-					text = "up";
+					text += "up";
 					break;
 				case GLFW_KEY_DOWN:
-					text = "down";
+					text += "down";
 					break;
 				case GLFW_KEY_LEFT:
-					text = "left";
+					text += "left";
 					break;
 				case GLFW_KEY_RIGHT:
-					text = "right";
+					text += "right";
 					break;
 				case GLFW_KEY_ENTER:
-					text = "enter";
+					text += "enter";
 					break;
 				default:
 					text += glfwGetKeyName(key.Info.key, 0);
@@ -151,6 +190,10 @@ void Input::ShowEditWindow() {
 			selected = i;
 		}
 	}
+
+	const bool ret = changed;
+	changed = false;
+	return ret;
 }
 
 bool Input::TryGetAction(const Key val, Action& action) {

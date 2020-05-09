@@ -1,6 +1,3 @@
-[submodule "extern/json"]
-	path = extern/json
-	url = https://github.com/nlohmann/json.git
 [submodule "extern/rtaudio"]
 	path = extern/rtaudio
 	url = https://github.com/thestk/rtaudio.git
