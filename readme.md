@@ -1,6 +1,6 @@
 # Nes Emulator
 A cycle accurate Nes emulator written in C++.
-Works for around 75% of games and around 17% of Games have missing mappers.
+Works for around 84% of games and around 15% of Games have missing mappers.
 
 ## Dependencies
 - GLEW

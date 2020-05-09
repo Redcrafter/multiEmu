@@ -89,3 +89,9 @@ add_executable(nes WIN32 ${Common_sources} ${imgui_sources}
 
 target_include_directories(nes PRIVATE "src" "extern/imgui" "extern/rtaudio" ${GLEW_INCLUDE_DIRS} glfw ${INCLUDES})
 target_link_libraries(nes PRIVATE ${GLEW_LIBRARIES} glfw ${LIBS})
+
+add_custom_command(
+        TARGET nes POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                "${CMAKE_SOURCE_DIR}/NesCarts (2017-08-21).json"
+                "${CMAKE_CURRENT_BINARY_DIR}/NesCarts (2017-08-21).json")

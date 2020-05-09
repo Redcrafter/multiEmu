@@ -633,6 +633,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 #else
 int main() {
 #endif
+	LoadCardDb("./NesCarts (2017-08-21).json");
+
 	settings.Load();
 
 	Audio::Init();
