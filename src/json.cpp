@@ -36,7 +36,7 @@ struct JsonParser {
 	void accept(char c) {
 		if(currentChar != c) {
 			auto msg = "Unexpected symbol '"s + (char)currentChar + "' at (" + std::to_string(line) + "," + std::to_string(row) + ") expected '" + c + "'";
-			throw std::exception(msg.c_str());
+			throw std::runtime_error(msg.c_str());
 		}
 		accept();
 	}
@@ -56,7 +56,7 @@ struct JsonParser {
 			case '0': case '1': case '2': case '3': case '4':
 			case '5': case '6': case '7': case '8': case '9':
 				return parseNumber();
-			default: throw std::exception("Unexpected char");
+			default: throw std::runtime_error("Unexpected char");
 		}
 	}
 	std::shared_ptr<JsonObject> parseObject() {
@@ -69,7 +69,7 @@ struct JsonParser {
 			auto val = parse();
 
 			if(elements.count(key->value)) {
-				throw std::exception("Duplicate key");
+				throw std::runtime_error("Duplicate key");
 			} else {
 				elements.insert(std::make_pair(key->value, Json(val)));
 			}
@@ -114,7 +114,7 @@ struct JsonParser {
 					case 't': str += '\t'; break;
 					case 'b': str += '\b'; break;
 					case 'f': str += '\f'; break;
-					default: throw std::exception("Unknown escape character");
+					default: throw std::runtime_error("Unknown escape character");
 				}
 				acceptSingle();
 			} else if(currentChar == '"') {
@@ -158,7 +158,7 @@ struct JsonParser {
 		}
 
 		auto msg = "Unexpected symbol "s + (char)currentChar + " at (" + std::to_string(line) + "," + std::to_string(row) + ") expected number";
-		throw std::exception(msg.c_str());
+		throw std::runtime_error(msg.c_str());
 	}
 	std::shared_ptr<JsonBool> parseBool() {
 		// todo: improve

@@ -58,7 +58,7 @@ static void InsertCart(std::string& name, Json& obj) {
 		for(auto& entry : *arr) {
 			std::string n = name;
 			if(entry.contains("@name")) {
-				n = entry["@name"];
+				n = (std::string)entry["@name"];
 			}
 			sha1 hash = sha1::FromString(entry["@sha1"]);
 
@@ -95,7 +95,7 @@ void LoadCardDb(std::string path) {
 				logger.Log("invalid cart type\n");
 			}
 		}
-		logger.Log("Finished loading %i entries\n", cartDb.size());
+		logger.Log("Finished loading %lu entries\n", cartDb.size());
 	} catch(std::exception& e) {
 		logger.Log("Failed to load cartDb: %s\n", e.what());
 	}

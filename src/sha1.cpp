@@ -64,7 +64,7 @@ static uint8_t hexToBin(char c) {
 		case 'E': case 'e': return 14;
 		case 'F': case 'f': return 15;
 	}
-	throw std::exception("invalid character");
+	throw std::runtime_error("invalid character");
 }
 
 sha1 sha1::FromString(const std::string& str) {
