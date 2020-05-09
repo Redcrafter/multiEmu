@@ -563,6 +563,8 @@ void ppu2C02::LoadBackgroundShifters() {
 }
 
 uint8_t& ppu2C02::getRef(uint16_t addr) {
+	addr &= 0x3FFF;
+	
 	if(addr <= 0x1FFF) {
 		return chrRAM[addr]; // in case cartridge doesn't have rom
 	}

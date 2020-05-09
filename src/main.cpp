@@ -214,13 +214,14 @@ static void LoadNsf(const std::string& path) {
 
 static void OpenFile(const std::string& path) {
 	const auto asdf = fs::path(path);
-	const auto ext = asdf.extension();
-
-	if(ext == L".nes") {
+	auto ext = asdf.extension().string();
+	std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
+	
+	if(ext == ".nes") {
 		LoadRom(path);
-	} else if(ext == L".nsf") {
+	} else if(ext == ".nsf") {
 		LoadNsf(path);
-	} else if(ext == L".fm2") {
+	} else if(ext == ".fm2") {
 		if(!nes) {
 			return;
 		}
