@@ -169,6 +169,7 @@ std::shared_ptr<Mapper> LoadCart(const std::string& path) {
 		case 3: mapper = std::make_shared<Mapper003>(prgRom, chrRom); break;
 		case 4: mapper = std::make_shared<Mapper004>(prgRom, chrRom); break;
 		case 7: mapper = std::make_shared<Mapper007>(prgRom, chrRom); break;
+		case 11: mapper = std::make_shared<Mapper011>(prgRom, chrRom); break;
 		// case 24: mapper = std::make_shared<VRC6Mapper>(prgRom, chrRom, false);
 		// case 26: mapper = std::make_shared<VRC6Mapper>(prgRom, chrRom, true);
 		case 65: mapper = std::make_shared<Mapper065>(prgRom, chrRom); break;

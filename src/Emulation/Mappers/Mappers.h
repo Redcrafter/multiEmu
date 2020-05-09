@@ -8,5 +8,6 @@
 // #include "Mapper005.h"
 // #include "Mapper006.h"
 #include "Mapper007.h"
+#include "Mapper011.h"
 #include "Mapper065.h"
 #include "VRC6Mapper.h"
