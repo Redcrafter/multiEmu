@@ -12,6 +12,16 @@
 class Bus {
 private:
 	bool irqDelay = false;
+
+    uint8_t CpuRam[2 * 1024];
+	uint8_t cpuOpenBus = 0;
+
+	uint8_t dmaPage = 0;
+	uint8_t dmaAddr = 0;
+	uint8_t dmaData = 0;
+
+	bool dmaTransfer = false;
+	bool dmaDummy = true;
 public:
 	uint64_t systemClockCounter = 0;
 	int CpuStall = 0;
@@ -33,13 +43,6 @@ public:
 
 	void SaveState(saver& saver);
 	void LoadState(saver& saver);
-public:
-	uint8_t CpuRam[2 * 1024];
-private:
-	uint8_t dmaPage = 0;
-	uint8_t dmaAddr = 0;
-	uint8_t dmaData = 0;
 
-	bool dmaTransfer = false,
-	     dmaDummy = true;
+	friend class MemoryEditor;
 };

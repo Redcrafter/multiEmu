@@ -89,6 +89,12 @@ struct PpuState {
 
 		uint16_t reg = 0;
 	} vramAddr, tramAddr;
+
+	uint8_t ioBus = 0;
+	// time till io Bus values go stale
+	uint32_t reset1 = 0;
+	uint32_t reset2 = 0;
+	uint32_t reset3 = 0;
 };
 
 class ppu2C02 : PpuState {

@@ -131,17 +131,19 @@ uint8_t Bus::CpuRead(uint16_t addr, bool readOnly) {
 				break;
 			case 0x4016:
 				if(controller1 != nullptr) {
-					data = controller1->CpuRead(addr, readOnly);
+					data = (cpuOpenBus & 0xE0) | (controller1->CpuRead(addr, readOnly) & 0x1F);
 				}
 				break;
 			case 0x4017:
 				if(controller2 != nullptr) {
-					data = controller2->CpuRead(addr, readOnly);
+					data = (cpuOpenBus & 0xE0) | (controller2->CpuRead(addr, readOnly) & 0x1F);
 				}
 				break;
+			default: data = cpuOpenBus;
 		}
 	}
 
+	cpuOpenBus = data;
 	return data;
 }
 

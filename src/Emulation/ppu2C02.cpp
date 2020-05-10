@@ -5,7 +5,9 @@
 #include <cassert>
 #include <cstring>
 
-const Color colors[] = {
+static const uint32_t ioBusCountDown = 4288392;
+
+static const Color colors[] = {
 	{84, 84, 84},
 	{0, 30, 116},
 	{8, 16, 144},
@@ -90,6 +92,7 @@ void ppu2C02::Reset() {
 	fineX = 0;
 
 	readBuffer = 0;
+	ioBus = 0;
 	last2002Read = 0;
 
 	oddFrame = false;
@@ -100,6 +103,28 @@ void ppu2C02::Reset() {
 
 void ppu2C02::Clock() {
 	last2002Read++;
+
+	if(reset1 > 0) {
+		reset1--;
+
+		if(reset1 == 0) {
+			ioBus = ioBus & 0xE0; // DDD- ----
+		}
+	}
+	if(reset2 > 0) {
+		reset2--;
+
+		if(reset2 == 0) {
+			ioBus = ioBus & 0xDF; // DD-D DDDD
+		}
+	}
+	if(reset3 > 0) {
+		reset3--;
+
+		if(reset3 == 0) {
+			ioBus = ioBus & 0x3F; // --DD DDDD
+		}
+	}
 
 	if(scanlineY == 0 && scanlineX == 0 && oddFrame && Mask.renderBackground) {
 		// "Odd Frame" cycle skip
@@ -444,11 +469,10 @@ void ppu2C02::LoadState(saver& saver) {
 }
 
 uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {
-	uint8_t res = 0;
-
 	switch(addr) {
 		case 0x2002:
-			res = (Status.reg & 0xE0) | (readBuffer & 0x1F);
+			reset2 = reset3 = ioBusCountDown;
+			ioBus = Status.VerticalBlank << 7 | Status.sprite0Hit << 6 | Status.spriteOverflow << 5 | (ioBus & 0x1F);
 			if(!readOnly) {
 				last2002Read = 0;
 
@@ -459,17 +483,24 @@ uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {
 				}
 			}
 			break;
-		case 0x2004: return pOAM[oamAddr];
+		case 0x2004:
+			reset1 = reset2 = reset3 = ioBusCountDown;
+			if((oamAddr & 3) == 2) {
+				ioBus = pOAM[oamAddr] & 0xE3;
+			} else {
+				ioBus = pOAM[oamAddr];
+			}
+			break;
 		case 0x2007:
-			res = readBuffer;
 			if(!readOnly) {
-				readBuffer = ppuRead(vramAddr.reg);
-				
-				if(vramAddr.reg >= 0x3F00) {
-					res = readBuffer; // palette
-					// Read buffer is mirrored into vram
-					// using getRef to not trigger cartridge
+				if(vramAddr.reg < 0x3F00) {
+					reset1 = reset2 = ioBusCountDown;
+					ioBus = readBuffer;
+					readBuffer = ppuRead(vramAddr.reg);
+				} else {
+					reset1 = reset2 = reset3 = ioBusCountDown;
 					readBuffer = getRef(vramAddr.reg - 0x1000);
+					ioBus = (ioBus & 0xC0) | (getRef(vramAddr.reg) & 0x3F);
 				}
 
 				vramAddr.reg += Control.vramIncrement ? 32 : 1;
@@ -477,10 +508,13 @@ uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {
 			break;
 	}
 
-	return res;
+	return ioBus;
 }
 
 void ppu2C02::cpuWrite(uint16_t addr, uint8_t data) {
+	ioBus = data;
+	reset1 = reset2 = reset3 = ioBusCountDown;
+	
 	switch(addr) {
 		case 0x2000: {
 			bool old = Control.enableNMI;
