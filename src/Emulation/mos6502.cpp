@@ -241,7 +241,6 @@ void mos6502::Clock() {
 			#endif
 
 			fetched = bus->CpuRead(PC);
-			PC++;
 			if(NMI) {
 				instruction.instruction = Instructions::NMI;
 				instruction.addrMode = IMP;
@@ -250,6 +249,7 @@ void mos6502::Clock() {
 				instruction.addrMode = IMP;
 			} else {
 				instruction = lookup[fetched];
+				PC++;
 			}
 
 			#ifdef printDebug
