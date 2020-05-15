@@ -239,31 +239,21 @@ void mos6502::Clock() {
 				file << instrStr;
 			}
 			#endif
+
+			fetched = bus->CpuRead(PC);
+			PC++;
 			if(NMI) {
 				instruction.instruction = Instructions::NMI;
 				instruction.addrMode = IMP;
-
-				#ifdef printDebug
-				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, 0, names[(int)instruction.instruction]);
-				#endif
 			} else if(IRQ && !Status.I) {
 				instruction.instruction = Instructions::IRQ;
 				instruction.addrMode = IMP;
-
-				#ifdef printDebug
-				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, 0, names[(int)instruction.instruction]);
-				#endif
 			} else {
-				fetched = bus->CpuRead(PC);
 				instruction = lookup[fetched];
-
-				#ifdef printDebug
-				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, fetched, names[(int)instruction.instruction]);
-				#endif
-
-				PC++;
 			}
+
 			#ifdef printDebug
+			strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, fetched, names[(int)instruction.instruction]);
 			sprintf_s((instrStr + 27), sizeof(instrStr) - 27, "A:%02X X:%02X Y:%02X P:%02X SP:%02X Cy:%i\n", A, X, Y, Status.reg, SP, bus->systemClockCounter + 1);
 			#endif
 			state = State::FetchOperator;

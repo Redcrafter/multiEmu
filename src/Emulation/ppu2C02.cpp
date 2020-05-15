@@ -81,6 +81,28 @@ static uint8_t FlipByte(uint8_t b) {
 	return b;
 }
 
+// msvc hast no flag for BMI2
+#ifdef __BMI2__
+#include <immintrin.h>
+static uint32_t interleave(uint16_t a, uint16_t b) {
+	return _pdep_u32(a, 0x55555555) | _pdep_u32(b, 0xaaaaaaaa);
+}
+#else
+uint32_t interleave_uint32_with_zeros(uint16_t input) {
+	uint32_t word = input;
+	word = (word ^ (word << 16)) & 0x0000ffff0000ffff;
+	word = (word ^ (word << 8)) & 0x00ff00ff00ff00ff;
+	word = (word ^ (word << 4)) & 0x0f0f0f0f0f0f0f0f;
+	word = (word ^ (word << 2)) & 0x3333333333333333;
+	word = (word ^ (word << 1)) & 0x5555555555555555;
+	return word;
+}
+
+static uint32_t interleave(uint16_t a, uint16_t b) {
+	return interleave_uint32_with_zeros(a) | (interleave_uint32_with_zeros(b) << 1);
+}
+#endif
+
 ppu2C02::ppu2C02() { }
 
 void ppu2C02::Reset() {
@@ -96,6 +118,28 @@ void ppu2C02::Reset() {
 	last2002Read = 0;
 
 	oddFrame = false;
+
+	scanlineX = 0;
+	scanlineY = 241;
+}
+
+void ppu2C02::HardReset() {
+	Control.reg = 0;
+	Mask.reg = 0;
+	Status.reg = 0xA0;
+
+	oamAddr = 0;
+	writeState = 0;
+
+	fineX = 0;
+
+	tramAddr.reg = 0,
+	vramAddr.reg = 0;
+
+	readBuffer = 0;
+	oddFrame = false;
+
+	last2002Read = 0;
 
 	scanlineX = 0;
 	scanlineY = 241;
@@ -143,11 +187,8 @@ void ppu2C02::Clock() {
 	if(scanlineY < 240) {
 		if((scanlineX >= 1 && scanlineX <= 256) || (scanlineX >= 321 && scanlineX <= 336)) {
 			if(Mask.renderBackground) {
-				bgShifterPatternLo <<= 1;
-				bgShifterPatternHi <<= 1;
-
-				bgShifterAttribLo <<= 1;
-				bgShifterAttribHi <<= 1;
+				bgShifterPattern <<= 2;
+				bgShifterAttrib <<= 2;
 			}
 
 			if(scanlineX >= 2 && scanlineX <= 256 && Mask.renderSprites) {
@@ -181,14 +222,10 @@ void ppu2C02::Clock() {
 					bgNextTileAttrib &= 0x03;
 					break;
 				case 4:
-					bgNextTileLsb = ppuRead((Control.patternBackground << 12)
-						+ (bgNextTileId << 4)
-						+ vramAddr.fineY);
+					bgNextTile = ppuRead((Control.patternBackground << 12) + (bgNextTileId << 4) + vramAddr.fineY);
 					break;
 				case 6:
-					bgNextTileMsb = ppuRead((Control.patternBackground << 12)
-						+ (bgNextTileId << 4)
-						+ vramAddr.fineY + 8);
+					bgNextTile = interleave(bgNextTile, ppuRead((Control.patternBackground << 12) + (bgNextTileId << 4) + vramAddr.fineY + 8)); 
 					break;
 				case 7:
 					if(Mask.renderBackground || Mask.renderSprites) {
@@ -306,10 +343,10 @@ void ppu2C02::Clock() {
 				// 8x16
 				addr = (sprite.id & 1) << 12;
 
-				if(scanlineY - sprite.y < 8) {
-					addr |= ((sprite.id & 0xFE) << 4);
+				if((scanlineY - sprite.y < 8) != sprite.Attributes.FlipVertical) {
+					addr |= (sprite.id & 0xFE) << 4;
 				} else {
-					addr |= (((sprite.id & 0xFE) + 1) << 4);
+					addr |= ((sprite.id & 0xFE) + 1) << 4;
 				}
 			}
 
@@ -361,20 +398,14 @@ void ppu2C02::Clock() {
 		// depending upon fine x scolling. This has the effect of
 		// offsetting ALL background rendering by a set number
 		// of pixels, permitting smooth scrolling
-		uint16_t bit_mux = 0x8000 >> fineX;
+		auto shift = (15 - fineX) << 1;
 
 		// Select Plane pixels by extracting from the shifter
 		// at the required location.
-		uint8_t p0_pixel = (bgShifterPatternLo & bit_mux) > 0;
-		uint8_t p1_pixel = (bgShifterPatternHi & bit_mux) > 0;
-
-		// Combine to form pixel index
-		bgPixel = (p1_pixel << 1) | p0_pixel;
+		bgPixel = (bgShifterPattern >> shift) & 3;
 
 		// Get palette
-		uint8_t bg_pal0 = (bgShifterAttribLo & bit_mux) > 0;
-		uint8_t bg_pal1 = (bgShifterAttribHi & bit_mux) > 0;
-		bgPalette = (bg_pal1 << 1) | bg_pal0;
+		bgPalette = (bgShifterAttrib >> shift) & 3;
 	}
 
 	uint8_t fgPixel = 0;
@@ -451,18 +482,12 @@ void ppu2C02::Clock() {
 }
 
 void ppu2C02::SaveState(saver& saver) {
-	assert(!frameComplete);
-	saver << nmi;
-	saver << oamAddr;
 	saver << Control.reg;
 
 	saver.Write(reinterpret_cast<char*>(this), sizeof(PpuState));
 }
 
 void ppu2C02::LoadState(saver& saver) {
-	frameComplete = false;
-	saver >> nmi;
-	saver >> oamAddr;
 	saver >> Control.reg;
 
 	saver.Read(reinterpret_cast<char*>(this), sizeof(PpuState));
@@ -589,11 +614,9 @@ void ppu2C02::ppuWrite(uint16_t addr, uint8_t data) {
 }
 
 void ppu2C02::LoadBackgroundShifters() {
-	bgShifterPatternLo = (bgShifterPatternLo & 0xFF00) | bgNextTileLsb;
-	bgShifterPatternHi = (bgShifterPatternHi & 0xFF00) | bgNextTileMsb;
+	bgShifterPattern = (bgShifterPattern & 0xFFFF0000) | bgNextTile;
 
-	bgShifterAttribLo = (bgShifterAttribLo & 0xFF00) | ((bgNextTileAttrib & 0b01) ? 0xFF : 0x00);
-	bgShifterAttribHi = (bgShifterAttribHi & 0xFF00) | ((bgNextTileAttrib & 0b10) ? 0xFF : 0x00);
+	bgShifterAttrib = (bgShifterAttrib & 0xFFFF0000) | ((bgNextTileAttrib & 3) * 0x5555);
 }
 
 uint8_t& ppu2C02::getRef(uint16_t addr) {

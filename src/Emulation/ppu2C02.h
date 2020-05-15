@@ -33,16 +33,16 @@ struct PpuState {
 	uint8_t writeState = 0;
 	uint8_t readBuffer = 0;
 	// Color palettes
-	uint8_t palettes[32]{};
+	uint8_t palettes[32];
 	// Nametables
-	uint8_t vram[0x1000]{};
+	uint8_t vram[0x1000];
 	// For cartridges without ChrRom
-	uint8_t chrRAM[8 * 1024]{};
+	uint8_t chrRAM[0x2000];
 
-	Sprite oam[64]{}, oam2[8]{};
-	uint8_t spriteCount = 0;
-	uint8_t spriteShifterLo[8]{}, spriteShifterHi[8]{};
-	bool spriteZeroPossible = false, spriteZeroBeingRendered = false;
+	Sprite oam[64], oam2[8];
+	uint8_t spriteCount;
+	uint8_t spriteShifterLo[8], spriteShifterHi[8];
+	bool spriteZeroPossible, spriteZeroBeingRendered;
 
 	int scanlineX = 0, scanlineY = 241;
 
@@ -74,8 +74,9 @@ struct PpuState {
 
 	uint8_t fineX = 0;
 
-	uint8_t bgNextTileId = 0, bgNextTileAttrib = 0, bgNextTileLsb = 0, bgNextTileMsb = 0;
-	uint16_t bgShifterPatternLo = 0, bgShifterPatternHi = 0, bgShifterAttribLo = 0, bgShifterAttribHi = 0;
+	uint8_t bgNextTileId, bgNextTileAttrib;
+	uint16_t bgNextTile;
+	uint32_t bgShifterPattern, bgShifterAttrib;
 
 	union {
 		struct {
@@ -95,14 +96,14 @@ struct PpuState {
 	uint32_t reset1 = 0;
 	uint32_t reset2 = 0;
 	uint32_t reset3 = 0;
+
+	int nmi = 0;
+	uint8_t oamAddr = 0;
 };
 
 class ppu2C02 : PpuState {
-	friend class MemoryEditor;
 public:
 	bool frameComplete = false;
-	int nmi = 0;
-	uint8_t oamAddr = 0;
 
 	union {
 		struct {
@@ -119,13 +120,16 @@ public:
 		uint8_t reg = 0;
 	} Control;
 
-public:
-	RenderImage* texture;
 	std::shared_ptr<Mapper> cartridge;
 	uint8_t* pOAM = reinterpret_cast<uint8_t*>(oam);
+public:
+	RenderImage* texture;
 
 	ppu2C02();
+	ppu2C02(const ppu2C02&) = delete;
+	
 	void Reset();
+	void HardReset();
 	void Clock();
 
 	void SaveState(saver& saver);
@@ -139,9 +143,12 @@ public:
 	uint8_t ppuRead(uint16_t addr, bool readOnly = false);
 	void ppuWrite(uint16_t addr, uint8_t data);
 
-	// void DrawPatternTable(PatternTables& texture, int i, int palette);
-	Color GetPaletteColor(uint8_t palette, uint8_t pixel) const;
 private:
+	Color GetPaletteColor(uint8_t palette, uint8_t pixel) const;
 	void LoadBackgroundShifters();
-	uint8_t& getRef(uint16_t addr);	
+	uint8_t& getRef(uint16_t addr);
+
+	friend class Bus;
+	friend class PatternTables;
+	friend class MemoryEditor;
 };

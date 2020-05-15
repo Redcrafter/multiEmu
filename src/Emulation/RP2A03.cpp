@@ -266,7 +266,8 @@ void DMC::Reload() {
 
 void DMC::FillBuffer(Bus* bus) {
 	if(bufferEmpty && currentLength > 0) {
-		// TODO: Stall cpu for 4 cycles
+		// not perfectly accurate
+		bus->CpuStall = 4;
 		sampleBuffer = bus->CpuRead(currentAddress);
 		if(currentAddress == 0xFFFF) {
 			currentAddress = 0x8000;
@@ -361,13 +362,16 @@ void RP2A03::Reset() {
 	noise.enabled = false;
 	dmc.enabled = false;
 
+	dmc.value = 0;
+	dmc.irq = false;
+	dmc.irqEnable = false;
+
 	CpuWrite(0x4017, last4017Write);
 	frameCounter += 10;
 	Irq = false;
 
 	pulse1.lengthCounterEnabled = true;
 	pulse2.lengthCounterEnabled = true;
-	triangle.lengthCounterEnabled = true;
 	noise.lengthCounterEnabled = true;
 }
 

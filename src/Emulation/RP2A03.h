@@ -5,7 +5,7 @@ class Bus;
 
 struct Stuff {
 	bool enabled;
-	bool lengthCounterEnabled;
+	bool lengthCounterEnabled = true;
 	uint8_t lengthCounterPeriod;
 	uint8_t lengthCounter;
 
@@ -55,7 +55,7 @@ struct Triangle : Stuff {
 	uint8_t dutyValue;
 
 	uint8_t linearCounterPeriod;
-	uint8_t linearCounter;
+	uint8_t linearCounter = 0;
 	bool linearCounterReload;
 
 	void Clock();
