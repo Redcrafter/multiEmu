@@ -5,7 +5,6 @@ Works for around 92% of games and around 6% of Games have missing mappers.
 ## Dependencies
 - GLEW
 - glfw3
-- nlohmann-json
 - rtaudio
 - imgui
 
