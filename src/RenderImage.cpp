@@ -64,7 +64,3 @@ void RenderImage::BufferImage() {
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_RGB, GL_UNSIGNED_BYTE, imgData);
 	}
 }
-
-md5 RenderImage::GetHashCode() {
-	return md5(reinterpret_cast<char*>(&imgData), Width * Height * sizeof(Color));
-}

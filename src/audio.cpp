@@ -1,15 +1,24 @@
 #include "audio.h"
-#include "logger.h"
-#include "Emulation/RP2A03.h"
 
-#include <stdint.h>
-#include <RtAudio.h>
+#include <cstdint>
 #include <memory>
 
+#include <RtAudio.h>
+
+#include "Emulation/RP2A03.h"
+#include "logger.h"
+
+// normal audio quality 44100hz
+static const uint32_t sampleRate = 44100;
+
+// 8 frames worth of buffer
 const int bufferSize = 8 * 735;
 
+// read position of output
 static size_t readPos = 0;
+// write position of input
 static size_t writePos = 0;
+// sample buffer
 static float buffer[bufferSize];
 
 static std::unique_ptr<RtAudio> dac;
@@ -19,11 +28,14 @@ static int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBu
 	auto outBuffer = static_cast<float*>(outputBuffer);
 
 	int i = 0;
+	// output number of requested samples
 	for(; i < nBufferFrames && readPos < writePos; i++) {
+		// copy buffer to left and right channel
 		outBuffer[i * 2] = outBuffer[i * 2 + 1] = buffer[readPos % bufferSize];
 		readPos++;
 	}
 
+	// if we didn't have enough samples in the buffer
 	if(i < nBufferFrames) {
 		// Repeat last sample to prevent popping
 		int lastPos = readPos - 1;
@@ -50,9 +62,8 @@ bool Audio::Init() {
 			parameters.firstChannel = 0;
 
 			RtAudio::StreamOptions options;
-			// options.flags = RTAUDIO_MINIMIZE_LATENCY; // breaks mac TODO: handle non fixed sample request
+			// options.flags = RTAUDIO_MINIMIZE_LATENCY; // breaks mac TODO: test non fixed sample request
 
-			uint32_t sampleRate = 44100;
 			uint32_t bufferFrames = sampleRate / 60;
 
 			dac->openStream(&parameters, nullptr, RTAUDIO_FLOAT32, sampleRate, &bufferFrames, &AudioCallback, nullptr, &options);
@@ -93,14 +104,19 @@ void Audio::Resample(RP2A03& apu) {
 	const int samples = apu.bufferPos;
 	// printf("Buffer usage %i\n", samples);
 
+	// how many samples to merge
 	const auto frac = samples / 735.0;
+	// position in apu's buffer
 	int readPos = 0;
+	// used to account for sample fractions
 	float mapped = 0;
 
+	// TODO: fancy linear interpolation?
 	for(int i = 0; i < 735 && readPos < samples; i++) {
 		float sample = 0;
 		int count = 0;
 
+		// take frac samples from waveBuffer and average them
 		while(mapped <= frac && readPos < samples) {
 			mapped++;
 			sample += apu.waveBuffer[readPos].sample;
@@ -113,6 +129,8 @@ void Audio::Resample(RP2A03& apu) {
 		writePos++;
 	}
 	
+	// copy number of samples for visualization
 	apu.lastBufferPos = apu.bufferPos;
+	// reset apu buffer
 	apu.bufferPos = 0;
 }

@@ -1,6 +1,5 @@
 #pragma once
 #include <cstdint>
-#include <GLFW/glfw3.h>
 
 class Controller {
 public:

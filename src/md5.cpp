@@ -1,6 +1,9 @@
 #include "md5.h"
-#include <stdexcept>
+
 #include <istream>
+#include <stdexcept>
+
+#include "hexHelper.h"
 
 const uint32_t s[64] = {
 	7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
@@ -104,23 +107,12 @@ md5::md5(std::istream& stream) {
 }
 
 std::string md5::ToString() const {
-	const char hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 	char str[33];
 
-	const auto toHex = [&](uint32_t val, int pos) {
-		for(int i = 0; i < 4; i++) {
-			str[pos + 0] = hexChars[(val >> 4) & 0xF];
-			str[pos + 1] = hexChars[val & 0xF];
-
-			val >>= 8;
-			pos += 2;
-		}
-	};
-
-	toHex(A, 0);
-	toHex(B, 8);
-	toHex(C, 16);
-	toHex(D, 24);
+	printHex(&str[0], A);
+	printHex(&str[8], B);
+	printHex(&str[16], C);
+	printHex(&str[24], D);
 	str[32] = '\0';
 
 	return str;

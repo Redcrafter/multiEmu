@@ -2,13 +2,14 @@
 
 #include <cassert>
 #include <string>
-#include "../imgui/imgui.h"
+
+#include <imgui.h>
 #include <GLFW/glfw3.h>
 
-int Input::keys[16]{0};
-bool Input::changed = false;
-std::map<uint64_t, Action> Input::keyMap;
-std::map<Action, uint64_t> Input::revKeyMap;
+static bool changed;
+static int keys[16];
+static std::map<uint64_t, Action> keyMap;
+static std::map<Action, uint64_t> revKeyMap;
 
 const char* ActionString[] = {
 	"Controller1 A", "Controller1 B", "Controller1 Start", "Controller1 Select", "Controller1 Up", "Controller1 Down", "Controller1 Left", "Controller1 Right",
@@ -97,7 +98,7 @@ void Input::OnKey(int key, int scancode, int action, int mods) {
 }
 
 void Input::Load(Json& j) {
-	if(j.contains("keymap")) {
+	if(j.contains("keymap") && j["keymap"].asObject()) {
 		for(const auto& item : *j["keymap"].asObject()) {
 			keyMap[item.second] = StringAction[item.first];
 		}

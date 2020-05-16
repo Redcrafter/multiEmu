@@ -1,8 +1,6 @@
 #pragma once
-#include <GL/glew.h>
 #include <cstdint>
-
-#include "md5.h"
+#include <GL/glew.h>
 
 struct Color {
 	uint8_t R, G, B;
@@ -28,7 +26,5 @@ public:
 
 	GLuint GetTextureId() const { return textureID; };
 	void BufferImage();
-
-	md5 GetHashCode();
 };
 

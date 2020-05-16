@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
-#include <vector>
 #include <string>
+#include <vector>
 
 class saver {
 private:
@@ -9,9 +9,8 @@ private:
 public:
 	uint32_t readPos = 0;
 
+	saver() {}
 	saver(std::string path);
-	saver();
-	~saver();
 
 	void Save(std::string path);
 

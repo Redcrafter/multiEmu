@@ -1,12 +1,6 @@
 #include "saver.h"
 #include <fstream>
 
-saver::saver() {
-}
-
-saver::~saver() {
-}
-
 saver::saver(std::string path) {
 	std::ifstream stream(path, std::ios::binary);
 	uint64_t size = 0;

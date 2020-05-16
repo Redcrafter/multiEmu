@@ -13,14 +13,6 @@ void Logger::Clear() {
 	LineOffsets.push_back(0);
 }
 
-void Logger::Log(const std::exception& exception) {
-	int old_size = Buf.size();
-	Buf.appendf("%s\n", exception.what());
-	for(int new_size = Buf.size(); old_size < new_size; old_size++)
-		if(Buf[old_size] == '\n')
-			LineOffsets.push_back(old_size + 1);
-}
-
 void Logger::Log(const char* fmt, ...) {
 	int old_size = Buf.size();
 	va_list args;

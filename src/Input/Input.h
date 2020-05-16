@@ -43,21 +43,15 @@ union Key {
 	uint64_t Reg;
 };
 
-class Input {
-private:
-	static bool changed;
-	static int keys[16];
-	static std::map<uint64_t, Action> keyMap;
-	static std::map<Action, uint64_t> revKeyMap;
-public:
-	static void OnKey(int key, int scancode, int action, int mods);
+namespace Input {
+	void OnKey(int key, int scancode, int action, int mods);
 
-	static void Load(Json& j);
-	static void Save(Json& j);
+	void Load(Json& j);
+	void Save(Json& j);
 
-	static bool ShowEditWindow();
+	bool ShowEditWindow();
 
-	static bool TryGetAction(Key val, Action& action);
-	static bool TryGetAction(int key, int mods, Action& action);
-	static uint8_t GetController(int id);
-};
+	bool TryGetAction(Key val, Action& action);
+	bool TryGetAction(int key, int mods, Action& action);
+	uint8_t GetController(int id);
+}

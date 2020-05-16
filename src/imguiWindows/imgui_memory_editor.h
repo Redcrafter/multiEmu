@@ -45,7 +45,7 @@
 // - Using InputText() is awkward and maybe overkill here, consider implementing something custom.
 
 #pragma once
-#include <stdint.h>
+#include <cstdint>
 #include <string>
 #include <memory>
 #include <imgui.h>
