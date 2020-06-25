@@ -154,8 +154,6 @@ static State InstructionType(Instructions instruction) {
 }
 
 mos6502::mos6502(Bus* bus): bus(bus) {
-	PC = bus->CpuRead(0xFFFC) | (bus->CpuRead(0xFFFD) << 8);
-
 	#ifdef printDebug
 	file.open("D:\\Daten\\Desktop\\test.log");
 	#endif
@@ -165,6 +163,20 @@ mos6502::~mos6502() {
 	#ifdef printDebug
 	file.close();
 	#endif
+}
+
+void mos6502::HardReset() {
+	IRQ = false;
+	NMI = false;
+
+	A = 0;
+	X = 0;
+	Y = 0;
+	SP = 0xFD;
+	PC = bus->CpuRead(0xFFFC) | (bus->CpuRead(0xFFFD) << 8);
+	Status.reg = 0b00100100;
+
+	state = State::FetchOpcode;
 }
 
 void mos6502::Reset() {

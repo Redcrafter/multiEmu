@@ -1,62 +1,84 @@
-#include <iostream>
-#include <deque>
+#include <algorithm>
 #include <array>
+#include <deque>
+#include <fstream>
+#include <iostream>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
+#include <imgui_internal.h>
+
 #include <examples/imgui_impl_opengl3.h>
 #include <examples/imgui_impl_glfw.h>
 
 #include "nativefiledialog/nfd.h"
-#include "fs.h"
-#include "json.h"
 
-#include "RenderImage.h"
-#include "tas.h"
 #include "saver.h"
-
-#include "Emulation/Bus.h"
-#include "Emulation/Cartridge.h"
-
-#include "Input/TasController.h"
-#include "Input/StandardController.h"
-#include "Input/Input.h"
+#include "Input.h"
 
 #include "imguiWindows/imgui_memory_editor.h"
-#include "imguiWindows/imgui_tas_editor.h"
-#include "imguiWindows/imgui_pattern_tables.h"
-#include "imguiWindows/imgui_cpu_state.h"
-#include "imguiWindows/imgui_apu_window.h"
-#include "Emulation/Mappers/NsfMapper.h"
+// #include "imguiWindows/imgui_tas_editor.h"
 
 #include "logger.h"
 #include "audio.h"
 
+#include "fs.h"
+#include "json.h"
 
-bool runningTas = false;
-std::shared_ptr<TasController> controller1, controller2;
-std::unique_ptr<Bus> nes = nullptr;
+#include "Emulation/ICore.h"
+#include "Emulation/CHIP-8/chip8.h"
+#include "Emulation/NES/NesCore.h"
+
+enum class Action {
+	Speedup,		 // Toggle speedup x5
+	Step,			 // Start step & advance frame
+	ResumeRun,		 // Resume running normally
+
+	Reset,
+	HardReset,
+
+	SaveState,		 // Save to selected savestate
+	LoadState,		 // Load from selected savestate
+	SelectNextState, // Select next savestate
+	SelectLastState, // Select previous savestate
+};
+
+InputMapper hotkeys = InputMapper("hotkeys", {
+	{ "Speedup", (int)Action::Speedup, Key { { GLFW_KEY_Q, 0 } } },
+	{ "Step", (int)Action::Step, Key { { GLFW_KEY_F, 0 } } },
+	{ "ResumeRun", (int)Action::ResumeRun, Key { { GLFW_KEY_G, 0 } } },
+	{ "Reset", (int)Action::Reset, Key { { GLFW_KEY_R, 0 } } },
+	{ "HardReset", (int)Action::HardReset, Key { { 0, 0 } } },
+	{ "SaveState", (int)Action::SaveState, Key { { GLFW_KEY_K, 0 } } },
+	{ "LoadState", (int)Action::LoadState, Key { { GLFW_KEY_L, 0 } } },
+	{ "SelectNextState", (int)Action::SelectNextState, Key { { GLFW_KEY_KP_ADD, 0 } } },
+	{ "SelectLastState", (int)Action::SelectLastState, Key { { GLFW_KEY_KP_SUBTRACT, 0 } } },
+});
+
+GLFWwindow* window;
+
+std::unique_ptr<ICore> emulationCore;
+
 int selectedSaveState = 0;
 std::array<std::unique_ptr<saver>, 10> saveStates;
 
-std::unique_ptr<RenderImage> mainTexture = nullptr;
+MemoryEditor memEdit{ "Memory Editor" };
 
-GLFWwindow* window = nullptr;
-
-MemoryEditor memEdit{"Memory Editor"};
-// TasEditor tasEdit{"Tas Editor"};
-PatternTables tables{"Pattern Tables"};
-CpuStateWindow cpuWindow{"Cpu State"};
-ApuWindow apuWindow{"Apu Visuals"};
 bool settingsWindow = false;
 bool metricsWindow = false;
 
-struct Settings {
+bool speedUp = false;
+bool running = false;
+bool step = false;
+
+struct {
 	bool EnableVsync = true;
+	bool AutoHideMenu = true;
 	int windowScale = 2;
-	
+
 	std::deque<std::string> RecentFiles;
 
 	void Load() {
@@ -68,20 +90,22 @@ struct Settings {
 				file >> j;
 
 				EnableVsync = j["enableVsync"];
+				AutoHideMenu = j["autoHideMenu"];
 				windowScale = j["windowScale"];
 				std::vector<std::string> asdf = j["recent"];
 				RecentFiles = std::deque<std::string>(asdf.begin(), asdf.end());
-			} catch(std::exception& e) {
-				logger.Log("Failed to load settings.json %s\n", e.what());
+			} catch(std::exception & e) {
+				logger.LogScreen("Failed to load settings.json %s", e.what());
 			}
 		}
-		
+
 		Input::Load(j);
 	}
 
 	void Save() {
 		Json j = {
 			{"enableVsync", EnableVsync},
+			{"autoHideMenu", AutoHideMenu},
 			{"windowScale", windowScale},
 			{"recent", RecentFiles},
 		};
@@ -98,7 +122,7 @@ struct Settings {
 				break;
 			}
 		}
-		
+
 		if(RecentFiles.size() >= 10) {
 			RecentFiles.pop_back();
 		}
@@ -113,164 +137,127 @@ struct Settings {
 	}
 } settings;
 
-bool speedUp = false;
-bool running = false;
-bool step = false;
+static ImVec2 CalcWindowSize() {
+	if(emulationCore) {
+		auto texture = emulationCore->GetMainTexture();
+		return ImVec2(texture->GetWidth(), texture->GetHeight()) * settings.windowScale;
+	}
+	return ImVec2(256, 256) * settings.windowScale;
+}
 
-static void LoadRom(const std::string& path) {
-	std::shared_ptr<Mapper> cart;
-
+template <typename T>
+static void LoadCore(const std::string& path) {
+	if(emulationCore == nullptr || typeid(*emulationCore) != typeid(T)) {
+		emulationCore = std::make_unique<T>();
+		auto s = CalcWindowSize();
+		// glfwSetWindowSize(window, s.x, s.y);
+	}
 	try {
-		cart = LoadCart(path);
-	} catch(std::exception& e) {
-		logger.Log("Failed to load rom: %s\n", e.what());
-		return;
+		emulationCore->LoadRom(path);
+
+		settings.AddRecent(path);
+
+		memEdit.SetCore(emulationCore.get());
+		running = true;
+	} catch(std::exception e) {
+		logger.LogScreen("Failed to load ROM: %s", e.what());
 	}
 
-	settings.AddRecent(path);
-
-	if(nes == nullptr) {
-		nes = std::make_unique<Bus>(cart);
-
-		nes->controller1 = std::make_shared<StandardController>(0);
-		nes->controller2 = std::make_shared<StandardController>(1);
-
-		nes->ppu.texture = mainTexture.get();
-
-		memEdit.bus = nes.get();
-		tables.ppu = &nes->ppu;
-		cpuWindow.cpu = &nes->cpu;
-		apuWindow.apu = &nes->apu;
-	} else {
-		nes->apu.vrc6 = false;
-
-		nes->InsertCartridge(cart);
-		nes->Reset();
-	}
-
-	running = true;
-
-	std::string partial = "./saves/" + nes->cartridge->hash.ToString() + "-";
-
+	// Load savestates
+	std::string partial = "./saves/" + emulationCore->GetName() + "/" + emulationCore->GetRomHash().ToString() + "-";
 	for(int i = 0; i < 10; ++i) {
 		std::string sPath = partial + std::to_string(i) + ".sav";
 
 		if(fs::exists(sPath)) {
 			try {
 				saveStates[i] = std::make_unique<saver>(sPath);
-			} catch(std::exception& e) {
+			} catch(std::exception & e) {
 				logger.Log("Error loading state: %s\n%s\n", sPath.c_str(), e.what());
 			}
 		}
 	}
 }
 
-static void LoadNsf(const std::string& path) {
-	const auto mapper = std::make_shared<NsfMapper>(path);
+struct {
+	bool open = false;
+	std::string file;
 
-	settings.AddRecent(path);
-
-	// if(nes == nullptr) {
-	std::shared_ptr<Mapper> ptr = mapper;
-	nes = std::make_unique<Bus>(ptr);
-
-	nes->controller1 = std::make_shared<StandardController>(0);
-	nes->controller2 = std::make_shared<StandardController>(1);
-
-	nes->ppu.Control.enableNMI = true;
-
-	nes->ppu.texture = mainTexture.get();
-
-	memEdit.bus = nes.get();
-	tables.ppu = &nes->ppu;
-	cpuWindow.cpu = &nes->cpu;
-	apuWindow.apu = &nes->apu;
-	/*} else {
-		nes->InsertCartridge(cart);
-		nes->Reset();
-	}*/
-
-	if(mapper->nsf.extraSoundChip.vrc6) {
-		nes->apu.vrc6 = true;
-	}
-	if(mapper->nsf.extraSoundChip.vrc7) {
-		logger.Log("vrc7 not supported\n");
-	}
-	if(mapper->nsf.extraSoundChip.fds) {
-		logger.Log("FDS not supported\n");
-	}
-	if(mapper->nsf.extraSoundChip.mmc5) {
-		logger.Log("MMC5 not supported\n");
-	}
-	if(mapper->nsf.extraSoundChip.namco163) {
-		logger.Log("Namoc 163 not supported\n");
-	}
-	if(mapper->nsf.extraSoundChip.sunsoft5B) {
-		logger.Log("Sunsoft 5B not supported\n");
+	void Open(const std::string& path) {
+		open = true;
+		file = path;
 	}
 
-	running = true;
-}
+	void Draw() {
+		if(!open)
+			return;
+
+		if(ImGui::Begin("Picker", &open)) {
+			ImGui::Text("Unknown file type. Choose an emulator:");
+
+			if(ImGui::Button("Chip-8")) {
+				LoadCore<Chip8Core>(file);
+				open = false;
+			}
+			if(ImGui::Button("NES")) {
+				LoadCore<NesCore>(file);
+				open = false;
+			}
+		}
+		ImGui::End();
+	}
+} emulatorPicker;
 
 static void OpenFile(const std::string& path) {
 	const auto asdf = fs::path(path);
 	auto ext = asdf.extension().string();
 	std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
-	
-	if(ext == ".nes") {
-		LoadRom(path);
-	} else if(ext == ".nsf") {
-		LoadNsf(path);
-	} else if(ext == ".fm2") {
-		if(!nes) {
-			return;
-		}
 
-		runningTas = true;
-		auto inputs = TasInputs::LoadFM2(path);
-		nes->Reset();
-		nes->controller1 = controller1 = std::make_shared<TasController>(inputs.Controller1);
-		nes->controller2 = controller2 = std::make_shared<TasController>(inputs.Controller2);
+	if(ext == ".nes" || ext == ".nsf" || ext == ".fm2") {
+		LoadCore<NesCore>(path);
+	} else if(ext == ".ch8") {
+		LoadCore<Chip8Core>(path);
+	} else {
+		emulatorPicker.Open(path);
 	}
 }
 
 static void SaveState(int number) {
-	if(nes == nullptr) {
+	if(emulationCore == nullptr) {
 		return;
 	}
 	saveStates[number] = std::make_unique<saver>();
 	auto& state = saveStates[number];
-	nes->SaveState(*state);
+	emulationCore->SaveState(*state);
 
 	try {
 		if(!fs::exists("./saves/")) {
 			fs::create_directory("./saves/");
 		}
-		auto path = "./saves/" + nes->cartridge->hash.ToString() + "-" + std::to_string(number) + ".sav";
+		auto path = "./saves/" + emulationCore->GetName() + "/" + emulationCore->GetRomHash().ToString() + "-" + std::to_string(number) + ".sav";
 		if(fs::exists(path)) {
 			fs::copy(path, path + ".old", fs::copy_options::overwrite_existing);
 		}
 		state->Save(path);
 
-		logger.Log("Saved state %i\n", number);
+		logger.LogScreen("Saved state %i", number);
 	} catch(std::exception& e) {
-		logger.Log("Error saving %s\n", e.what());
+		logger.LogScreen("Error saving: %s", e.what());
 	}
 }
 
 static void LoadState(int number) {
-	if(nes->cartridge == nullptr) {
+	if(emulationCore == nullptr) {
 		return;
 	}
 
 	const auto& state = saveStates[number];
 	if(state != nullptr) {
 		state->readPos = 0;
-		nes->LoadState(*state);
+		emulationCore->LoadState(*state);
 
-		logger.Log("Loaded state %i\n", number);
+		logger.LogScreen("Loaded state %i", number);
 	} else {
-		logger.Log("Failed to load state %i\n", number);
+		logger.LogScreen("Save state %i empty", number);
 	}
 }
 
@@ -285,34 +272,6 @@ static void HelpMarker(const char* desc) {
 	}
 }
 
-static void nesFrame() {
-	if(!nes || !running && !step)
-		return;
-
-	int mapped = 1;
-	if(speedUp) {
-		mapped = 10;
-	}
-
-	for(int i = 0; i < mapped; ++i) {
-		// int count = 0; = 89342 
-		while(!nes->ppu.frameComplete) {
-			nes->Clock();
-			// count++;
-		}
-		// printf("Cycles %i\n", count); 
-		nes->ppu.frameComplete = false;
-
-		if(runningTas) {
-			controller1->Frame();
-			controller2->Frame();
-		}
-	}
-
-	step = false;
-	Audio::Resample(nes->apu);
-}
-
 static void onKey(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	Input::OnKey(key, scancode, action, mods);
 
@@ -324,12 +283,14 @@ static void onKey(GLFWwindow* window, int key, int scancode, int action, int mod
 		metricsWindow = !metricsWindow;
 	}
 
-	Action mapped;
-	if(!Input::TryGetAction(key, mods, mapped)) {
+	Key k { { key, mods } };
+
+	int mapped;
+	if(!hotkeys.TryGetId(k, mapped)) {
 		return;
 	}
 
-	switch(mapped) {
+	switch((Action)mapped) {
 		case Action::Speedup:
 			speedUp = !speedUp;
 			break;
@@ -341,8 +302,13 @@ static void onKey(GLFWwindow* window, int key, int scancode, int action, int mod
 			running = true;
 			break;
 		case Action::Reset:
-			if(nes) {
-				nes->Reset();
+			if(emulationCore) {
+				emulationCore->Reset();
+			}
+			break;
+		case Action::HardReset:
+			if(emulationCore) {
+				emulationCore->HardReset();
 			}
 			break;
 		case Action::SaveState:
@@ -383,48 +349,54 @@ static void onGlfwError(int error, const char* description) {
 	logger.Log("Glfw Error: %d: %s\n", error, description);
 }
 
-static ImVec2 CalcWindowSize() {
-	return ImVec2(256.0 * (8.0 / 7.0) * settings.windowScale, 256.0 * settings.windowScale);
-}
-
-static void drawSettings(bool& display) {
-	if(!display)
+static void drawSettings() {
+	if(!settingsWindow)
 		return;
 
-	if(!ImGui::Begin("Settings", &display)) {
-		ImGui::End();
-		return;
-	}
-	if(ImGui::BeginTabBar("tabBar")) {
-		if(ImGui::BeginTabItem("General")) {
-			
-			if(ImGui::Checkbox("Vsync", &settings.EnableVsync)) {
-				glfwSwapInterval(settings.EnableVsync);
-				settings.Save();
-			}
-			HelpMarker("Toggle Vsync.\nReduces cpu usage on fast cpu's but can cause stuttering");
+	if(ImGui::Begin("Settings", &settingsWindow)) {
+		if(ImGui::BeginTabBar("tabBar")) {
+			if(ImGui::BeginTabItem("General")) {
+				if(ImGui::Checkbox("Vsync", &settings.EnableVsync)) {
+					glfwSwapInterval(settings.EnableVsync);
+					settings.Save();
+				}
+				HelpMarker("Toggle Vsync.\nReduces cpu usage on fast cpu's but can cause stuttering");
 
-			int val = settings.windowScale - 1;
-			static const char* drawModeNames[] = { "x1", "x2", "x3", "x4" };
-			if(ImGui::Combo("DrawMode", &val, drawModeNames, 4)) {
-				settings.windowScale = val + 1;
-				auto s = CalcWindowSize();
-				glfwSetWindowSize(window, s.x, s.y);
-				settings.Save();
+				if(ImGui::Checkbox("Autohide Menubar", &settings.AutoHideMenu)) {
+					settings.Save();
+				}
+
+				int val = settings.windowScale - 1;
+				static const char* drawModeNames[] = {"x1", "x2", "x3", "x4"};
+				if(ImGui::Combo("DrawMode", &val, drawModeNames, 4)) {
+					settings.windowScale = val + 1;
+					auto s = CalcWindowSize();
+					glfwSetWindowSize(window, s.x, s.y);
+					settings.Save();
+				}
+				ImGui::EndTabItem();
 			}
-			ImGui::EndTabItem();
+
+			if(ImGui::BeginTabItem("Hotkeys")) {
+				ImGui::BeginChild("hotkeys");
+
+				hotkeys.ShowEditWindow();
+
+				ImGui::EndChild();
+				ImGui::EndTabItem();
+			}
+
+			if(ImGui::BeginTabItem("Controllers")) {
+				ImGui::BeginChild("inputs");
+				if(Input::ShowEditWindow()) {
+					settings.Save();
+				}
+				ImGui::EndChild();
+
+				ImGui::EndTabItem();
+			}
+			ImGui::EndTabBar();
 		}
-
-		if(ImGui::BeginTabItem("Inputs")) {
-			ImGui::BeginChild("inputs");
-			if(Input::ShowEditWindow()) {
-				settings.Save();
-			}
-			ImGui::EndChild();
-
-			ImGui::EndTabItem();
-		}
-		ImGui::EndTabBar();
 	}
 	ImGui::End();
 }
@@ -432,8 +404,8 @@ static void drawSettings(bool& display) {
 // fix for menubar closing when menu is too big and creates new context
 static bool menuOpen = false;
 
-static void drawGui() {
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoScrollbar;
+void drawDockSpace() {
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
 
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(viewport->GetWorkPos());
@@ -444,43 +416,34 @@ static void drawGui() {
 	window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 	window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
-	#ifdef GLFW_HOVERED
-	if(menuOpen || glfwGetWindowAttrib(window, GLFW_HOVERED)) {
-		window_flags |= ImGuiWindowFlags_MenuBar;
-	}
-	#else
-	window_flags |= ImGuiWindowFlags_MenuBar;
-	#endif
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 	ImGui::Begin("test", nullptr, window_flags);
-	ImGui::PopStyleVar();
+	ImGui::PopStyleVar(3);
 
-	ImGui::PopStyleVar(2);
+	// DockSpace
+	ImGuiID dockspace_id = ImGui::GetID("WTF");
+	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_AutoHideTabBar);
 
-	auto size = ImGui::GetWindowSize();
+	ImGui::End();
+}
 
-	if(size.x * (7.0 / 8.0) < size.y) {
-		size.y = size.x * (7.0 / 8.0);
-	} else {
-		size.x = size.y * (8.0 / 7.0);
+static void drawGui() {
+	bool enabled = emulationCore != nullptr;
+
+	bool showMenuBar = menuOpen;
+#if defined(GLFW_HOVERED)
+	if(glfwGetWindowAttrib(window, GLFW_HOVERED)) {
+		showMenuBar = true;
 	}
-
-	auto test = ImGui::GetWindowSize();
-	test.x = (test.x - size.x) * 0.5;
-	test.y = (test.y - size.y) * 0.5;
-	
-	ImGui::SetCursorPos(test);
-
-	mainTexture->BufferImage();
-	ImGui::Image((void*)mainTexture->GetTextureId(), size);
-
-	bool enabled = nes != nullptr;
+#else
+	showMenuBar = true;
+#endif
 	menuOpen = false;
-	if(ImGui::BeginMenuBar()) {
+	if((showMenuBar || !settings.AutoHideMenu) && ImGui::BeginMainMenuBar()) {
 		if(ImGui::BeginMenu("File")) {
 			menuOpen = true;
-			
+
 			if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
 				std::string outPath;
 				const auto res = NFD::OpenDialog("nes,nfs", nullptr, outPath);
@@ -510,14 +473,11 @@ static void drawGui() {
 
 			ImGui::Separator();
 
-			// char temp[2] { 0, 0 };
-			// char asdf[] = "Shift+";
 			if(ImGui::BeginMenu("Save State", enabled)) {
 				for(int i = 0; i < 10; ++i) {
-					std::string str = std::to_string(i);
-					// temp[0] = i + 48;
-					
-					if(ImGui::MenuItem(str.c_str(), ("Shift+" + str).c_str())) {
+					std::string str = "Shift+" + std::to_string(i);
+
+					if(ImGui::MenuItem(str.c_str(), str.c_str())) {
 						SaveState(i);
 					}
 				}
@@ -559,7 +519,7 @@ static void drawGui() {
 
 		if(ImGui::BeginMenu("Emulation")) {
 			menuOpen = true;
-			
+
 			bool paused = !running;
 			ImGui::Checkbox("Pause", &paused);
 			running = !paused;
@@ -567,13 +527,14 @@ static void drawGui() {
 			ImGui::Separator();
 
 			if(ImGui::MenuItem("Soft Reset", nullptr, false, enabled)) {
-				if(nes) {
-					nes->Reset();
+				if(emulationCore) {
+					emulationCore->Reset();
 				}
 			}
 			if(ImGui::MenuItem("Hard Reset", nullptr, false, enabled)) {
-				nes = nullptr;
-				OpenFile(settings.RecentFiles[0]);
+				if(emulationCore) {
+					emulationCore->HardReset();
+				}
 			}
 
 			ImGui::EndMenu();
@@ -582,25 +543,12 @@ static void drawGui() {
 		if(ImGui::BeginMenu("Tools")) {
 			menuOpen = true;
 
-			bool active = nes != nullptr;
-
 			if(ImGui::MenuItem("Settings")) {
 				settingsWindow = true;
 			}
-			if(ImGui::MenuItem("Hex Editor", nullptr, false, active)) {
+
+			if(ImGui::MenuItem("Hex Editor", nullptr, false, enabled)) {
 				memEdit.Open();
-			}
-			/*if(ImGui::MenuItem("Tas Editor", nullptr, false, active)) {
-				tasEdit.Open();
-			}*/
-			if(ImGui::MenuItem("CPU Viewer", nullptr, false, active)) {
-				cpuWindow.Open();
-			}
-			if(ImGui::MenuItem("PPU Viewer", nullptr, false, active)) {
-				tables.Open();
-			}
-			if(ImGui::MenuItem("APU Visuals", nullptr, false, active)) {
-				apuWindow.Open();
 			}
 			if(ImGui::MenuItem("Log")) {
 				logger.Show = true;
@@ -609,32 +557,63 @@ static void drawGui() {
 			ImGui::EndMenu();
 		}
 
-		ImGui::EndMenuBar();
+		if(emulationCore) {
+			emulationCore->DrawMenuBar(menuOpen);
+		}
+
+		ImGui::EndMainMenuBar();
 	}
 
+	drawDockSpace();
+
+	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin("NES", nullptr, window_flags);
+	ImGui::PopStyleVar();
+
+	auto windowSize = ImGui::GetWindowSize();
+	if(emulationCore) {
+		auto texture = emulationCore->GetMainTexture();
+
+		auto width = texture->GetWidth();
+		auto height = texture->GetHeight();
+
+		auto ratio = height / float(width);
+
+		auto size = ImGui::GetWindowSize();
+		if(size.x * ratio < size.y) {
+			size.y = size.x * ratio;
+		} else {
+			size.x = size.y * (1 / ratio);
+		}
+
+		ImGui::SetCursorPos((windowSize - size) * 0.5);
+
+		texture->BufferImage();
+		ImGui::Image((void*)texture->GetTextureId(), size);
+	}
 	ImGui::End();
-	
-	cpuWindow.DrawWindow();
-	tables.DrawWindow();
-	// tasEdit.DrawWindow(0);
+
+	logger.DrawScreen();
+	if(emulationCore) {
+		emulationCore->DrawWindows();
+	}
 	memEdit.DrawWindow();
-	apuWindow.DrawWindow();
-	logger.Draw();
+	logger.DrawWindow();
 
 	if(metricsWindow) {
 		ImGui::ShowMetricsWindow(&metricsWindow);
 	}
-	drawSettings(settingsWindow);
+	drawSettings();
+	emulatorPicker.Draw();
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 #else
 int main() {
 #endif
-	LoadCardDb("./NesCarts (2017-08-21).json");
-
 	settings.Load();
 
 	Audio::Init();
@@ -653,7 +632,7 @@ int main() {
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
 
 	// TODO: glfwWindowHint(GLFW_DECORATED, false);
-	
+
 	auto s = CalcWindowSize();
 	// Open a window and create its OpenGL context
 	window = glfwCreateWindow(s.x, s.y, "NES emulator", nullptr, nullptr);
@@ -678,10 +657,8 @@ int main() {
 	glfwSetDropCallback(window, onDrop);
 
 	onResize(window, s.x, s.y);
-
-	mainTexture = std::make_unique<RenderImage>(256, 240);
 	#pragma endregion
-	
+
 	#pragma region ImGui Init
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
@@ -699,11 +676,10 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init("#version 330 core");
 
-	tables.Init();
 	#pragma endregion
 
 	auto lastTime = glfwGetTime();
-	
+
 	#pragma region render loop
 	do {
 		#pragma region Timing
@@ -731,7 +707,9 @@ int main() {
 
 		// ImGui::ShowDemoWindow();
 
-		nesFrame();
+		if(running && emulationCore != nullptr) {
+			emulationCore->Update();
+		}
 		drawGui();
 
 		ImGui::Render();

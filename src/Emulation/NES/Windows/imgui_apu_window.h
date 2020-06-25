@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-#include "../Emulation/RP2A03.h"
+#include "../RP2A03.h"
 
 class ApuWindow {
 private:

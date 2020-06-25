@@ -1,8 +1,8 @@
 #pragma once
 #include <cstdint>
 #include "Cartridge.h"
-#include "../RenderImage.h"
-#include "../saver.h"
+#include "RenderImage.h"
+#include "saver.h"
 
 class PatternTables;
 class Bus;
@@ -150,5 +150,5 @@ private:
 
 	friend class Bus;
 	friend class PatternTables;
-	friend class MemoryEditor;
+	friend class NesCore;
 };

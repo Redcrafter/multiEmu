@@ -3,8 +3,8 @@
 #include <stdexcept>
 #include <cassert>
 
-#include "../../saver.h"
-#include "../../md5.h"
+#include "saver.h"
+#include "md5.h"
 
 enum class MirrorMode : uint8_t {
 	Horizontal,

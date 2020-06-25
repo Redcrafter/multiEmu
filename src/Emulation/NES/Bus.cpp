@@ -1,17 +1,33 @@
 #include "Bus.h"
-#include "../Input/StandardController.h"
+#include "StandardController.h"
 
-Bus::Bus(std::shared_ptr<Mapper>& cartridge) : cartridge(cartridge), cpu(mos6502(this)), apu(RP2A03(this)) {
-	ppu.cartridge = cartridge;
-
-	for(unsigned char& i : CpuRam) {
-		i = 0;
-	}
-}
+Bus::Bus() : cpu(mos6502(this)), apu(RP2A03(this)) { }
 
 void Bus::InsertCartridge(std::shared_ptr<Mapper>& cartridge) {
 	this->cartridge = cartridge;
 	ppu.cartridge = cartridge;
+}
+
+void Bus::HardReset() {
+	cpu.HardReset();
+	ppu.HardReset();
+	// apu.HardReset();
+
+	irqDelay = false;
+	for(unsigned char& i : CpuRam) {
+		i = 0;
+	}
+	cpuOpenBus = 0;
+
+	dmaPage = 0;
+	dmaAddr = 0;
+	dmaData = 0;
+
+	dmaTransfer = false;
+	dmaDummy = true;
+
+	systemClockCounter = 0;
+	CpuStall = 0;
 }
 
 void Bus::Reset() {

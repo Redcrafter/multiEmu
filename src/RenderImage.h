@@ -11,8 +11,6 @@ private:
 	GLuint textureID;
 	int Width, Height;
 	Color* imgData;
-
-	bool changed = false;
 public:
 	RenderImage(int width, int height);
 	~RenderImage();
@@ -20,6 +18,9 @@ public:
 	RenderImage(const RenderImage&) = delete;
 	RenderImage& operator=(const RenderImage&) = delete;
 
+	int GetWidth();
+	int GetHeight();
+	
 	void Clear(Color col);
 	void SetPixel(int x, int y, Color col);
 	void Line(int x0, int y0, int x1, int y1, Color col);

@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include "../Emulation/mos6502.h"
+#include "../mos6502.h"
 
 class CpuStateWindow {
 private:

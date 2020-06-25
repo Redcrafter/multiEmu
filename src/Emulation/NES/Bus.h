@@ -6,35 +6,37 @@
 #include "RP2A03.h"
 
 #include "Cartridge.h"
-#include "../Input/Controller.h"
+#include "Controller.h"
 #include "mos6502.h"
 
 class Bus {
 private:
-	bool irqDelay = false;
+	bool irqDelay;
 
     uint8_t CpuRam[2 * 1024];
-	uint8_t cpuOpenBus = 0;
+	uint8_t cpuOpenBus;
 
-	uint8_t dmaPage = 0;
-	uint8_t dmaAddr = 0;
-	uint8_t dmaData = 0;
+	uint8_t dmaPage;
+	uint8_t dmaAddr;
+	uint8_t dmaData;
 
-	bool dmaTransfer = false;
-	bool dmaDummy = true;
+	bool dmaTransfer;
+	bool dmaDummy;
 public:
-	uint64_t systemClockCounter = 0;
-	int CpuStall = 0;
+	uint64_t systemClockCounter;
+	int CpuStall;
 
-	std::shared_ptr<Mapper> cartridge;
+	std::shared_ptr<Mapper> cartridge = nullptr;
 	mos6502 cpu;
 	ppu2C02 ppu;
 	RP2A03 apu;
 	std::shared_ptr<Controller> controller1, controller2;
-	
-	Bus(std::shared_ptr<Mapper>& cartridge);
+
+	Bus();
 
 	void InsertCartridge(std::shared_ptr<Mapper>& cartridge);
+
+	void HardReset();
 	void Reset();
 	void Clock();
 
@@ -44,5 +46,5 @@ public:
 	void SaveState(saver& saver);
 	void LoadState(saver& saver);
 
-	friend class MemoryEditor;
+	friend class NesCore;
 };

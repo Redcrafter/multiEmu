@@ -8,14 +8,12 @@ static uint8_t FlipByte(uint8_t b) {
 	return b;
 }
 
-PatternTables::PatternTables(std::string title) : Title(std::move(title)) { }
 
-void PatternTables::Init() {
+PatternTables::PatternTables(std::string title) : Title(std::move(title)), image(256, 160) {
 	// 256x128 pattern tables
 	// two pattern tables 128x128 side by side
 	// 256x32 sprites 
 	// 2 rows of 32 sprites one sprite is 8x16
-	image = std::make_unique<RenderImage>(256, 160);
 }
 
 void PatternTables::DrawWindow() {
@@ -32,10 +30,10 @@ void PatternTables::DrawWindow() {
 		for(size_t i = 0; i < 64; i++) {
 			RenderSprite(i);
 		}
-		image->BufferImage();
+		image.BufferImage();
 
 		// ImGui::BeginGroup();
-		ImGui::Image(reinterpret_cast<void*>(image->GetTextureId()), ImVec2(512, 256), ImVec2(0, 0), ImVec2(1, 0.8));
+		ImGui::Image(reinterpret_cast<void*>(image.GetTextureId()), ImVec2(512, 256), ImVec2(0, 0), ImVec2(1, 0.8));
 		const char* test[] = {"1", "2", "3", "4", "5", "6", "7", "8"};
 
 		ImGui::SetNextItemWidth(150);
@@ -76,7 +74,7 @@ void PatternTables::DrawWindow() {
 			float x = (i % 32) * w;
 			float y = 0.8f + (i / 32) * (16 / 160.0);
 
-			ImGui::Image(reinterpret_cast<void*>(image->GetTextureId()), ImVec2(16, height * 2), ImVec2(x, y), ImVec2(x + w, y + h));
+			ImGui::Image(reinterpret_cast<void*>(image.GetTextureId()), ImVec2(16, height * 2), ImVec2(x, y), ImVec2(x + w, y + h));
 
 			if(ImGui::IsItemHovered()) {
 				hoveredId = i;
@@ -146,7 +144,7 @@ void PatternTables::RenderSprite(int id) {
 			uint8_t fgPixel = (p1_pixel << 1) | p0_pixel;
 			uint8_t fgPalette = sprite.Attributes.Palette + 4;
 
-			image->SetPixel(x + x1, 128 + y + y1, ppu->GetPaletteColor(fgPalette, fgPixel));
+			image.SetPixel(x + x1, 128 + y + y1, ppu->GetPaletteColor(fgPalette, fgPixel));
 		}
 	}
 }
@@ -178,8 +176,8 @@ void PatternTables::DrawPatternTable() {
 					auto x = nTileX * 8 + (7 - col);
 					auto y = nTileY * 8 + row;
 
-					image->SetPixel(x, y, color1);
-					image->SetPixel(x + 128, y, color2);
+					image.SetPixel(x, y, color1);
+					image.SetPixel(x + 128, y, color2);
 				}
 			}
 		}

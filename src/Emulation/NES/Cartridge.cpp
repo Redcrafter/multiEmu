@@ -36,6 +36,7 @@ struct dbItem {
 	sha1 prgHash;
 };
 
+static bool dbInitialized = false;
 static std::map<sha1, dbItem> cartDb;
 
 static void InsertPrg(dbItem& cart) {
@@ -74,6 +75,11 @@ static void InsertCart(std::string& name, Json& obj) {
 }
 
 void LoadCardDb(std::string path) {
+	if(dbInitialized) {
+		return;
+	}
+	dbInitialized = true;
+	
 	logger.Log("Loading nes cart db\n");
 	
 	try {

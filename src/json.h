@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+// TODO: fix nullptr
+
 class Json;
 
 struct JsonBase {

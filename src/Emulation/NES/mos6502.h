@@ -1,5 +1,5 @@
 #pragma once
-#include "../saver.h"
+#include "saver.h"
 
 #include <string>
 #include <fstream>
@@ -139,14 +139,14 @@ enum class State: uint8_t {
 class mos6502 {
 	friend class CpuStateWindow;
 public:
-	bool IRQ = false;
+	bool IRQ;
 private:
-	bool NMI = false;
+	bool NMI;
 
-	uint8_t A = 0;
-	uint8_t X = 0;
-	uint8_t Y = 0;
-	uint8_t SP = 0xFD;
+	uint8_t A;
+	uint8_t X;
+	uint8_t Y;
+	uint8_t SP;
 	uint16_t PC;
 
 	union {
@@ -161,10 +161,10 @@ private:
 			bool N : 1; // Negative
 		};
 
-		uint8_t reg = 0b00100100;
+		uint8_t reg;
 	} Status;
 
-	State state = State::FetchOpcode;
+	State state;
 
 	uint16_t ptr;
 	uint16_t addr_abs;
@@ -180,8 +180,9 @@ public:
 	mos6502(Bus* bus);
 	~mos6502();
 
-	void Clock();
+	void HardReset();
 	void Reset();
+	void Clock();
 
 	void Nmi();
 

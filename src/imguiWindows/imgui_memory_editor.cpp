@@ -74,7 +74,7 @@ void MemoryEditor::GotoAddrAndHighlight(size_t addr_min, size_t addr_max) {
 }
 
 void MemoryEditor::DrawWindow() {
-	if(!open || !bus) {
+	if(!open || !currentCore) {
 		return;
 	}
 
@@ -89,28 +89,11 @@ void MemoryEditor::DrawWindow() {
 
 		if(ImGui::BeginMenuBar()) {
 			if(ImGui::BeginMenu("Memory Domain")) {
-				if(ImGui::MenuItem("RAM")) {
-					domain = CpuRam;
+				for(auto& domain : domains) {
+					if(ImGui::MenuItem(domain.Name.c_str())) {
+						selectedDomain = domain.Id;
+					}
 				}
-				if(ImGui::MenuItem("Cpu Bus")) {
-					domain = CpuBus;
-				}
-				if(ImGui::MenuItem("Ppu Bus")) {
-					domain = PpuBus;
-				}
-				if(ImGui::MenuItem("CIRam (Nametables)")) {
-					domain = CIRam;
-				}
-				if(ImGui::MenuItem("OAM")) {
-					domain = Oam;
-				}
-				if(ImGui::MenuItem("Prg Rom")) {
-					domain = PrgRom;
-				}
-				if(ImGui::MenuItem("Chr Rom")) {
-					domain = ChrRom;
-				}
-
 				ImGui::EndMenu();
 			}
 
@@ -132,45 +115,15 @@ bool MemoryEditor::HighlightFn(size_t addr) const {
 }
 
 uint8_t MemoryEditor::ReadFn(size_t addr) const {
-	switch(domain) {
-		case CpuRam: return bus->CpuRam[addr];
-		case CpuBus: return bus->CpuRead(addr, true);
-		case PpuBus: return bus->ppu.ppuRead(addr, true);
-		case CIRam: return bus->ppu.vram[addr];
-		case Oam: return bus->ppu.pOAM[addr];
-		case PrgRom: return bus->cartridge->prg[addr];
-		case ChrRom: return bus->cartridge->chr[addr];
-		default: ;
-	}
-	return 0;
+	return currentCore->ReadMemory(selectedDomain, addr);
 }
 
 void MemoryEditor::WriteFn(size_t addr, uint8_t val) {
-	switch(domain) {
-		case CpuRam:
-			bus->CpuRam[addr] = val;
-			break;
-		case CIRam:
-			bus->ppu.vram[addr] = val;
-			break;
-		case Oam:
-			bus->ppu.pOAM[addr] = val;
-			break;
-	}
+	currentCore->WriteMemory(selectedDomain, addr, val);
 }
 
 uint32_t MemoryEditor::GetDomainSize() const {
-	switch(domain) {
-		case CpuRam: return 0x800;
-		case CpuBus: return 0x10000;
-		case PpuBus: return 0x8000;
-		case CIRam: return 0x800;
-		case Oam: return 0x100;
-		case PrgRom: return bus->cartridge->prg.size();
-		case ChrRom: return bus->cartridge->chr.size();
-	}
-
-	return 0;
+	return domains[selectedDomain].Size;
 }
 
 void MemoryEditor::DrawContents(size_t mem_size) {

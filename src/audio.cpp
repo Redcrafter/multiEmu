@@ -5,7 +5,7 @@
 
 #include <RtAudio.h>
 
-#include "Emulation/RP2A03.h"
+#include "Emulation/NES/RP2A03.h"
 #include "logger.h"
 
 // normal audio quality 44100hz

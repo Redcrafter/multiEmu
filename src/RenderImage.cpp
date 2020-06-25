@@ -18,11 +18,14 @@ RenderImage::RenderImage(const int width, const int height) {
 }
 
 RenderImage::~RenderImage() {
+	glDeleteTextures(1, &textureID);
 	delete[] imgData;
 }
 
+int RenderImage::GetWidth() { return Width; }
+int RenderImage::GetHeight() { return Height; }
+
 void RenderImage::Clear(Color col) {
-	changed = true;
 	for(int i = 0; i < Width * Height; ++i) {
 		imgData[i] = col;
 	}
@@ -31,7 +34,6 @@ void RenderImage::Clear(Color col) {
 void RenderImage::SetPixel(const int x, const int y, const Color col) {
 	if(x >= 0 && x < Width && y >= 0 && y < Height) {
 		imgData[x + y * Width] = col;
-		changed = true;
 	}
 }
 
@@ -60,7 +62,5 @@ void RenderImage::Line(int x0, int y0, int x1, int y1, Color col) {
 
 void RenderImage::BufferImage() {
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	if(changed) {
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_RGB, GL_UNSIGNED_BYTE, imgData);
-	}
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_RGB, GL_UNSIGNED_BYTE, imgData);
 }

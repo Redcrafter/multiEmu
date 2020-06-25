@@ -1,4 +1,5 @@
 #include "logger.h"
+#include <imgui_internal.h>
 
 Logger logger{};
 
@@ -13,14 +14,29 @@ void Logger::Clear() {
 	LineOffsets.push_back(0);
 }
 
+void Logger::LogScreen(const char* fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+
+	const auto size = vsnprintf(nullptr, 0, fmt, args) + 1;
+	const auto buf = new char[size];
+
+	vsnprintf(buf, size, fmt, args);
+	
+	logItems.push_back(ScreenLogItem{ buf, std::chrono::steady_clock::now() });
+
+	delete[] buf;
+	va_end(args);
+}
+
 void Logger::Log(const char* fmt, ...) {
 	int old_size = Buf.size();
 	va_list args;
-	
+
 	va_start(args, fmt);
 	vprintf(fmt, args);
 	va_end(args);
-	
+
 	va_start(args, fmt);
 	Buf.appendfv(fmt, args);
 	va_end(args);
@@ -30,7 +46,7 @@ void Logger::Log(const char* fmt, ...) {
 			LineOffsets.push_back(old_size + 1);
 }
 
-void Logger::Draw() {
+void Logger::DrawWindow() {
 	if(!Show) {
 		return;
 	}
@@ -106,4 +122,39 @@ void Logger::Draw() {
 
 	ImGui::EndChild();
 	ImGui::End();
+}
+
+void Logger::DrawScreen() {
+	if(logItems.empty()) {
+		return;
+	}
+	std::string temp;
+
+	auto now = std::chrono::steady_clock::now();
+	for(size_t i = 0; i < logItems.size(); ++i) {
+		const auto item = logItems[i];
+
+		auto passed = std::chrono::duration_cast<std::chrono::seconds>(now - item.creationTime);
+		if(passed.count() >= 10) {
+			logItems.erase(logItems.begin() + i);
+			i--;
+		} else {
+			if(i > 0) {
+				temp += "\n";
+			}
+			temp += item.string;
+		}
+	}
+
+	if(logItems.empty()) {
+		return;
+	}
+	auto w = ImGui::GetCurrentWindow();
+	auto padding = ImGui::GetStyle().FramePadding;
+	auto textHeight = ImGui::GetTextLineHeight() * logItems.size();
+	w->DrawList->AddText(ImVec2(w->Pos.x + padding.x, w->Pos.y + w->Size.y - textHeight - padding.y), ImGui::GetColorU32(ImGuiCol_Text), temp.c_str());
+
+	// const float fontSize = ImGui::GetFontSize();
+	// auto textSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, temp.c_str());
+	// w->DrawList->AddText(nullptr, fontSize, ImVec2(w->Pos.x + padding.x, w->Pos.y + w->Size.y - textSize.y - padding.y), ImGui::GetColorU32(ImGuiCol_Text), temp.c_str());
 }

@@ -50,7 +50,7 @@
 #include <memory>
 #include <imgui.h>
 
-#include "../Emulation/Bus.h"
+#include "Emulation/ICore.h"
 
 class MemoryEditor {
 protected:
@@ -87,17 +87,7 @@ protected:
 		float PosAsciiEnd;
 		float WindowWidth;
 	};
-
-	enum Domain {
-		CpuRam,
-		CpuBus,
-		PpuBus,
-		CIRam, // Nametables
-		Oam,
-		PrgRom,
-		ChrRom
-	};
-public:
+private:
 	std::string Title;
 	
 	// Settings
@@ -114,7 +104,9 @@ public:
 
 	ImU32 HighlightColor = IM_COL32(255, 255, 255, 50);             // background color of highlighted bytes.
 
-	Bus* bus = nullptr;
+	ICore* currentCore = nullptr;
+	std::vector<MemoryDomain> domains;
+	int selectedDomain = 0;
 protected:
 	bool open = false;
 
@@ -129,10 +121,13 @@ protected:
 	size_t HighlightMax = -1;
 	int PreviewEndianess = 0;
 	DataType PreviewDataType = DataType_S32;
-
-	Domain domain;
 public:
 	MemoryEditor(std::string title);
+
+	void SetCore(ICore* core) {
+		currentCore = core;
+		domains = core->GetMemoryDomains();
+	}
 	
 	void Open() { open = true; }
 	void Close() { open = false; }
