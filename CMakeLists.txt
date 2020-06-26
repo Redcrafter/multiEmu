@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
-find_package(glfw3 REQUIRED)
 
 if(WIN32)
     option(direct "DirectSound" ON)
@@ -86,6 +85,9 @@ add_executable(nes WIN32 ${Common_sources} ${imgui_sources}
                          "./extern/imgui/examples/imgui_impl_opengl3.cpp" 
                          "./extern/imgui/examples/imgui_impl_glfw.cpp"
                          "./extern/rtaudio/RtAudio.cpp")
+
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+add_subdirectory(extern/glfw)
 
 target_include_directories(nes PRIVATE "src" "extern/imgui" "extern/rtaudio" ${GLEW_INCLUDE_DIRS} glfw ${INCLUDES})
 target_link_libraries(nes PRIVATE ${GLEW_LIBRARIES} glfw ${LIBS})
