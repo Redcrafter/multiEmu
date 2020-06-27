@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <GL/glew.h>
+#include <GL/gl3w.h>
 
 struct Color {
 	uint8_t R, G, B;

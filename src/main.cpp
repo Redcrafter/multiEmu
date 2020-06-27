@@ -4,7 +4,7 @@
 #include <fstream>
 #include <iostream>
 
-#include <GL/glew.h>
+#include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -431,14 +431,7 @@ void drawDockSpace() {
 static void drawGui() {
 	bool enabled = emulationCore != nullptr;
 
-	bool showMenuBar = menuOpen;
-#if defined(GLFW_HOVERED)
-	if(glfwGetWindowAttrib(window, GLFW_HOVERED)) {
-		showMenuBar = true;
-	}
-#else
-	showMenuBar = true;
-#endif
+	bool showMenuBar = menuOpen || glfwGetWindowAttrib(window, GLFW_HOVERED);
 	menuOpen = false;
 	if((showMenuBar || !settings.AutoHideMenu) && ImGui::BeginMainMenuBar()) {
 		if(ImGui::BeginMenu("File")) {
@@ -628,7 +621,9 @@ int main() {
 	glfwWindowHint(GLFW_SAMPLES, 4);                               // 4x antialiasing
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);                 // We want OpenGL 3.3
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);                 //
+	#ifdef __APPLE__
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);           // To make MacOS happy; should not be needed
+	#endif
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
 
 	// TODO: glfwWindowHint(GLFW_DECORATED, false);
@@ -643,9 +638,9 @@ int main() {
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(settings.EnableVsync);
 
-	// Initialize GLEW
-	if(glewInit() != GLEW_OK) {
-		logger.Log("Failed to initialize GLEW\n");
+	// Initialize gl3w
+	if(gl3wInit() != 0) {
+		logger.Log("Failed to initialize gl3w\n");
 		return -1;
 	}
 
@@ -674,7 +669,7 @@ int main() {
 
 	// Setup Platform/Renderer bindings
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
-	ImGui_ImplOpenGL3_Init("#version 330 core");
+	ImGui_ImplOpenGL3_Init();
 
 	#pragma endregion
 

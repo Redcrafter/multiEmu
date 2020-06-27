@@ -4,7 +4,6 @@ project (NES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(OpenGL REQUIRED)
-find_package(GLEW REQUIRED)
 
 if(WIN32)
     option(direct "DirectSound" ON)
@@ -28,7 +27,9 @@ elseif(UNIX)
     find_package(GTK2 REQUIRED gtk)
 
     set(INCLUDES ${GTK2_INCLUDE_DIRS})
-    set(LIBS OpenGL ${GTK2_LIBRARIES} stdc++fs pthread glfw)
+    set(LIBS GL ${GTK2_LIBRARIES} stdc++fs pthread)
+
+    set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -Wno-unknown-pragmas -Wno-switch -Wno-unused-parameter -Wno-implicit-fallthrough -g")
 endif()
 
 if(direct)
@@ -78,18 +79,20 @@ endif()
 #if(!(alsa or pulse or oss or jack or core))
 #    message(WARNING "No Audio Library selected")
 #endif()
+add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GL3W)
 
 file(GLOB_RECURSE Common_sources "./src/**/*.cpp" "./src/*.cpp")
 file(GLOB imgui_sources "./extern/imgui/*.cpp")
 add_executable(nes WIN32 ${Common_sources} ${imgui_sources} 
                          "./extern/imgui/examples/imgui_impl_opengl3.cpp" 
                          "./extern/imgui/examples/imgui_impl_glfw.cpp"
+                         "./extern/imgui/examples/libs/gl3w/GL/gl3w.c"
                          "./extern/rtaudio/RtAudio.cpp")
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 add_subdirectory(extern/glfw)
 
-target_include_directories(nes PRIVATE "src" "extern/imgui" "extern/rtaudio" ${GLEW_INCLUDE_DIRS} glfw ${INCLUDES})
-target_link_libraries(nes PRIVATE ${GLEW_LIBRARIES} glfw ${LIBS})
+target_include_directories(nes PRIVATE "src" "extern/imgui" "extern/imgui/examples/libs/gl3w" "extern/rtaudio"  glfw ${INCLUDES})
+target_link_libraries(nes PRIVATE glfw ${LIBS})
 
 configure_file("${CMAKE_SOURCE_DIR}/NesCarts (2017-08-21).json" "${CMAKE_CURRENT_BINARY_DIR}/NesCarts (2017-08-21).json" COPYONLY)
