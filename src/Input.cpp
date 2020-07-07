@@ -17,7 +17,7 @@ InputMapper::InputMapper(const std::string& name, const std::vector<InputItem>& 
 }
 
 bool InputMapper::ShowEditWindow() {
-	for(int i = 0; i < items.size(); ++i) {
+	for(size_t i = 0; i < items.size(); ++i) {
 		auto& item = items[i];
 		ImGui::Text("%s: ", item.Name.c_str());
 		ImGui::SameLine(200);
@@ -52,8 +52,27 @@ bool InputMapper::ShowEditWindow() {
 				case GLFW_KEY_ENTER:
 					text += "enter";
 					break;
+				case GLFW_KEY_F1:
+				case GLFW_KEY_F2:
+				case GLFW_KEY_F3:
+				case GLFW_KEY_F4:
+				case GLFW_KEY_F5:
+				case GLFW_KEY_F6:
+				case GLFW_KEY_F7:
+				case GLFW_KEY_F8:
+				case GLFW_KEY_F9:
+				case GLFW_KEY_F10:
+				case GLFW_KEY_F11:
+				case GLFW_KEY_F12:
+					text += "F" + std::to_string(key.Info.key - GLFW_KEY_F1 + 1);
+					break;
 				default:
-					text += glfwGetKeyName(key.Info.key, 0);
+					auto name = glfwGetKeyName(key.Info.key, 0);
+					if(name) {
+						text += name;
+					} else {
+						text += "???";
+					}
 					break;
 			}
 		}

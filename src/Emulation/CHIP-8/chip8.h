@@ -32,7 +32,7 @@ class Chip8Core : public ICore {
 	RenderImage texture;
 
 	std::string currentFile;
-	md5 currentFileHash;
+	md5 currentFileHash {};
 public:
 	Chip8Core();
 
@@ -43,9 +43,12 @@ public:
 	RenderImage* GetMainTexture() override {
 		return &texture;
     }
+	float GetPixelRatio() override {
+		return 1;
+	}
 
 	md5 GetRomHash() override {
-		return md5{ };
+		return currentFileHash;
 	}
 
 	std::vector<MemoryDomain> GetMemoryDomains() override;

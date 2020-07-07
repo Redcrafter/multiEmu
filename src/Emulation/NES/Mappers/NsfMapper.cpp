@@ -19,9 +19,9 @@ NsfMapper::NsfMapper(const std::string& path) : Mapper({}, {}), nsf(path) {
 
 	BankSwitched = false;
 	for(int i = 0; i < 8; i++) {
-		int bank = nsf.bankInit[i];
+		auto bank = nsf.bankInit[i];
 
-		if(bank * 4096 >= nsf.length)
+		if(bank >= (nsf.length >> 12))
 			bank = 0;
 
 		InitBankSwitches[i] = bank;

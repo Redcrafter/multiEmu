@@ -100,7 +100,7 @@ struct vrc6Sawtooth {
 
 struct DMC {
 	bool enabled;
-	bool irq;
+	bool irq = false;
 
 	bool irqEnable;
 	bool loop;

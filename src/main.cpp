@@ -44,6 +44,8 @@ enum class Action {
 	LoadState,		 // Load from selected savestate
 	SelectNextState, // Select next savestate
 	SelectLastState, // Select previous savestate
+
+	Maximise
 };
 
 InputMapper hotkeys = InputMapper("hotkeys", {
@@ -56,6 +58,7 @@ InputMapper hotkeys = InputMapper("hotkeys", {
 	{ "LoadState", (int)Action::LoadState, Key { { GLFW_KEY_L, 0 } } },
 	{ "SelectNextState", (int)Action::SelectNextState, Key { { GLFW_KEY_KP_ADD, 0 } } },
 	{ "SelectLastState", (int)Action::SelectLastState, Key { { GLFW_KEY_KP_SUBTRACT, 0 } } },
+	{ "Maximise", (int)Action::Maximise, Key { { GLFW_KEY_F11, 0 } } }
 });
 
 GLFWwindow* window;
@@ -73,6 +76,8 @@ bool metricsWindow = false;
 bool speedUp = false;
 bool running = false;
 bool step = false;
+
+bool isFullscreen = false;
 
 struct {
 	bool EnableVsync = true;
@@ -116,7 +121,7 @@ struct {
 	}
 
 	void AddRecent(const std::string path) {
-		for(int i = 0; i < RecentFiles.size(); ++i) {
+		for(size_t i = 0; i < RecentFiles.size(); ++i) {
 			if(RecentFiles[i] == path) {
 				RecentFiles.erase(RecentFiles.begin() + i);
 				break;
@@ -138,11 +143,21 @@ struct {
 } settings;
 
 static ImVec2 CalcWindowSize() {
+	ImVec2 size;
+	
 	if(emulationCore) {
 		auto texture = emulationCore->GetMainTexture();
-		return ImVec2(texture->GetWidth(), texture->GetHeight()) * settings.windowScale;
+		size = ImVec2(texture->GetWidth() * emulationCore->GetPixelRatio(), texture->GetHeight());
+	} else {
+		size = ImVec2(292, 240);
 	}
-	return ImVec2(256, 256) * settings.windowScale;
+
+	size *= settings.windowScale;
+	if(!settings.AutoHideMenu) {
+		auto w = ImGui::FindWindowByName("##MainMenuBar");
+		size.y += w->MenuBarHeight();
+	}
+	return size;
 }
 
 template <typename T>
@@ -150,7 +165,7 @@ static void LoadCore(const std::string& path) {
 	if(emulationCore == nullptr || typeid(*emulationCore) != typeid(T)) {
 		emulationCore = std::make_unique<T>();
 		auto s = CalcWindowSize();
-		// glfwSetWindowSize(window, s.x, s.y);
+		glfwSetWindowSize(window, s.x, s.y);
 	}
 	try {
 		emulationCore->LoadRom(path);
@@ -328,6 +343,20 @@ static void onKey(GLFWwindow* window, int key, int scancode, int action, int mod
 			}
 			logger.Log("Selected state %i\n", selectedSaveState);
 			break;
+		case Action::Maximise:
+			if(!isFullscreen) {
+				isFullscreen = true;
+
+				const auto monitor = glfwGetPrimaryMonitor();
+				const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+				glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+			} else {
+				isFullscreen = false;
+
+				auto s = CalcWindowSize();
+				glfwSetWindowMonitor(window, nullptr, 50, 50, s.x, s.y, 60);
+			}
+			break;
 	}
 }
 
@@ -404,7 +433,7 @@ static void drawSettings() {
 // fix for menubar closing when menu is too big and creates new context
 static bool menuOpen = false;
 
-void drawDockSpace() {
+static int drawDockSpace() {
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
 
 	ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -418,14 +447,16 @@ void drawDockSpace() {
 
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	ImGui::Begin("test", nullptr, window_flags);
+	ImGui::Begin("Main", nullptr, window_flags);
 	ImGui::PopStyleVar(3);
 
 	// DockSpace
-	ImGuiID dockspace_id = ImGui::GetID("WTF");
+	ImGuiID dockspace_id = ImGui::GetID("Dockspace");
 	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_AutoHideTabBar);
 
 	ImGui::End();
+
+	return dockspace_id;
 }
 
 static void drawGui() {
@@ -439,7 +470,7 @@ static void drawGui() {
 
 			if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
 				std::string outPath;
-				const auto res = NFD::OpenDialog("nes,nfs", nullptr, outPath);
+				const auto res = NFD::OpenDialog("nes,nsf", nullptr, outPath);
 
 				if(res == NFD::Result::Okay) {
 					OpenFile(outPath);
@@ -557,10 +588,12 @@ static void drawGui() {
 		ImGui::EndMainMenuBar();
 	}
 
-	drawDockSpace();
+	auto dockspace_id = drawDockSpace();
 
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::SetNextWindowDockID(dockspace_id, ImGuiCond_Once);
+
 	ImGui::Begin("NES", nullptr, window_flags);
 	ImGui::PopStyleVar();
 
@@ -571,7 +604,7 @@ static void drawGui() {
 		auto width = texture->GetWidth();
 		auto height = texture->GetHeight();
 
-		auto ratio = height / float(width);
+		auto ratio = height / (width * emulationCore->GetPixelRatio());
 
 		auto size = ImGui::GetWindowSize();
 		if(size.x * ratio < size.y) {
@@ -583,7 +616,7 @@ static void drawGui() {
 		ImGui::SetCursorPos((windowSize - size) * 0.5);
 
 		texture->BufferImage();
-		ImGui::Image((void*)texture->GetTextureId(), size);
+		ImGui::Image(reinterpret_cast<void*>(texture->GetTextureId()), size);
 	}
 	ImGui::End();
 
@@ -601,12 +634,7 @@ static void drawGui() {
 	emulatorPicker.Draw();
 }
 
-#ifdef _WIN32
-#include <windows.h>
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-#else
 int main() {
-#endif
 	settings.Load();
 
 	Audio::Init();
@@ -628,7 +656,7 @@ int main() {
 
 	// TODO: glfwWindowHint(GLFW_DECORATED, false);
 
-	auto s = CalcWindowSize();
+	auto s = ImVec2(256, 256) * settings.windowScale;
 	// Open a window and create its OpenGL context
 	window = glfwCreateWindow(s.x, s.y, "NES emulator", nullptr, nullptr);
 	if(window == nullptr) {
@@ -733,3 +761,10 @@ int main() {
 
 	return 0;
 }
+
+#ifdef _WIN32
+#include <windows.h>
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+	main();
+}
+#endif

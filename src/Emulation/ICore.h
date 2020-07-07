@@ -15,6 +15,7 @@ class ICore {
 public:
 	virtual std::string GetName() = 0;
 	virtual RenderImage* GetMainTexture() = 0;
+	virtual float GetPixelRatio() = 0;
 
 	virtual md5 GetRomHash() = 0;
 

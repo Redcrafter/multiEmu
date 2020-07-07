@@ -27,11 +27,15 @@ public:
     RenderImage* GetMainTexture() override {
 		return &texture;
     }
+	float GetPixelRatio() override {
+		return 8.0 / 7.0;
+    }
 
 	md5 GetRomHash() override {
 	    if(emulator.cartridge) {
 			return emulator.cartridge->hash;
 	    }
+		return md5();
     }
 
 	std::vector<MemoryDomain> GetMemoryDomains() override;

@@ -8,8 +8,8 @@
 
 union Key {
 	struct {
-		uint32_t key;
-		uint32_t mods;
+		int key;
+		int mods;
 
 		
 	} Info;

@@ -1,6 +1,7 @@
 #include "sha1.h"
 
 #include <cassert>
+#include <istream>
 #include <stdexcept>
 
 #include "hexHelper.h"
@@ -52,8 +53,6 @@ sha1::sha1(const char* data, uint64_t length) {
 	*reinterpret_cast<uint64_t*>(&message[56]) = ((uint64_t)reverseBytes(length * 8) << 32) | reverseBytes((length * 8) >> 32);
 	UpdateHash((char*)&message);
 }
-
-
 
 sha1 sha1::FromString(const std::string& str) {
 	sha1 hash;
@@ -132,41 +131,23 @@ void sha1::UpdateHash(char* message) {
 }
 
 bool operator<(const sha1& left, const sha1& right) {
-	if(left.h[0] < right.h[0]) {
-		return true;
-	}
-	if(left.h[0] > right.h[0]) {
-		return false;
+	if(left.h[0] != right.h[0]) {
+		return left.h[0] < right.h[0];
 	}
 	
-	if(left.h[1] < right.h[1]) {
-		return true;
-	}
-	if(left.h[1] > right.h[1]) {
-		return false;
-	}
-	
-	if(left.h[2] < right.h[2]) {
-		return true;
-	}
-	if(left.h[2] > right.h[2]) {
-		return false;
-	}
-	
-	if(left.h[3] < right.h[3]) {
-		return true;
-	}
-	if(left.h[3] > right.h[3]) {
-		return false;
+	if(left.h[1] != right.h[1]) {
+		return left.h[1] < right.h[1];
 	}
 
-	if(left.h[4] < right.h[4]) {
-		return true;
+	if(left.h[2] != right.h[2]) {
+		return left.h[2] < right.h[2];
 	}
-	if(left.h[4] > right.h[4]) {
-		return false;
+
+	if(left.h[3] != right.h[3]) {
+		return left.h[3] < right.h[3];
 	}
-	return false;
+
+	return left.h[4] < right.h[4];
 }
 
 bool operator==(const sha1& left, const sha1& right) {
@@ -175,4 +156,12 @@ bool operator==(const sha1& left, const sha1& right) {
 		left.h[2] == right.h[2] &&
 		left.h[3] == right.h[3] &&
 		left.h[4] == right.h[4];
+}
+
+bool operator!=(const sha1& left, const sha1& right) {
+	return left.h[0] != right.h[0] ||
+		left.h[1] != right.h[1] ||
+		left.h[2] != right.h[2] ||
+		left.h[3] != right.h[3] ||
+		left.h[4] != right.h[4];
 }

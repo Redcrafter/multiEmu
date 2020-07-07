@@ -3,20 +3,24 @@
 #include <string>
 
 class md5 {
-	uint32_t A = 0x67452301;
-	uint32_t B = 0xefcdab89;
-	uint32_t C = 0x98badcfe;
-	uint32_t D = 0x10325476;
+	uint32_t h[4] = {
+		0x67452301,
+		0xefcdab89,
+		0x98badcfe,
+		0x10325476
+	};
 public:
-	md5() {};
-	md5(const std::string& str);
-	md5(const char* data, uint64_t length);
-	md5(std::istream& stream);
+	md5(){};
+	md5(const std::string &str);
+	md5(const char *data, uint64_t length);
+	md5(std::istream &stream);
 
+	friend bool operator<(const md5& left, const md5& right);
+	friend bool operator==(const md5& left, const md5& right);
+	friend bool operator!=(const md5& left, const md5& right);
+
+	static md5 FromString(const std::string& str);
 	std::string ToString() const;
 private:
-	void UpdateHash(char* message);
-public:
-	bool operator ==(const md5& other) const;
-	bool operator !=(const md5& other)const;
+	void UpdateHash(char *message);
 };

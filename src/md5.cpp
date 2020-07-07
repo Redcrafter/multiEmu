@@ -1,5 +1,6 @@
 #include "md5.h"
 
+#include <cassert>
 #include <istream>
 #include <stdexcept>
 
@@ -106,13 +107,28 @@ md5::md5(std::istream& stream) {
 	UpdateHash((char*)&message);
 }
 
+md5 md5::FromString(const std::string& str) {
+	md5 hash;
+
+	assert(str.size() == 32);
+
+	for(int i = 0; i < 4; i++) {
+		int val = 0;
+		for(int j = 0; j < 8; j++) {
+			val = (val << 4) | hexToDec(str[i * 8 + j]);
+		}
+		hash.h[i] = val;
+	}
+
+	return hash;
+}
+
 std::string md5::ToString() const {
 	char str[33];
 
-	printHex(&str[0], A);
-	printHex(&str[8], B);
-	printHex(&str[16], C);
-	printHex(&str[24], D);
+	for (int i = 0; i < 4; i++) {
+		printHex(&str[i * 8], h[i]);
+	}
 	str[32] = '\0';
 
 	return str;
@@ -121,11 +137,11 @@ std::string md5::ToString() const {
 void md5::UpdateHash(char* message) {
 	auto M = reinterpret_cast<uint32_t*>(message);
 
-	uint32_t a0 = A;
-	uint32_t b0 = B;
-	uint32_t c0 = C;
-	uint32_t d0 = D;
-	
+	uint32_t a0 = h[0];
+	uint32_t b0 = h[1];
+	uint32_t c0 = h[2];
+	uint32_t d0 = h[3];
+
 	for(int i = 0; i < 64; i++) {
 		uint32_t F, g;
 
@@ -151,22 +167,37 @@ void md5::UpdateHash(char* message) {
 		b0 += leftRotate(F, s[i]);
 	}
 
-	A += a0;
-	B += b0;
-	C += c0;
-	D += d0;
+	h[0] += a0;
+	h[1] += b0;
+	h[2] += c0;
+	h[3] += d0;
 }
 
-bool md5::operator==(const md5& other) const {
-	return A == other.A &&
-		B == other.B &&
-		C == other.C &&
-		D == other.D;
+bool operator<(const md5& left, const md5& right) {
+	if(left.h[0] != right.h[0]) {
+		return left.h[0] < right.h[0];
+	}
+	
+	if(left.h[1] != right.h[1]) {
+		return left.h[1] < right.h[1];
+	}
+
+	if(right.h[2] != right.h[2]) {
+		return left.h[2] < right.h[2];
+	}
+	return left.h[3] < right.h[3];
 }
 
-bool md5::operator!=(const md5& other) const {
-	return A != other.A ||
-		B != other.B ||
-		C != other.C ||
-		D != other.D;
+bool operator==(const md5& left, const md5& right) {
+	return left.h[0] == right.h[0] &&
+		left.h[1] == right.h[1] &&
+		left.h[2] == right.h[2] &&
+		left.h[3] == right.h[3];
+}
+
+bool operator!=(const md5& left, const md5& right) {
+	return left.h[0] != right.h[0] ||
+		left.h[1] != right.h[1] ||
+		left.h[2] != right.h[2] ||
+		left.h[3] != right.h[3];
 }

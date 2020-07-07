@@ -27,7 +27,7 @@ static bool audioRunning = false;
 static int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
 	auto outBuffer = static_cast<float*>(outputBuffer);
 
-	int i = 0;
+	size_t i = 0;
 	// output number of requested samples
 	for(; i < nBufferFrames && readPos < writePos; i++) {
 		// copy buffer to left and right channel
@@ -43,7 +43,7 @@ static int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBu
 			lastPos = 0;
 		}
 		auto last = buffer[lastPos % bufferSize];
-		for(int i = 0; i < nBufferFrames; ++i) {
+		for(size_t i = 0; i < nBufferFrames; ++i) {
 			outBuffer[i * 2] = outBuffer[i * 2 + 1] = last;
 		}
 	}

@@ -113,7 +113,7 @@ void PatternTables::RenderSprite(int id) {
 			// 8x16
 			addr = (sprite.id & 1) << 12;
 
-			if(y1 < 8 != sprite.Attributes.FlipVertical) {
+			if((y1 < 8) != sprite.Attributes.FlipVertical) {
 				addr |= (sprite.id & 0xFE) << 4;
 			} else {
 				addr |= ((sprite.id & 0xFE) + 1) << 4;

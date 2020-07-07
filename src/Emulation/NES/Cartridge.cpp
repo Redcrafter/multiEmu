@@ -24,12 +24,6 @@ struct INESheader {
 	uint8_t unused[5];
 };
 
-static bool isPowOf2(int n) {
-	if(n == 0) return false;
-
-	return ceil(log2(n)) == floor(log2(n));
-}
-
 struct dbItem {
 	std::string name;
 	uint16_t mapper;
@@ -63,13 +57,13 @@ static void InsertCart(std::string& name, Json& obj) {
 			}
 			sha1 hash = sha1::FromString(entry["@sha1"]);
 
-			dbItem item{ name, mapper, hash };
+			dbItem item{ name, (uint16_t)mapper, hash };
 			InsertPrg(item);
 		}
 	} else {
 		sha1 hash = sha1::FromString(board["prg"]["@sha1"]);
 
-		dbItem item{ name, mapper, hash };
+		dbItem item{ name, (uint16_t)mapper, hash };
 		InsertPrg(item);
 	}
 }

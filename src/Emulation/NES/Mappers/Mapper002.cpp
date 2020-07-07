@@ -8,7 +8,6 @@ Mapper002::Mapper002(const std::vector<uint8_t>& prg, const std::vector<uint8_t>
 
 int Mapper002::cpuRead(uint16_t addr, uint8_t& data) {
 	if(addr >= 0x8000) {
-		uint8_t bank = 0;
 		if(addr >= 0xC000) {
 			data = prg[((addr & 0x3FFF) | (prg.size() - 0x4000)) & prgMask];
 		} else {

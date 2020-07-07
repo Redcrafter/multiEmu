@@ -24,7 +24,7 @@ public:
 	template <typename T>
 	void Read(T* data, size_t size) {
 		char* ptr = (char*)data;
-		for(int i = 0; i < size * sizeof(T); ++i) {
+		for(size_t i = 0; i < size * sizeof(T); ++i) {
 			ptr[i] = this->data[readPos];
 			readPos++;
 		}
