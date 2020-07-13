@@ -470,7 +470,7 @@ static void drawGui() {
 
 			if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
 				std::string outPath;
-				const auto res = NFD::OpenDialog("nes,nsf", nullptr, outPath);
+				const auto res = NFD::OpenDialog({ {"Rom Files", { "nes", "nsf" }}, { "NES", {"nes", "nsf"} } }, nullptr, outPath, window);
 
 				if(res == NFD::Result::Okay) {
 					OpenFile(outPath);

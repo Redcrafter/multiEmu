@@ -17,14 +17,13 @@ static void NFDi_SetError(const char* msg) {
 	g_errorstr = msg;
 }
 
-static int NFDi_IsFilterSegmentChar(char ch) {
-	return (ch == ',' || ch == ';' || ch == '\0');
-}
-
 #ifdef _WIN32
 #include <wchar.h>
 #include <windows.h>
 #include <shobjidl.h>
+
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 
 #ifdef __MINGW32__
 // Explicitly setting NTDDI version, this is necessary for the MinGW compiler
@@ -79,7 +78,6 @@ static std::string WCharToChar(const wchar_t* inStr) {
 static void CopyNFDCharToWChar(const char* inStr, wchar_t** outStr) {
 	int inStrByteCount = static_cast<int>(strlen(inStr));
 	int charsNeeded = MultiByteToWideChar(CP_UTF8, 0, inStr, inStrByteCount, nullptr, 0);
-	assert(charsNeeded);
 	assert(!*outStr);
 	charsNeeded += 1; // terminator
 
@@ -89,103 +87,41 @@ static void CopyNFDCharToWChar(const char* inStr, wchar_t** outStr) {
 	(*outStr)[charsNeeded - 1] = '\0';
 }
 
-/* ext is in format "jpg", no wildcards or separators */
-static Result AppendExtensionToSpecBuf(const char* ext, char* specBuf, size_t specBufLen) {
-	const char SEP[] = ";";
-	assert(specBufLen > strlen(ext) + 3);
-
-	if(strlen(specBuf) > 0) {
-		strncat_s(specBuf, specBufLen, SEP, specBufLen - strlen(specBuf) - 1);
-		specBufLen += strlen(SEP);
-	}
-
-	char extWildcard[NFD_MAX_STRLEN];
-	int bytesWritten = sprintf_s(extWildcard, NFD_MAX_STRLEN, "*.%s", ext);
-	assert(bytesWritten == (int)(strlen(ext) + 2));
-
-	strncat_s(specBuf, specBufLen, extWildcard, specBufLen - strlen(specBuf) - 1);
-
-	return Result::Okay;
-}
-
-static Result AddFiltersToDialog(IFileDialog* fileOpenDialog, const char* filterList) {
-	const wchar_t WILDCARD[] = L"*.*";
-
-	if(!filterList || strlen(filterList) == 0)
+static Result AddFiltersToDialog(IFileDialog* fileOpenDialog, const std::vector<FilterItem>& filterList) {
+	if(filterList.empty()) {
 		return Result::Okay;
-
-	// Count rows to alloc
-	UINT filterCount = 1; /* guaranteed to have one filter on a correct, non-empty parse */
-	const char* p_filterList;
-	for(p_filterList = filterList; *p_filterList; ++p_filterList) {
-		if(*p_filterList == ';')
-			++filterCount;
 	}
 
-	assert(filterCount);
-	if(!filterCount) {
-		NFDi_SetError("Error parsing filters.");
-		return Result::Error;
-	}
+	std::vector<COMDLG_FILTERSPEC> specList;
+	for(const auto& filter : filterList) {
+		wchar_t* name = nullptr;
+		wchar_t* spec = nullptr;
 
-	/* filterCount plus 1 because we hardcode the *.* wildcard after the while loop */
-	COMDLG_FILTERSPEC* specList = new COMDLG_FILTERSPEC[filterCount + 1];
-	if(!specList) {
-		return Result::Error;
-	}
-	for(UINT i = 0; i < filterCount + 1; ++i) {
-		specList[i].pszName = nullptr;
-		specList[i].pszSpec = nullptr;
-	}
+		std::string asdf;
 
-	size_t specIdx = 0;
-	p_filterList = filterList;
-	char typebuf[NFD_MAX_STRLEN] = { 0 }; /* one per comma or semicolon */
-	char* p_typebuf = typebuf;
-
-	char specbuf[NFD_MAX_STRLEN] = { 0 }; /* one per semicolon */
-
-	while(true) {
-		if(NFDi_IsFilterSegmentChar(*p_filterList)) {
-			/* append a type to the specbuf (pending filter) */
-			AppendExtensionToSpecBuf(typebuf, specbuf, NFD_MAX_STRLEN);
-
-			p_typebuf = typebuf;
-			memset(typebuf, 0, sizeof(char) * NFD_MAX_STRLEN);
+		for(int i = 0; i < filter.Extensions.size(); ++i) {
+			if(i > 0) {
+				asdf += ";";
+			}
+			asdf += "*" + filter.Extensions[i];
 		}
 
-		if(*p_filterList == ';' || *p_filterList == '\0') {
-			/* end of filter -- add it to specList */
+		CopyNFDCharToWChar(filter.Name.c_str(), &name);
+		CopyNFDCharToWChar(asdf.c_str(), &spec);
 
-			CopyNFDCharToWChar(specbuf, (wchar_t**)&specList[specIdx].pszName);
-			CopyNFDCharToWChar(specbuf, (wchar_t**)&specList[specIdx].pszSpec);
-
-			memset(specbuf, 0, sizeof(char) * NFD_MAX_STRLEN);
-			++specIdx;
-			if(specIdx == filterCount)
-				break;
-		}
-
-		if(!NFDi_IsFilterSegmentChar(*p_filterList)) {
-			*p_typebuf = *p_filterList;
-			++p_typebuf;
-		}
-
-		++p_filterList;
+		specList.push_back({ name, spec });
 	}
 
 	/* Add wildcard */
-	specList[specIdx].pszSpec = WILDCARD;
-	specList[specIdx].pszName = WILDCARD;
+	specList.push_back({ L"All Files", L"*.*" });
 
-	fileOpenDialog->SetFileTypes(filterCount + 1, specList);
+	fileOpenDialog->SetFileTypes(specList.size(), specList.data());
 
 	/* free speclist */
-	for(size_t i = 0; i < filterCount; ++i) {
+	for(size_t i = 0; i < specList.size() - 1; ++i) {
 		delete specList[i].pszName;
 		delete specList[i].pszSpec;
 	}
-	delete[] specList;
 
 	return Result::Okay;
 }
@@ -236,7 +172,7 @@ static Result SetDefaultPath(IFileDialog* dialog, const char* defaultPath) {
 	if(!defaultPath || strlen(defaultPath) == 0)
 		return Result::Okay;
 
-	wchar_t* defaultPathW = { 0 };
+	wchar_t* defaultPathW = nullptr;
 	CopyNFDCharToWChar(defaultPath, &defaultPathW);
 
 	IShellItem* folder;
@@ -264,7 +200,7 @@ static Result SetDefaultPath(IFileDialog* dialog, const char* defaultPath) {
 }
 
 /* public */
-Result NFD::OpenDialog(const char* filterList, const char* defaultPath, std::string& outPath) {
+Result NFD::OpenDialog(const std::vector<FilterItem>& filterList, const char* defaultPath, std::string& outPath, GLFWwindow* parent) {
 	Result nfdResult = Result::Error;
 
 
@@ -275,7 +211,7 @@ Result NFD::OpenDialog(const char* filterList, const char* defaultPath, std::str
 	}
 
 	// Create dialog
-	IFileOpenDialog* fileOpenDialog(nullptr);
+	IFileOpenDialog* fileOpenDialog = nullptr;
 	HRESULT result = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpenDialog));
 
 	if(!SUCCEEDED(result)) {
@@ -293,8 +229,13 @@ Result NFD::OpenDialog(const char* filterList, const char* defaultPath, std::str
 		goto end;
 	}
 
+	HWND wind = nullptr;
+	if(parent) {
+		wind = glfwGetWin32Window(parent);
+	}
+
 	// Show the dialog.
-	result = fileOpenDialog->Show(nullptr);
+	result = fileOpenDialog->Show(wind);
 	if(SUCCEEDED(result)) {
 		// Get the file name
 		IShellItem* shellItem(nullptr);
@@ -332,7 +273,7 @@ end:
 	return nfdResult;
 }
 
-Result NFD::OpenDialogMultiple(const char* filterList, const char* defaultPath, std::vector<std::string>& outPaths) {
+Result NFD::OpenDialogMultiple(const std::vector<FilterItem>& filterList, const char* defaultPath, std::vector<std::string>& outPaths, GLFWwindow* parent) {
 	Result nfdResult = Result::Error;
 
 
@@ -375,8 +316,13 @@ Result NFD::OpenDialogMultiple(const char* filterList, const char* defaultPath, 
 		goto end;
 	}
 
+	HWND wind = nullptr;
+	if(parent) {
+		wind = glfwGetWin32Window(parent);
+	}
+
 	// Show the dialog.
-	result = fileOpenDialog->Show(nullptr);
+	result = fileOpenDialog->Show(wind);
 	if(SUCCEEDED(result)) {
 		IShellItemArray* shellItems;
 		result = fileOpenDialog->GetResults(&shellItems);
@@ -410,7 +356,7 @@ end:
 	return nfdResult;
 }
 
-Result NFD::SaveDialog(const char* filterList, const char* defaultPath, std::string& outPath) {
+Result NFD::SaveDialog(const std::vector<FilterItem>& filterList, const char* defaultPath, std::string& outPath, GLFWwindow* parent) {
 	Result nfdResult = Result::Error;
 
 	HRESULT coResult = COMInit();
@@ -439,8 +385,13 @@ Result NFD::SaveDialog(const char* filterList, const char* defaultPath, std::str
 		goto end;
 	}
 
+	HWND wind = nullptr;
+	if(parent) {
+		wind = glfwGetWin32Window(parent);
+	}
+
 	// Show the dialog.
-	result = fileSaveDialog->Show(nullptr);
+	result = fileSaveDialog->Show(wind);
 	if(SUCCEEDED(result)) {
 		// Get the file name
 		::IShellItem* shellItem;
@@ -478,7 +429,7 @@ end:
 	return nfdResult;
 }
 
-Result NFD::PickFolder(const char* defaultPath, std::string& outPath) {
+Result NFD::PickFolder(const char* defaultPath, std::string& outPath, GLFWwindow* parent) {
 	Result nfdResult = Result::Error;
 	DWORD dwOptions = 0;
 
@@ -514,8 +465,13 @@ Result NFD::PickFolder(const char* defaultPath, std::string& outPath) {
 		goto end;
 	}
 
+	HWND wind = nullptr;
+	if(parent) {
+		wind = glfwGetWin32Window(parent);
+	}
+
 	// Show the dialog to the user
-	result = fileDialog->Show(nullptr);
+	result = fileDialog->Show(wind);
 	if(SUCCEEDED(result)) {
 		// Get the folder name
 		::IShellItem* shellItem(nullptr);
@@ -559,74 +515,30 @@ end:
 #elif defined(__linux)
 #include <gtk-2.0/gtk/gtk.h>
 
+#define GLFW_EXPOSE_NATIVE_X11
+#include <GLFW/glfw3native.h>
+
 const char INIT_FAIL_MSG[] = "gtk_init_check failed to initilaize GTK+";
-using namespace NFD;
 
-static void AddTypeToFilterName(const char* typebuf, char* filterName, size_t bufsize) {
-	const char SEP[] = ", ";
-
-	size_t len = strlen(filterName);
-	if(len != 0) {
-		strncat(filterName, SEP, bufsize - len - 1);
-		len += strlen(SEP);
-	}
-
-	strncat(filterName, typebuf, bufsize - len - 1);
-}
-
-static void AddFiltersToDialog(GtkWidget* dialog, const char* filterList) {
-	GtkFileFilter* filter;
-	char typebuf[NFD_MAX_STRLEN] = { 0 };
-	const char* p_filterList = filterList;
-	char* p_typebuf = typebuf;
-	char filterName[NFD_MAX_STRLEN] = { 0 };
-
-	if(!filterList || strlen(filterList) == 0)
+static void AddFiltersToDialog(GtkWidget* dialog, const std::vector<FilterItem>& filterList) {
+	if(filterList.empty()) {
 		return;
-
-	filter = gtk_file_filter_new();
-	while(true) {
-		if(NFDi_IsFilterSegmentChar(*p_filterList)) {
-			char typebufWildcard[NFD_MAX_STRLEN];
-			/* add another type to the filter */
-			assert(strlen(typebuf) > 0);
-			assert(strlen(typebuf) < NFD_MAX_STRLEN - 1);
-
-			snprintf(typebufWildcard, NFD_MAX_STRLEN, "*.%s", typebuf);
-			AddTypeToFilterName(typebuf, filterName, NFD_MAX_STRLEN);
-
-			gtk_file_filter_add_pattern(filter, typebufWildcard);
-
-			p_typebuf = typebuf;
-			memset(typebuf, 0, sizeof(char) * NFD_MAX_STRLEN);
-		}
-
-		if(*p_filterList == ';' || *p_filterList == '\0') {
-			/* end of filter -- add it to the dialog */
-
-			gtk_file_filter_set_name(filter, filterName);
-			gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
-
-			filterName[0] = '\0';
-
-			if(*p_filterList == '\0')
-				break;
-
-			filter = gtk_file_filter_new();
-		}
-
-		if(!NFDi_IsFilterSegmentChar(*p_filterList)) {
-			*p_typebuf = *p_filterList;
-			p_typebuf++;
-		}
-
-		p_filterList++;
 	}
 
-	/* always append a wildcard option to the end*/
+	GtkFileFilter* filter = nullptr;
+	for(const auto& f : filterList) {
+		filter = gtk_file_filter_new();
+		gtk_file_filter_set_name(filter, f.Name.c_str());
+		for(const auto& ext : f.Extensions) {
+			auto name = "*." + ext;
+			gtk_file_filter_add_pattern(filter, name.c_str());
+		}
+
+		gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+	}
 
 	filter = gtk_file_filter_new();
-	gtk_file_filter_set_name(filter, "*.*");
+	gtk_file_filter_set_name(filter, "All Files");
 	gtk_file_filter_add_pattern(filter, "*");
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
 }
@@ -650,7 +562,7 @@ static void WaitForCleanup() {
 
 /* public */
 
-Result NFD::OpenDialog(const char* filterList, const char* defaultPath, std::string& outPath) {
+Result NFD::OpenDialog(const std::vector<FilterItem>& filterList, const char* defaultPath, std::string& outPath, GLFWwindow* parent) {
 	GtkWidget* dialog;
 	Result result;
 
@@ -659,6 +571,7 @@ Result NFD::OpenDialog(const char* filterList, const char* defaultPath, std::str
 		return Result::Error;
 	}
 
+	// glfwGetX11Window(window) only returns a X11 window which can't be used as a parent
 	dialog = gtk_file_chooser_dialog_new("Open File", NULL, GTK_FILE_CHOOSER_ACTION_OPEN, "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
 
 	/* Build the filter list */
@@ -685,7 +598,7 @@ Result NFD::OpenDialog(const char* filterList, const char* defaultPath, std::str
 	return result;
 }
 
-Result NFD::OpenDialogMultiple(const char* filterList, const char* defaultPath, std::vector<std::string>& outPaths) {
+Result NFD::OpenDialogMultiple(const std::vector<FilterItem>& filterList, const char* defaultPath, std::vector<std::string>& outPaths, GLFWwindow* parent) {
 	GtkWidget* dialog;
 	Result result;
 
@@ -727,7 +640,7 @@ Result NFD::OpenDialogMultiple(const char* filterList, const char* defaultPath, 
 	return result;
 }
 
-Result NFD::SaveDialog(const char* filterList, const char* defaultPath, std::string& outPath) {
+Result NFD::SaveDialog(const std::vector<FilterItem>& filterList, const char* defaultPath, std::string& outPath, GLFWwindow* parent) {
 	GtkWidget* dialog;
 	Result result;
 
@@ -762,7 +675,7 @@ Result NFD::SaveDialog(const char* filterList, const char* defaultPath, std::str
 	return result;
 }
 
-Result NFD_PickFolder(const char* defaultPath, std::string& outPath) {
+Result NFD::PickFolder(const char* defaultPath, std::string& outPath, GLFWwindow* parent) {
 	if(!gtk_init_check(NULL, NULL)) {
 		NFDi_SetError(INIT_FAIL_MSG);
 		return Result::Error;
@@ -796,22 +709,22 @@ Result NFD_PickFolder(const char* defaultPath, std::string& outPath) {
 #pragma warning("No nfd found")
 // TODO: use imgui to draw dialog
 
-Result OpenDialog(const char* filterList, const char* defaultPath, std::string& outPath) {
+Result OpenDialog(const std::vector<FilterItem>& filterList, const char* defaultPath, std::string& outPath, GLFWwindow* parent) {
 	NFDi_SetError("No native framework found");
 	return Result::Error;
 }
 
-Result OpenDialogMultiple(const char* filterList, const char* defaultPath, std::vector<std::string>& outPaths) {
+Result OpenDialogMultiple(const std::vector<FilterItem>& filterList, const char* defaultPath, std::vector<std::string>& outPaths, GLFWwindow* parent) {
 	NFDi_SetError("No native framework found");
 	return Result::Error;
 }
 
-Result SaveDialog(const char* filterList, const char* defaultPath, std::string& outPath) {
+Result SaveDialog(const std::vector<FilterItem>& filterList, const char* defaultPath, std::string& outPath, GLFWwindow* parent) {
 	NFDi_SetError("No native framework found");
 	return Result::Error;
 }
 
-Result PickFolder(const char* defaultPath, std::string& outPath) {
+Result PickFolder(const char* defaultPath, std::string& outPath, GLFWwindow* parent) {
 	NFDi_SetError("No native framework found");
 	return Result::Error;
 }
