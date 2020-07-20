@@ -24,8 +24,9 @@ sudo apt install libpulse-dev   # pulse audio
 As of now OSS / Jack Audio Server has not been tested.
 
 Next you will need to install required display libraries:
+Debian based distros:
 ```sh
-sudo apt install libglibd-2.0-dev libgtk2.0-dev
+sudo apt install libgtk2.0-dev
 ```
 
 To clone the repository use the following command:
