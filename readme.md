@@ -15,16 +15,32 @@ cmake -A (win32|x64) ../
 ```
 
 ## Linux
+
+You will need a sound library of your choosing:
 ```sh
-# depenging on which audio libraries you want to use
-apt-get install libasound2-dev # alsa (default)
-apt-get install libpulse-dev   # pulse audio
-# haven't tested OSS / Jack Audio Server
+sudo apt install libasound2-dev # alsa (default)
+sudo apt install libpulse-dev   # pulse audio
+```
+As of now OSS / Jack Audio Server has not been tested.
 
-apt-get install libgtk2.0-dev
+Next you will need to install required display libraries:
+Debian based distros:
+```sh
+sudo apt install libgtk2.0-dev
+```
 
+To clone the repository use the following command:
+```sh
+git clone --recursive https://github.com/Redcrafter/nesEmu.git
+```
+
+If you cloned the repository without the submodules you can use the following command, issued in the repositories root:
+```sh
 git submodule update --init
+```
 
+To compile the project using CMake:
+```sh
 mkdir build
 cd build
 cmake ../
