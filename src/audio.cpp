@@ -5,14 +5,13 @@
 
 #include <RtAudio.h>
 
-#include "Emulation/NES/RP2A03.h"
 #include "logger.h"
 
 // normal audio quality 44100hz
-static const uint32_t sampleRate = 44100;
+constexpr uint32_t sampleRate = 44100;
 
 // 8 frames worth of buffer
-const int bufferSize = 8 * 735;
+constexpr int bufferSize = 8 * 735;
 
 // read position of output
 static size_t readPos = 0;
@@ -21,12 +20,24 @@ static size_t writePos = 0;
 // sample buffer
 static float buffer[bufferSize];
 
+// used to prevent popping
+static float lastSample = 0;
+
+// used to prevent unnecessary resize of inBuffer
+static int pushPos;
+// samples added by PushSample
+static std::vector<float> inBuffer;
+
 static std::unique_ptr<RtAudio> dac;
 static bool audioRunning = false;
 
 static int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
-	auto outBuffer = static_cast<float*>(outputBuffer);
+	const auto outBuffer = static_cast<float*>(outputBuffer);
 
+	if(readPos < writePos) {
+		lastSample = buffer[(writePos - 1) % bufferSize];
+	}
+	
 	size_t i = 0;
 	// output number of requested samples
 	for(; i < nBufferFrames && readPos < writePos; i++) {
@@ -37,14 +48,11 @@ static int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBu
 
 	// if we didn't have enough samples in the buffer
 	if(i < nBufferFrames) {
-		// Repeat last sample to prevent popping
-		int lastPos = readPos - 1;
-		if(lastPos < 0) {
-			lastPos = 0;
-		}
-		auto last = buffer[lastPos % bufferSize];
-		for(size_t i = 0; i < nBufferFrames; ++i) {
-			outBuffer[i * 2] = outBuffer[i * 2 + 1] = last;
+		// Repeat last sample to prevent popping and fade out over time
+		// so single frame drops don't pop and there's no noise over time
+		for(; i < nBufferFrames; i++) {
+			outBuffer[i * 2] = outBuffer[i * 2 + 1] = lastSample;
+			lastSample *= 0.9999;
 		}
 	}
 
@@ -96,41 +104,30 @@ void Audio::Dispose() {
 	}
 }
 
-void Audio::Resample(RP2A03& apu) {
-	if(!audioRunning) {
-		apu.bufferPos = 0;
+void Audio::Resample() {
+	if(!audioRunning || pushPos == 0) {
+		pushPos = 0;
 		return;
 	}
-	const int samples = apu.bufferPos;
-	// printf("Buffer usage %i\n", samples);
+	
+	// TODO: prevent aliasing?
+	for (size_t i = 0; i < 735; i++) {
+		auto pos = i / 734.0 * (pushPos - 1);
+		float f = fmod(pos, 1);
 
-	// how many samples to merge
-	const auto frac = samples / 735.0;
-	// position in apu's buffer
-	int readPos = 0;
-	// used to account for sample fractions
-	float mapped = 0;
-
-	// TODO: fancy linear interpolation?
-	for(int i = 0; i < 735 && readPos < samples; i++) {
-		float sample = 0;
-		int count = 0;
-
-		// take frac samples from waveBuffer and average them
-		while(mapped <= frac && readPos < samples) {
-			mapped++;
-			sample += apu.waveBuffer[readPos].sample;
-			readPos++;
-			count++;
-		}
-		mapped -= frac;
-
-		buffer[writePos % bufferSize] = (sample / count);
+		buffer[writePos % bufferSize] = (1 - f) * inBuffer[floor(pos)] + f * inBuffer[ceil(pos)];
 		writePos++;
 	}
-	
-	// copy number of samples for visualization
-	apu.lastBufferPos = apu.bufferPos;
-	// reset apu buffer
-	apu.bufferPos = 0;
+
+	pushPos = 0;
+}
+
+void Audio::PushSample(float value) {
+	// reduce buffer allocation by overwriting old values
+	if(pushPos < inBuffer.size()) {
+		inBuffer[pushPos] = value;
+	} else {
+		inBuffer.push_back(value);
+	}
+	pushPos++;
 }

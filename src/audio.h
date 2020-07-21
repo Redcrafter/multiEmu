@@ -1,7 +1,5 @@
 #pragma once
 
-class RP2A03;
-
 namespace Audio {
     // called at startup
     bool Init();
@@ -9,5 +7,8 @@ namespace Audio {
 	void Dispose();
 
     // Called once per frame and generats 44100/60 = 735 samples
-    void Resample(RP2A03& apu);
+    void Resample();
+
+    // push samples onto buffer. should be close to 735 samples/frame to reduce computation. buffer gets resampled to 735 samples
+    void PushSample(float value);
 }

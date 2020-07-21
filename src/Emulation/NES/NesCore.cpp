@@ -224,5 +224,6 @@ void NesCore::Update() {
 	}
 
 	// step = false;
-	Audio::Resample(emulator.apu);
+	emulator.apu.lastBufferPos = emulator.apu.bufferPos;
+	emulator.apu.bufferPos = 0;
 }

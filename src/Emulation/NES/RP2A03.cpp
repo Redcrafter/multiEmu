@@ -1,5 +1,7 @@
 #include "RP2A03.h"
 #include "Bus.h"
+#include "audio.h"
+
 #include <cassert>
 
 const int lengthTable[] = {
@@ -327,7 +329,7 @@ void RP2A03::Clock() {
 		}
 	}
 
-	if(frameCounter % 20 == 0)
+	if(frameCounter % 40 == 0)
 		GenerateSample();
 
 	if(frameCounter % 2 == 0) {
@@ -630,7 +632,7 @@ void RP2A03::ClockLength() {
 	pulse2.ClockSweep();
 }
 
-float RP2A03::GenerateSample() {
+void RP2A03::GenerateSample() {
 	auto& buf = waveBuffer[bufferPos];
 
 	uint8_t tnd = 0;
@@ -657,14 +659,12 @@ float RP2A03::GenerateSample() {
 		val += (vrc6Pulse1.Output() + vrc6Pulse2.Output() + vrc6Saw.Output()) / 100.0;
 	}
 
-	buf.sample = val;
+	Audio::PushSample(val);
 	bufferPos++;
 	if(bufferPos >= bufferLength) {
 		// __debugbreak();
 		throw std::runtime_error("Buffer overflow");
 	}
-
-	return val;
 }
 
 bool RP2A03::GetIrq() {

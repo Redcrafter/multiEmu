@@ -159,7 +159,6 @@ public:
 	int bufferPos = 0;
 	int lastBufferPos = 0;
 	struct {
-		float sample;
 		uint8_t noise, dmc;
 	} waveBuffer[bufferLength];
 public:
@@ -174,7 +173,7 @@ public:
 	void ClockEnvelope();
 	void ClockLength();
 
-	float GenerateSample();
+	void GenerateSample();
 	bool GetIrq();
 
 	void SaveState(saver& saver);

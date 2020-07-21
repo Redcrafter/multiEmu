@@ -728,10 +728,9 @@ int main() {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		// ImGui::ShowDemoWindow();
-
 		if(running && emulationCore != nullptr) {
 			emulationCore->Update();
+			Audio::Resample();
 		}
 		drawGui();
 

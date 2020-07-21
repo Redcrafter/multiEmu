@@ -1,8 +1,11 @@
 #include "chip8.h"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
 #include <cstdint>
 #include <fstream>
 #include <cstring>
+#include <audio.h>
 
 static const uint8_t chip8_fontset[] = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -302,8 +305,21 @@ void Chip8Core::Update() {
 	if(emulator.sound_timer > 0) {
 		emulator.sound_timer--;
 		if(emulator.sound_timer == 0) {
-			// TODO: play beep
+			// beep should play for 200 ms
+			// 200ms / 16.66ms = 12 frames 
+			beepFrames = 12;
+			beepPos = 0;
 		}
+	}
+
+	if(beepFrames > 0) {
+		// beep plays at 800hz
+		const auto frac =  (M_PI * 800 * 2) / (735 * 60);
+		for(int i = 0; i < 735; ++i) {
+			Audio::PushSample(std::sin(beepPos * frac) * 0.1);
+			beepPos++;
+		}
+		beepFrames--;
 	}
 
 	Color black{ 0,0,0 };

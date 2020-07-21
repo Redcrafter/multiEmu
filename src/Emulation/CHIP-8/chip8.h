@@ -17,7 +17,6 @@ struct Chip8 {
     uint16_t stack[0x100];
 
     uint8_t gfx[64 * 32];
-    // RenderImage* image;
 public:
     Chip8();
 
@@ -33,6 +32,9 @@ class Chip8Core : public ICore {
 
 	std::string currentFile;
 	md5 currentFileHash {};
+
+	int beepFrames = 12;
+	int beepPos = 0;
 public:
 	Chip8Core();
 
