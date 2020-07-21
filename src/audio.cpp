@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <cmath>
 
 #include <RtAudio.h>
 
@@ -113,7 +114,7 @@ void Audio::Resample() {
 	// TODO: prevent aliasing?
 	for (size_t i = 0; i < 735; i++) {
 		auto pos = i / 734.0 * (pushPos - 1);
-		float f = fmod(pos, 1);
+		float f = std::fmod(pos, 1);
 
 		buffer[writePos % bufferSize] = (1 - f) * inBuffer[floor(pos)] + f * inBuffer[ceil(pos)];
 		writePos++;

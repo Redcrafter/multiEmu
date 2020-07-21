@@ -1,5 +1,9 @@
 cmake_minimum_required (VERSION 2.6)
-project (NES C CXX)
+project (Emulator C CXX)
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -19,7 +23,10 @@ elseif(APPLE)
 
     set(LIBS pthread "-framework OpenGL") # -framework Cocoa
 elseif(UNIX)
-    option(alsa "ALSA" ON)
+    # auto detect alsa installation
+    find_package(ALSA QUIET)
+
+    option(alsa "ALSA" ALSA_FOUND)
     option(pulse "PulseAudio" OFF)
     option(oss "OSS" OFF)
     option(jack "Jack Audio Server" OFF)
@@ -46,7 +53,7 @@ if(alsa)
     add_definitions(-D__LINUX_ALSA__)
     find_package(ALSA REQUIRED)
     
-    list(APPEND INCLUDES ${ALSA_INCLUDE_DIR})
+    list(APPEND INCLUDES ${ALSA_INCLUDE_DIRS})
     list(APPEND LIBS ${ALSA_LIBRARIES})
 endif()
 if(pulse)
@@ -76,23 +83,20 @@ if(core)
     list(APPEND LIBS "-framework CoreAudio" "-framework CoreFoundation")
 endif()
 
-#if(!(alsa or pulse or oss or jack or core))
-#    message(WARNING "No Audio Library selected")
-#endif()
-add_definitions(-DIMGUI_IMPL_OPENGL_LOADER_GL3W)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+add_subdirectory(extern/glfw)
 
 file(GLOB_RECURSE Common_sources "./src/**/*.cpp" "./src/*.cpp")
 file(GLOB imgui_sources "./extern/imgui/*.cpp")
-add_executable(nes WIN32 ${Common_sources} ${imgui_sources} 
+add_executable(emu WIN32 ${Common_sources} ${imgui_sources} 
                          "./extern/imgui/examples/imgui_impl_opengl3.cpp" 
                          "./extern/imgui/examples/imgui_impl_glfw.cpp"
                          "./extern/imgui/examples/libs/gl3w/GL/gl3w.c"
                          "./extern/rtaudio/RtAudio.cpp")
 
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-add_subdirectory(extern/glfw)
 
-target_include_directories(nes PRIVATE "src" "extern/imgui" "extern/imgui/examples/libs/gl3w" "extern/rtaudio"  glfw ${INCLUDES})
-target_link_libraries(nes PRIVATE glfw ${LIBS})
+target_include_directories(emu PRIVATE "src" "extern/imgui" "extern/imgui/examples/libs/gl3w" "extern/rtaudio"  glfw ${INCLUDES})
+target_link_libraries(emu PRIVATE glfw ${LIBS})
+target_compile_definitions(emu PRIVATE IMGUI_IMPL_OPENGL_LOADER_GL3W)
 
 configure_file("${CMAKE_SOURCE_DIR}/NesCarts (2017-08-21).json" "${CMAKE_CURRENT_BINARY_DIR}/NesCarts (2017-08-21).json" COPYONLY)

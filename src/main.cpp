@@ -2,7 +2,7 @@
 #include <array>
 #include <deque>
 #include <fstream>
-#include <iostream>
+#include <thread>
 
 #include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
@@ -49,16 +49,16 @@ enum class Action {
 };
 
 InputMapper hotkeys = InputMapper("hotkeys", {
-	{ "Speedup", (int)Action::Speedup, Key { { GLFW_KEY_Q, 0 } } },
-	{ "Step", (int)Action::Step, Key { { GLFW_KEY_F, 0 } } },
-	{ "ResumeRun", (int)Action::ResumeRun, Key { { GLFW_KEY_G, 0 } } },
-	{ "Reset", (int)Action::Reset, Key { { GLFW_KEY_R, 0 } } },
-	{ "HardReset", (int)Action::HardReset, Key { { 0, 0 } } },
-	{ "SaveState", (int)Action::SaveState, Key { { GLFW_KEY_K, 0 } } },
-	{ "LoadState", (int)Action::LoadState, Key { { GLFW_KEY_L, 0 } } },
-	{ "SelectNextState", (int)Action::SelectNextState, Key { { GLFW_KEY_KP_ADD, 0 } } },
-	{ "SelectLastState", (int)Action::SelectLastState, Key { { GLFW_KEY_KP_SUBTRACT, 0 } } },
-	{ "Maximise", (int)Action::Maximise, Key { { GLFW_KEY_F11, 0 } } }
+	{"Speedup", (int)Action::Speedup, Key{{GLFW_KEY_Q, 0}}},
+	{"Step", (int)Action::Step, Key{{GLFW_KEY_F, 0}}},
+	{"ResumeRun", (int)Action::ResumeRun, Key{{GLFW_KEY_G, 0}}},
+	{"Reset", (int)Action::Reset, Key{{GLFW_KEY_R, 0}}},
+	{"HardReset", (int)Action::HardReset, Key{{0, 0}}},
+	{"SaveState", (int)Action::SaveState, Key{{GLFW_KEY_K, 0}}},
+	{"LoadState", (int)Action::LoadState, Key{{GLFW_KEY_L, 0}}},
+	{"SelectNextState", (int)Action::SelectNextState, Key{{GLFW_KEY_KP_ADD, 0}}},
+	{"SelectLastState", (int)Action::SelectLastState, Key{{GLFW_KEY_KP_SUBTRACT, 0}}},
+	{"Maximise", (int)Action::Maximise, Key{{GLFW_KEY_F11, 0}}}
 });
 
 GLFWwindow* window;
@@ -68,7 +68,7 @@ std::unique_ptr<ICore> emulationCore;
 int selectedSaveState = 0;
 std::array<std::unique_ptr<saver>, 10> saveStates;
 
-MemoryEditor memEdit{ "Memory Editor" };
+MemoryEditor memEdit{"Memory Editor"};
 
 bool settingsWindow = false;
 bool metricsWindow = false;
@@ -82,6 +82,7 @@ bool isFullscreen = false;
 struct {
 	bool EnableVsync = true;
 	bool AutoHideMenu = true;
+	bool UseDockingWindow = false;
 	int windowScale = 2;
 
 	std::deque<std::string> RecentFiles;
@@ -96,6 +97,7 @@ struct {
 
 				EnableVsync = j["enableVsync"];
 				AutoHideMenu = j["autoHideMenu"];
+				UseDockingWindow = j["useDockingWindow"];
 				windowScale = j["windowScale"];
 				std::vector<std::string> asdf = j["recent"];
 				RecentFiles = std::deque<std::string>(asdf.begin(), asdf.end());
@@ -113,6 +115,7 @@ struct {
 			{"autoHideMenu", AutoHideMenu},
 			{"windowScale", windowScale},
 			{"recent", RecentFiles},
+			{"useDockingWindow", UseDockingWindow}
 		};
 		Input::Save(j);
 
@@ -136,6 +139,7 @@ struct {
 
 		Save();
 	}
+
 	void ClearRecent() {
 		RecentFiles.clear();
 		Save();
@@ -144,7 +148,7 @@ struct {
 
 static ImVec2 CalcWindowSize() {
 	ImVec2 size;
-	
+
 	if(emulationCore) {
 		auto texture = emulationCore->GetMainTexture();
 		size = ImVec2(texture->GetWidth() * emulationCore->GetPixelRatio(), texture->GetHeight());
@@ -174,7 +178,7 @@ static void LoadCore(const std::string& path) {
 
 		memEdit.SetCore(emulationCore.get());
 		running = true;
-	} catch(std::exception e) {
+	} catch(std::exception& e) {
 		logger.LogScreen("Failed to load ROM: %s", e.what());
 	}
 
@@ -186,7 +190,7 @@ static void LoadCore(const std::string& path) {
 		if(fs::exists(sPath)) {
 			try {
 				saveStates[i] = std::make_unique<saver>(sPath);
-			} catch(std::exception & e) {
+			} catch(std::exception& e) {
 				logger.Log("Error loading state: %s\n%s\n", sPath.c_str(), e.what());
 			}
 		}
@@ -298,7 +302,7 @@ static void onKey(GLFWwindow* window, int key, int scancode, int action, int mod
 		metricsWindow = !metricsWindow;
 	}
 
-	Key k { { key, mods } };
+	Key k{{key, mods}};
 
 	int mapped;
 	if(!hotkeys.TryGetId(k, mapped)) {
@@ -395,6 +399,10 @@ static void drawSettings() {
 					settings.Save();
 				}
 
+				if(ImGui::Checkbox("Use dockspace", &settings.UseDockingWindow)) {
+					settings.Save();
+				}
+
 				int val = settings.windowScale - 1;
 				static const char* drawModeNames[] = {"x1", "x2", "x3", "x4"};
 				if(ImGui::Combo("DrawMode", &val, drawModeNames, 4)) {
@@ -430,9 +438,6 @@ static void drawSettings() {
 	ImGui::End();
 }
 
-// fix for menubar closing when menu is too big and creates new context
-static bool menuOpen = false;
-
 static int drawDockSpace() {
 	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
 
@@ -460,6 +465,10 @@ static int drawDockSpace() {
 }
 
 static void drawGui() {
+	// fix for menubar closing when menu is too big and creates new context
+	static bool menuOpen = false;
+	static bool lastDock = settings.UseDockingWindow;
+
 	bool enabled = emulationCore != nullptr;
 
 	bool showMenuBar = menuOpen || glfwGetWindowAttrib(window, GLFW_HOVERED);
@@ -470,7 +479,7 @@ static void drawGui() {
 
 			if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
 				std::string outPath;
-				const auto res = NFD::OpenDialog({ {"Rom Files", { "nes", "nsf" }}, { "NES", {"nes", "nsf"} } }, nullptr, outPath, window);
+				const auto res = NFD::OpenDialog({{"Rom Files", {"nes", "nsf", "ch8"}}, {"NES", {"nes", "nsf"}}, {"CHIP-8", {"ch8"}}}, nullptr, outPath, window);
 
 				if(res == NFD::Result::Okay) {
 					OpenFile(outPath);
@@ -588,14 +597,44 @@ static void drawGui() {
 		ImGui::EndMainMenuBar();
 	}
 
-	auto dockspace_id = drawDockSpace();
+	if(settings.UseDockingWindow) {
+		auto dockspace_id = drawDockSpace();
 
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	ImGui::SetNextWindowDockID(dockspace_id, ImGuiCond_Once);
+		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0);
 
-	ImGui::Begin("NES", nullptr, window_flags);
-	ImGui::PopStyleVar();
+		if(!lastDock) {
+			ImGui::SetNextWindowDockID(dockspace_id, ImGuiCond_Always);
+		}
+
+		ImGui::Begin("NES", nullptr, window_flags);
+		ImGui::PopStyleVar(2);
+	} else {
+		ImGuiWindowFlags window_flags =
+			ImGuiWindowFlags_NoTitleBar |
+			ImGuiWindowFlags_NoResize |
+			ImGuiWindowFlags_NoMove |
+			ImGuiWindowFlags_NoScrollbar |
+			ImGuiWindowFlags_NoScrollWithMouse |
+			ImGuiWindowFlags_NoCollapse |
+			ImGuiWindowFlags_NoBackground |
+			ImGuiWindowFlags_NoSavedSettings |
+			ImGuiWindowFlags_NoBringToFrontOnFocus |
+			ImGuiWindowFlags_NoNavFocus |
+			ImGuiWindowFlags_NoDocking;
+
+		ImGuiViewport* viewport = ImGui::GetMainViewport();
+		ImGui::SetNextWindowPos(viewport->GetWorkPos());
+		ImGui::SetNextWindowSize(viewport->GetWorkSize());
+		ImGui::SetNextWindowViewport(viewport->ID);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+		ImGui::Begin("NES", nullptr, window_flags);
+		ImGui::PopStyleVar(3);
+	}
+	lastDock = settings.UseDockingWindow;
 
 	auto windowSize = ImGui::GetWindowSize();
 	if(emulationCore) {
@@ -698,7 +737,6 @@ int main() {
 	// Setup Platform/Renderer bindings
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
-
 	#pragma endregion
 
 	auto lastTime = glfwGetTime();
@@ -706,19 +744,30 @@ int main() {
 	#pragma region render loop
 	do {
 		#pragma region Timing
-		if(!settings.EnableVsync) {
-			auto time = glfwGetTime();
-			auto dt = time - lastTime;
+		auto time = glfwGetTime();
+		auto dt = time - lastTime;
 
+		// if vsync is enabled glfw will wait in glfwPollEvents
+		if(!settings.EnableVsync) {
+			// otherwise we have to manually time the render loop
 			if(dt >= 2 / 60.0) {
 				// dropped frame
+				// too much drift so we reset the timer
 				lastTime = time;
+				logger.Log("Dropped frame\n");
 			} else if(dt >= 1 / 60.0) {
+				 // add time for 1 frame to stabilize framerate
 				lastTime += 1 / 60.0;
 			} else {
-				glfwPollEvents();
+				// sleep for rest of frame
+				std::this_thread::sleep_for(std::chrono::microseconds((int)((1 / 60.0 - dt) * std::micro::den)));
 				continue;
 			}
+		} else {
+			if(dt >= 2 / 60.0) {
+				logger.Log("Dropped frame\n");
+			}
+			lastTime = time;
 		}
 		#pragma endregion
 

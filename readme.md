@@ -4,6 +4,11 @@ Currently supporting NES and Chip-8.
 
 The NES emulator works for around 92% of games and around 6% of Games have missing mappers.
 
+## Planned
+Gameboy (currently WIP) \
+Sega Master System \
+SNES
+
 # Compilation
 ## Windows
 ```cmd
@@ -11,19 +16,18 @@ git submodule update --init
 
 mkdir build
 cd build
-cmake -A (win32|x64) ../
+cmake ../
 ```
 
 ## Linux
-
 You will need a sound library of your choosing:
 ```sh
 sudo apt install libasound2-dev # alsa (default)
 sudo apt install libpulse-dev   # pulse audio
 ```
-As of now OSS / Jack Audio Server has not been tested.
+As of now OSS and Jack Audio Server have not been tested.
 
-Next you will need to install required display libraries:
+Next you will need to install required display libraries: \
 Debian based distros:
 ```sh
 sudo apt install libgtk2.0-dev
