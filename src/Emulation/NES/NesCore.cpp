@@ -121,11 +121,11 @@ void NesCore::DrawWindows() {
 }
 
 void NesCore::SaveState(saver& saver) {
-	emulator.LoadState(saver);
+	emulator.SaveState(saver);
 }
 
 void NesCore::LoadState(saver& saver) {
-	emulator.SaveState(saver);
+	emulator.LoadState(saver);
 }
 
 void NesCore::LoadRom(const std::string& path) {
@@ -203,25 +203,28 @@ void NesCore::HardReset() {
 }
 
 void NesCore::Update() {
-    // if(!nes || !running && !step) return;
-
-	int mapped = 1;
-	/*if(speedUp) {
-		mapped = 5;
-	}*/
-
-	for(int i = 0; i < mapped; ++i) {
-		// 89342 cycles per frame 
-		while(!emulator.ppu.frameComplete) {
-			emulator.Clock();
-		}
-		emulator.ppu.frameComplete = false;
-
-		/*if(runningTas) {
-			controller1->Frame();
-			controller2->Frame();
-		}*/
+	// 89342 cycles per frame 
+	while(!emulator.ppu.frameComplete) {
+		emulator.Clock();
 	}
+	emulator.ppu.frameComplete = false;
+
+	if(emulator.cartridge->hasSram) {
+		// save battery backed ram whenever it changes
+		// only save every 60 frames to reduce io lag
+		if(frameCount % 60 == 0) {
+			fs::create_directories("./saves/NES/");
+			saver s;
+			emulator.cartridge->SaveRam(s);
+			s.Save("./saves/NES/" + emulator.cartridge->hash.ToString() + ".saveRam");
+		}
+		frameCount++;
+	}
+
+	/*if(runningTas) {
+		controller1->Frame();
+		controller2->Frame();
+	}*/
 
 	// step = false;
 	emulator.apu.lastBufferPos = emulator.apu.bufferPos;

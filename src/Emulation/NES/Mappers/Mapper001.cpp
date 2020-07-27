@@ -153,3 +153,11 @@ void Mapper001::LoadState(saver& saver) {
 
 	saver.Read(prgRam, sizeof(prgRam));
 }
+
+void Mapper001::SaveRam(saver& saver) {
+	saver.Write(prgRam, sizeof(prgRam));
+}
+
+void Mapper001::LoadRam(saver& saver) {
+	saver.Read(prgRam, sizeof(prgRam));
+}

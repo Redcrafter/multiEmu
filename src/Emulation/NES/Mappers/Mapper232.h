@@ -2,6 +2,8 @@
 #include "Mapper.h"
 
 class Mapper232 : public Mapper {
+private:
+	uint8_t prgBanks[2];
 public:
 	Mapper232(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr);
 	
@@ -11,6 +13,4 @@ public:
 
 	void SaveState(saver& saver) override;
 	void LoadState(saver& saver) override;
-private:
-	uint8_t prgBanks[2];
 };

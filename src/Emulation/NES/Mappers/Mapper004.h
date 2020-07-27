@@ -27,7 +27,8 @@ private:
 	uint8_t irqLatch = 0;
 
 	uint8_t prgRam[0x2000];
-	bool ramEnable;
+	// not implemented because of compatibility issue between MMC3 and MMC6 (http://wiki.nesdev.com/w/index.php/MMC3)
+	// bool ramEnable;
 public:
 	Mapper004(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr);
 
@@ -39,6 +40,8 @@ public:
 	void SaveState(saver& saver) override;
 	void LoadState(saver& saver) override;
 
+	void SaveRam(saver& saver) override;
+	void LoadRam(saver& saver) override;
 private:
 	void UpdateRegs();
 };

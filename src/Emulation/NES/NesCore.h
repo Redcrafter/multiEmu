@@ -17,6 +17,9 @@ class NesCore : public ICore {
 	ApuWindow apuWindow{ "Apu Visuals" };
 
     std::string currentFile;
+
+	// used for sram save
+	uint32_t frameCount = 0;
 public:
 	NesCore();
 

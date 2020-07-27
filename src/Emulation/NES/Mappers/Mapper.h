@@ -25,6 +25,8 @@ public:
 	bool Irq = false;
 	MirrorMode mirror = (MirrorMode)0;
 	md5 hash;
+
+	bool hasSram = false;
 public:
 	Mapper(std::vector<uint8_t> prg, std::vector<uint8_t> chr) : prg(std::move(prg)), chr(std::move(chr)) {
 		prgMask = this->prg.size() - 1;
@@ -36,9 +38,11 @@ public:
 	virtual bool ppuRead(uint16_t addr, uint8_t& data, bool readOnly) = 0;
 	virtual bool ppuWrite(uint16_t addr, uint8_t data) { return false; };
 
-	// TODO: virtual uint8_t* GetSaveRam() = 0;
 	virtual void SaveState(saver& saver) = 0;
 	virtual void LoadState(saver& saver) = 0;
+
+	virtual void SaveRam(saver& saver) { };
+	virtual void LoadRam(saver& saver) { };
 
 	virtual void CpuClock() { };
 };

@@ -2,6 +2,9 @@
 #include "Mapper.h"
 
 class Mapper011 : public Mapper {
+private:
+	uint8_t prgBank = 0;
+	uint8_t chrBank = 0;
 public:
 	Mapper011(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr);
 	
@@ -11,7 +14,4 @@ public:
 
 	void SaveState(saver& saver) override;
 	void LoadState(saver& saver) override;
-private:
-	uint8_t prgBank = 0;
-	uint8_t chrBank = 0;
 };

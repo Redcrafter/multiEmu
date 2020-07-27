@@ -249,9 +249,7 @@ static void SaveState(int number) {
 	emulationCore->SaveState(*state);
 
 	try {
-		if(!fs::exists("./saves/")) {
-			fs::create_directory("./saves/");
-		}
+		fs::create_directories("./saves/" + emulationCore->GetName() + "/");
 		auto path = "./saves/" + emulationCore->GetName() + "/" + emulationCore->GetRomHash().ToString() + "-" + std::to_string(number) + ".sav";
 		if(fs::exists(path)) {
 			fs::copy(path, path + ".old", fs::copy_options::overwrite_existing);

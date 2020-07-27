@@ -22,7 +22,7 @@ int Mapper004::cpuRead(uint16_t addr, uint8_t& data) {
 
 bool Mapper004::cpuWrite(uint16_t addr, uint8_t data) {
 	if(addr < 0x8000) {
-		if(addr >= 0x6000 && ramEnable) {
+		if(addr >= 0x6000) { // && ramEnable
 			prgRam[addr & 0x1FFF] = data;
 			return true;
 		}
@@ -47,7 +47,7 @@ bool Mapper004::cpuWrite(uint16_t addr, uint8_t data) {
 			}
 			break;
 		case 0xA001:
-			ramEnable = data & 0x80;
+			// ramEnable = data & 0x80;
 			break;
 		case 0xC000:
 			irqLatch = data;
@@ -122,7 +122,7 @@ void Mapper004::SaveState(saver& saver) {
 	saver << irqLatch;
 
 	saver.Write(prgRam, 0x2000);
-	saver << ramEnable;
+	// saver << ramEnable;
 }
 
 void Mapper004::LoadState(saver& saver) {
@@ -138,7 +138,7 @@ void Mapper004::LoadState(saver& saver) {
 	saver >> irqLatch;
 
 	saver.Read(prgRam, 0x2000);
-	saver >> ramEnable;
+	// saver >> ramEnable;
 }
 
 void Mapper004::UpdateRegs() {
@@ -175,4 +175,12 @@ void Mapper004::UpdateRegs() {
 		chrBankOffset[2] = (regs[1] & ~1) * 0x400;
 		chrBankOffset[3] = (regs[1] & ~1) * 0x400 + 0x400;
 	}
+}
+
+void Mapper004::SaveRam(saver& saver) {
+	saver.Write(prgRam, sizeof(prgRam));
+}
+
+void Mapper004::LoadRam(saver& saver) {
+	saver.Read(prgRam, sizeof(prgRam));
 }

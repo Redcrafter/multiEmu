@@ -8,6 +8,7 @@
 #include "sha1.h"
 #include "logger.h"
 #include "json.h"
+#include "fs.h"
 
 struct INESheader {
 	char name[4];
@@ -186,6 +187,15 @@ std::shared_ptr<Mapper> LoadCart(const std::string& path) {
 	stream.clear();
 	stream.seekg(0, std::ios::beg);
 	mapper->hash = md5(stream);
+	mapper->hasSram = (header.Flags6 >> 1) & 1;
+
+	if(mapper->hasSram) {
+		auto path = "./saves/NES/" + mapper->hash.ToString() + ".saveRam";
+		if(fs::exists(path)) {
+			saver s(path);
+			mapper->LoadRam(s);
+		}
+	}
 
 	return mapper;
 }
