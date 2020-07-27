@@ -1,24 +1,24 @@
 #include "saver.h"
+
 #include <fstream>
 
-saver::saver(std::string path) {
-	std::ifstream stream(path, std::ios::binary);
-	uint64_t size = 0;
-	stream.read(reinterpret_cast<char*>(&size), 8);
+#include "fs.h"
 
-	if(size >= 1024 * 1024) {
-		throw std::runtime_error("Save file too big"); // Prevent loading files > 1 Mb
+saver::saver(const std::string& path) {
+	const auto size = fs::file_size(path);
+	std::ifstream stream(path, std::ios::binary);
+
+	if(size >= 64 * 1024 * 1024) {
+		throw std::runtime_error("Save file too big"); // Prevent loading files > 64 Mb
 	}
 	data.resize(size);
 	stream.read(reinterpret_cast<char*>(data.data()), size);
 }
 
-void saver::Save(std::string path) {
+void saver::Save(const std::string& path) {
 	std::ofstream stream(path, std::ios::binary);
 
-	auto size = data.size();
-	stream.write(reinterpret_cast<char*>(&size), 8);
-	stream.write(reinterpret_cast<char*>(data.data()), size);
+	stream.write(reinterpret_cast<char*>(data.data()), data.size());
 
 	stream.close();
 }
@@ -32,19 +32,19 @@ void saver::operator<<(uint8_t val) {
 }
 
 void saver::operator<<(uint16_t val) {
-	Write(&val, 2);
+	Write(&val, 1);
 }
 
 void saver::operator<<(int32_t val) {
-	Write(&val, 4);
+	Write(&val, 1);
 }
 
 void saver::operator<<(uint32_t val) {
-	Write(&val, 4);
+	Write(&val, 1);
 }
 
 void saver::operator<<(uint64_t val) {
-	Write(&val, 8);
+	Write(&val, 1);
 }
 
 void saver::operator>>(bool& val) {
@@ -63,16 +63,16 @@ void saver::operator>>(uint16_t& val) {
 }
 
 void saver::operator>>(int32_t& val) {
-	val = *reinterpret_cast<uint16_t*>(&data[readPos]);
+	val = *reinterpret_cast<int32_t*>(&data[readPos]);
 	readPos += 4;
 }
 
 void saver::operator>>(uint32_t& val) {
-	val = *reinterpret_cast<uint16_t*>(&data[readPos]);
+	val = *reinterpret_cast<uint32_t*>(&data[readPos]);
 	readPos += 4;
 }
 
 void saver::operator>>(uint64_t& val) {
-	val = *reinterpret_cast<uint16_t*>(&data[readPos]);
+	val = *reinterpret_cast<uint64_t*>(&data[readPos]);
 	readPos += 8;
 }

@@ -10,9 +10,9 @@ public:
 	uint32_t readPos = 0;
 
 	saver() {}
-	saver(std::string path);
+	saver(const std::string& path);
 
-	void Save(std::string path);
+	void Save(const std::string& path);
 
 	template <typename T>
 	void Write(T* data, size_t size) {
