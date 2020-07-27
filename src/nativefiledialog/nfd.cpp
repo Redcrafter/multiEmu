@@ -119,8 +119,8 @@ static Result AddFiltersToDialog(IFileDialog* fileOpenDialog, const std::vector<
 
 	/* free speclist */
 	for(size_t i = 0; i < specList.size() - 1; ++i) {
-		delete specList[i].pszName;
-		delete specList[i].pszSpec;
+		delete[] specList[i].pszName;
+		delete[] specList[i].pszSpec;
 	}
 
 	return Result::Okay;

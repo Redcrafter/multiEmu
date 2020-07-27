@@ -16,17 +16,24 @@ void Logger::Clear() {
 
 void Logger::LogScreen(const char* fmt, ...) {
 	va_list args;
-	va_start(args, fmt);
 
+	va_start(args, fmt);
 	const auto size = vsnprintf(nullptr, 0, fmt, args) + 1;
+	va_end(args);
+
 	const auto buf = new char[size];
 
+	va_start(args, fmt);
 	vsnprintf(buf, size, fmt, args);
+	va_end(args);
+
+	if(buf[size - 2] == '\n') {
+		buf[size - 2] = 0;
+	}
 	
 	logItems.push_back(ScreenLogItem{ buf, std::chrono::steady_clock::now() });
 
 	delete[] buf;
-	va_end(args);
 }
 
 void Logger::Log(const char* fmt, ...) {

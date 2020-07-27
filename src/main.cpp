@@ -655,9 +655,9 @@ static void drawGui() {
 		texture->BufferImage();
 		ImGui::Image(reinterpret_cast<void*>(texture->GetTextureId()), size);
 	}
+    logger.DrawScreen();
 	ImGui::End();
 
-	logger.DrawScreen();
 	if(emulationCore) {
 		emulationCore->DrawWindows();
 	}

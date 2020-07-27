@@ -1,7 +1,6 @@
 #include "imgui_tas_editor.h"
 #include <imgui.h>
 
-static int lastFrame = 0;
 void TasEditor::DrawWindow(int currentFrame) {
 	if(!open) {
 		return;
