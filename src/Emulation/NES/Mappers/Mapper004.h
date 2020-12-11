@@ -1,5 +1,6 @@
 #pragma once
 #include "Mapper.h"
+#include "MemoryMapped.h"
 
 class Mapper004 : public Mapper {
 private:
@@ -26,11 +27,15 @@ private:
 	uint8_t irqCounter = 0;
 	uint8_t irqLatch = 0;
 
-	uint8_t prgRam[0x2000];
+	uint8_t* prgRam = nullptr; // 0x2000;
+
+	MemoryMapped* file = nullptr;
+
 	// not implemented because of compatibility issue between MMC3 and MMC6 (http://wiki.nesdev.com/w/index.php/MMC3)
 	// bool ramEnable;
 public:
 	Mapper004(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr);
+	~Mapper004();
 
 	int cpuRead(uint16_t addr, uint8_t& data) override;
 	bool cpuWrite(uint16_t addr, uint8_t data) override;
@@ -40,8 +45,7 @@ public:
 	void SaveState(saver& saver) override;
 	void LoadState(saver& saver) override;
 
-	void SaveRam(saver& saver) override;
-	void LoadRam(saver& saver) override;
+	void MapSaveRam(const std::string& path) override;
 private:
 	void UpdateRegs();
 };

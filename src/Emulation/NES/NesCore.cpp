@@ -209,18 +209,6 @@ void NesCore::Update() {
 	}
 	emulator.ppu.frameComplete = false;
 
-	if(emulator.cartridge->hasSram) {
-		// save battery backed ram whenever it changes
-		// only save every 60 frames to reduce io lag
-		if(frameCount % 60 == 0) {
-			fs::create_directories("./saves/NES/");
-			saver s;
-			emulator.cartridge->SaveRam(s);
-			s.Save("./saves/NES/" + emulator.cartridge->hash.ToString() + ".saveRam");
-		}
-		frameCount++;
-	}
-
 	/*if(runningTas) {
 		controller1->Frame();
 		controller2->Frame();

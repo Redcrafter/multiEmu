@@ -2,11 +2,21 @@
 #include "../Cartridge.h"
 
 Mapper001::Mapper001(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
+	prgRam = new uint8_t[0x2000];
+
 	prgBankOffset[0] = 0;
 	prgBankOffset[1] = prg.size() - 0x4000;
 
 	chrBankOffset[0] = 0;
 	chrBankOffset[1] = 0x1000;
+}
+
+Mapper001::~Mapper001() {
+	if(file) {
+		delete file;
+	} else {
+		delete[] prgRam;
+	}
 }
 
 int Mapper001::cpuRead(uint16_t addr, uint8_t& data) {
@@ -154,10 +164,9 @@ void Mapper001::LoadState(saver& saver) {
 	saver.Read(prgRam, sizeof(prgRam));
 }
 
-void Mapper001::SaveRam(saver& saver) {
-	saver.Write(prgRam, sizeof(prgRam));
-}
+void Mapper001::MapSaveRam(const std::string& path) {
+	delete[] prgRam;
 
-void Mapper001::LoadRam(saver& saver) {
-	saver.Read(prgRam, sizeof(prgRam));
+	file = new MemoryMapped(path, 0x2000);
+	prgRam = file->begin();
 }

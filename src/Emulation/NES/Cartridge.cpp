@@ -191,10 +191,7 @@ std::shared_ptr<Mapper> LoadCart(const std::string& path) {
 
 	if(mapper->hasSram) {
 		auto path = "./saves/NES/" + mapper->hash.ToString() + ".saveRam";
-		if(fs::exists(path)) {
-			saver s(path);
-			mapper->LoadRam(s);
-		}
+		mapper->MapSaveRam(path);
 	}
 
 	return mapper;

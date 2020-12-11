@@ -22,7 +22,4 @@ public:
 
     void SaveState(saver& saver) override {}
     void LoadState(saver& saver) override {}
-
-    void SaveRam(saver& saver) override;
-    void LoadRam(saver& saver) override;
 };

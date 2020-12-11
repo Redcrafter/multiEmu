@@ -61,11 +61,3 @@ bool VRC6Mapper::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 bool VRC6Mapper::ppuWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
-
-void VRC6Mapper::SaveRam(saver& saver) {
-	saver.Write(prgRam, sizeof(prgRam));
-}
-
-void VRC6Mapper::LoadRam(saver& saver) {
-	saver.Read(prgRam, sizeof(prgRam));
-}

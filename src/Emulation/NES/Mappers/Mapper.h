@@ -32,6 +32,8 @@ public:
 		prgMask = this->prg.size() - 1;
 		chrMask = this->chr.size() - 1;
 	};
+	Mapper(const Mapper&) = delete;
+
 	virtual int cpuRead(uint16_t addr, uint8_t& data) = 0; // TODO: bool readOnly
 	virtual bool cpuWrite(uint16_t addr, uint8_t data) { return false; };
 	
@@ -41,8 +43,10 @@ public:
 	virtual void SaveState(saver& saver) = 0;
 	virtual void LoadState(saver& saver) = 0;
 
-	virtual void SaveRam(saver& saver) { };
-	virtual void LoadRam(saver& saver) { };
+	virtual void MapSaveRam(const std::string& path) {
+		assert(false);
+		// throw std::logic_error("Saveram not supported");
+	};
 
 	virtual void CpuClock() { };
 };
