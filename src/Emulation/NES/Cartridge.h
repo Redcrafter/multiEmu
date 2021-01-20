@@ -6,5 +6,5 @@
 
 #include "Mappers/Mapper.h"
 
-void LoadCardDb(std::string path);
+void LoadCardDb(const std::string& path);
 std::shared_ptr<Mapper> LoadCart(const std::string& path);

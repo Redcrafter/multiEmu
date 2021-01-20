@@ -182,6 +182,7 @@ static void LoadCore(const std::string& path) {
 		settings.AddRecent(path);
 
 		memEdit.SetCore(emulationCore.get());
+
 		running = true;
 	} catch(std::exception& e) {
 		logger.LogScreen("Failed to load ROM: %s", e.what());

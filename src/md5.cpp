@@ -182,7 +182,7 @@ bool operator<(const md5& left, const md5& right) {
 		return left.h[1] < right.h[1];
 	}
 
-	if(right.h[2] != right.h[2]) {
+	if(left.h[2] != right.h[2]) {
 		return left.h[2] < right.h[2];
 	}
 	return left.h[3] < right.h[3];

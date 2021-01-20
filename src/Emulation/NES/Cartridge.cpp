@@ -69,7 +69,7 @@ static void InsertCart(std::string& name, Json& obj) {
 	}
 }
 
-void LoadCardDb(std::string path) {
+void LoadCardDb(const std::string& path) {
 	if(dbInitialized) {
 		return;
 	}
@@ -153,7 +153,7 @@ std::shared_ptr<Mapper> LoadCart(const std::string& path) {
 	logger.Log("prg sha1: %s\n", prgHash.ToString().c_str());
 	// logger.Log("chr sha1: %s\n", chrHash.ToString().c_str());
 	if(cartDb.count(prgHash)) {
-		auto item = cartDb[prgHash];
+		const auto item = cartDb[prgHash];
 		mapperId = item.mapper;
 
 		logger.Log("Found cartridge \"%s\" in cartdb\n", item.name.c_str());
