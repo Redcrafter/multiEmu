@@ -93,20 +93,25 @@ struct {
 		if(fs::exists("./settings.json")) {
 			try {
 				std::ifstream file("./settings.json");
+				if(!file.good()) {
+					return;
+				}
 				file >> j;
-
-				EnableVsync = j["enableVsync"];
-				AutoHideMenu = j["autoHideMenu"];
-				UseDockingWindow = j["useDockingWindow"];
-				windowScale = j["windowScale"];
-				std::vector<std::string> asdf = j["recent"];
-				RecentFiles = std::deque<std::string>(asdf.begin(), asdf.end());
-			} catch(std::exception & e) {
-				logger.LogScreen("Failed to load settings.json %s", e.what());
+			} catch(std::exception& e) {
+				logger.LogScreen("Failed to load settings %s", e.what());
 			}
-		}
 
-		Input::Load(j);
+			j["enableVsync"].tryGet(EnableVsync);
+			j["autoHideMenu"].tryGet(AutoHideMenu);
+			j["useDockingWindow"].tryGet(UseDockingWindow);
+			j["windowScale"].tryGet(windowScale);
+
+			std::vector<std::string> asdf;
+			j["recent"].tryGet(asdf);
+			RecentFiles = std::deque<std::string>(asdf.begin(), asdf.end());
+
+			Input::Load(j);
+		}
 	}
 
 	void Save() {
@@ -120,10 +125,10 @@ struct {
 		Input::Save(j);
 
 		std::ofstream file("./settings.json");
-		file << j;
+		if(file.good()) file << j;
 	}
 
-	void AddRecent(const std::string path) {
+	void AddRecent(std::string path) {
 		for(size_t i = 0; i < RecentFiles.size(); ++i) {
 			if(RecentFiles[i] == path) {
 				RecentFiles.erase(RecentFiles.begin() + i);
@@ -135,7 +140,7 @@ struct {
 			RecentFiles.pop_back();
 		}
 
-		RecentFiles.push_front(path);
+		RecentFiles.push_front(std::move(path));
 
 		Save();
 	}
@@ -796,6 +801,7 @@ int main() {
 	} while(glfwWindowShouldClose(window) == 0);
 	#pragma endregion
 
+	settings.Save();
 	Audio::Dispose();
 
 	ImGui_ImplOpenGL3_Shutdown();

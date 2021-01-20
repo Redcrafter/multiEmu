@@ -51,6 +51,6 @@ namespace Input {
 
 	bool ShowEditWindow();
 
-	void SetMapper(InputMapper mapper);
+	void SetMapper(const InputMapper& mapper);
 	bool GetKey(int mappedId);
 }

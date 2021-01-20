@@ -1,14 +1,13 @@
 #pragma once
 #include <deque>
 #include <initializer_list>
+#include <iostream>
 #include <iterator>
 #include <map>
 #include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
-
-// TODO: fix nullptr
 
 class Json;
 
@@ -198,6 +197,63 @@ public:
 
 	JsonArray* asArray() { return dynamic_cast<JsonArray*>(root.get()); }
 	JsonObject* asObject() { return dynamic_cast<JsonObject*>(root.get()); }
+
+	bool tryGet(std::string& out) noexcept {
+		if(auto ref = dynamic_cast<JsonString*>(root.get())) {
+			out = ref->value;
+			return true;
+		}
+		return false;
+	}
+	bool tryGet(bool& out) noexcept {
+		if(auto ref = dynamic_cast<JsonBool*>(root.get())) {
+			out = ref->value;
+			return true;
+		}
+		return false;
+	}
+	template <typename T>
+	bool tryGet(std::vector<T>& out) noexcept {
+		if(auto ref = dynamic_cast<JsonArray*>(root.get())) {
+			out.clear();
+			
+			T t;
+			for(auto& item : ref->elements) {
+				if(!item.tryGet(t)) {
+					return false;
+				}
+				out.push_back(t);
+			}
+			return true;
+		}
+		return false;
+	}
+	template <typename T>
+	bool tryGet(std::map<std::string, T>& out) noexcept {
+		if(auto ref = dynamic_cast<JsonObject*>(root.get())) {
+			out.clear();
+			T t;
+			for(auto& item : ref->elements) {
+				if(!item.second.tryGet(t)) {
+					return false;
+				}
+				out[item.first] = t;
+			}
+			return true;
+		}
+		return false;
+	}
+
+	template <typename T>
+	bool tryGet(T& out) noexcept {
+		// too lazy to make a function for each arithmetic type
+		static_assert(std::is_arithmetic<T>::value);
+		if(auto ref = dynamic_cast<JsonNumber*>(root.get())) {
+			out = ref->value;
+			return true;
+		}
+		return false;
+	}
 
 	Json& operator[](const char* name) { return (*root)[name]; }
 	Json& operator[](const std::string& name) { return (*root)[name]; }

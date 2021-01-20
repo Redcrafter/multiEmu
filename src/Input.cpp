@@ -107,7 +107,8 @@ bool InputMapper::TryGetId(Key key, int& Id) {
 }
 
 static std::set<uint64_t> keys;
-InputMapper currentMapper;
+static InputMapper currentMapper;
+static std::map<std::string, std::map<std::string, uint64_t>> knownMappers;
 
 void Input::OnKey(int key, int scancode, int action, int mods) {
 	if(key >= GLFW_KEY_LEFT_SHIFT) {
@@ -124,21 +125,8 @@ void Input::OnKey(int key, int scancode, int action, int mods) {
 
 		if(key == GLFW_KEY_BACKSPACE) {
 			currentMapper.keyMap.erase(currentMapper.selected);
-
-			for(auto& item : currentMapper.items) {
-				if(item.Id == currentMapper.selected) {
-					k.Reg = 0;
-					item.Default = k;
-				}
-			}
 		} else {
 			currentMapper.keyMap[currentMapper.selected] = k;
-			
-			for(auto& item : currentMapper.items) {
-				if(item.Id == currentMapper.selected) {
-					item.Default = k;
-				}
-			}
 		}
 
 		currentMapper.selected = -1;
@@ -152,33 +140,31 @@ void Input::OnKey(int key, int scancode, int action, int mods) {
 }
 
 void Input::Load(Json& j) {
-	/*if(j.contains("keymap") && j["keymap"].asObject()) {
-		for(const auto& item : *j["keymap"].asObject()) {
-			keyMap[item.second] = StringAction[item.first];
-		}
-	}
-
-	for(auto map : keyMap) {
-		revKeyMap[map.second] = map.first;
-	}*/
+	j["keymap"].tryGet(knownMappers);
 }
 
 void Input::Save(Json& j) {
-	/*std::map<std::string, uint64_t> map;
-
-	for(auto item : keyMap) {
-		map[ActionString[(int)item.second]] = item.first;
-	}
-
-	j["keymap"] = map;*/
+	j["keymap"] = knownMappers;
 }
 
 bool Input::ShowEditWindow() {
 	return currentMapper.ShowEditWindow();
 }
 
-void Input::SetMapper(InputMapper mapper) {
+void Input::SetMapper(const InputMapper& mapper) {
 	currentMapper = mapper;
+
+	auto& known = knownMappers[mapper.name];
+	for (auto &&i : currentMapper.items) {
+		if(known.count(i.Name)) {
+			currentMapper.keyMap[i.Id].Reg = known[i.Name];
+		}
+	}
+
+	known.clear();
+	for(auto&& i : currentMapper.items) {
+		known[i.Name] = currentMapper.keyMap[i.Id].Reg;
+	}
 }
 
 bool Input::GetKey(int mappedId) {
