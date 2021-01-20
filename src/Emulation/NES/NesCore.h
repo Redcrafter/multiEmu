@@ -6,7 +6,7 @@
 #include "Windows/pattern_tables.h"
 #include "Windows/cpu_state.h"
 #include "Windows/apu_window.h"
-
+#include "Windows/disassembler.h"
 
 class NesCore : public ICore {
     Bus emulator;
@@ -16,6 +16,7 @@ class NesCore : public ICore {
 	PatternTables tables{ "Pattern Tables" };
 	CpuStateWindow cpuWindow{ "Cpu State" };
 	ApuWindow apuWindow{ "Apu Visuals" };
+	DisassemblerWindow disassembler{ "Disassembler" };
 
     std::string currentFile;
 public:

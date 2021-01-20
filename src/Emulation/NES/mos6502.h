@@ -9,106 +9,199 @@
 class Bus;
 
 enum AddressingModes : uint8_t {
-	IMP,
-	IMM,
-	ZP0,
-	ZPX,
-	ZPY,
-	REL,
-	ABS,
-	ABX,
-	ABY,
-	IND,
-	IZX,
-	IZY
+	IMP, // Implied 
+	IMM, // Immediate 
+	ZP0, // Zero Page
+	ZPX, // Zero page indexed with X
+	ZPY, // Zero page indexed with Y
+	REL, // Relative 
+	ABS, // Absolute 
+	ABX, // Absolute indexed with X
+	ABY, // Absolute indexed with Y
+	IND, // Indirect
+	IZX, // Indexed indirect (with X)
+	IZY  // Indirect indexed (with Y)
 };
 
-enum class Instructions : uint8_t {
-	NMI,
+enum Instructions : uint8_t {
+	// implementation defined. only used to inject nmi/irq
+	NMI, 
 	IRQ,
 
-	ORA,
-	AND,
-	EOR,
-	ADC,
-	SBC,
-	CMP,
-	CPX,
-	CPY,
-	DEC,
-	DEX,
-	DEY,
-	INC,
-	INX,
-	INY,
-	ASL,
-	ROL,
-	LSR,
-	ROR,
+	// Math
+	ORA, // A |= {adr}
+	AND, // A &= {adr}
+	EOR, // A ^= {adr}
+	ADC, // A += {adr}
+	SBC, // A -= {adr}
+	CMP, // A - {adr}
+	CPX, // X - {adr}
+	CPY, // Y - {adr}
+	DEC, // {adr} -= 1
+	DEX, // X--
+	DEY, // Y--
+	INC, // {adr} += 1
+	INX, // X++
+	INY, // Y++
+	ASL, // {adr} = {adr} << 1
+	ROL, // {adr} = {adr} << 1 | C
+	LSR, // {adr} = {adr} >> 2
+	ROR, // {adr} = {adr} >> 2 | C * 128
 
 	// Move
-	LDA,
-	STA,
-	LDX,
-	STX,
-	LDY,
-	STY,
-	TAX,
-	TXA,
-	TAY,
-	TYA,
-	TSX,
-	TXS,
-	PLA,
-	PHA,
-	PLP,
-	PHP,
+	LDA, // A = {addr}
+	LDX, // X = {addr}
+	LDY, // Y = {addr}
+	STA, // {addr} = A 
+	STX, // {addr} = X
+	STY, // {addr} = Y
+	TAX, // X = A
+	TXA, // A = X
+	TAY, // Y = A
+	TYA, // A = Y
+	TSX, // X = S
+	TXS, // S = X
+	PLA, // A = +(S)
+	PHA, // (S)- = A
+	PLP, // P = +(S)
+	PHP, // (S)- = P
 
 	// Jump/Flag
-	BPL,
-	BMI,
-	BVC,
-	BVS,
-	BCC,
-	BCS,
-	BNE,
-	BEQ,
-	BRK,
-	RTI,
-	JSR,
-	RTS,
-	JMP,
-	BIT,
-	CLC,
-	SEC,
-	CLD,
-	SED,
-	CLI,
-	SEI,
-	CLV,
+	BPL, // branch N == 0
+	BMI, // branch N == 1
+	BVC, // branch V == 0
+	BVS, // branch V == 1
+	BCC, // branch C == 0
+	BCS, // branch C == 1
+	BNE, // branch Z == 0
+	BEQ, // branch Z == 1
+	BRK, // (S)- = PC,P; PC = $FFFE
+	RTI, // P,PC = +(S)
+	JSR, // (S)- = PC; PC = {adr}
+	RTS, // PC = +(S)
+	JMP, // PC = {adr}
+	BIT, // N = b7; V = b6; Z = A & {adr}
+	CLC, // C = 0
+	SEC, // C = 1 
+	CLD, // D = 0
+	SED, // D = 1
+	CLI, // I = 0
+	SEI, // I = 1
+	CLV, // V = 0
 	NOP,
 
 	// Illegal
-	KIL,
+	KIL, // halts the CPU
 
-	SLO,
-	RLA,
-	SRE,
-	RRA,
-	SAX,
-	DCP,
-	ISC,
-	ANC,
-	ALR,
-	ARR,
-	XAA,
-	LAX, // Highly unstable
-	AXS,
-	AHX, // Unstable
-	SHY, // Unstable
-	SHX, // Unstable
-	TAS, // Unstable
-	LAS
+	SLO, // {adr} = {adr} << 1; A |= {adr}
+	RLA, // {adr} = {adr} rol; A &= {adr}
+	SRE, // {adr} = {adr} / 2; A ^= {adr}
+	RRA, // {adr} = {adr} ror; A += {adr}
+	SAX, // {adr} = A & X
+	DCP, // {adr} = {adr} - 1; A - {adr}
+	ISC, // {adr} = {adr} + 1; A -= {adr}
+	ANC, // A &= #{imm}
+	ALR, // A = (A & #{imm}) >> 1
+	ARR, // A = (A & #{imm}) >> 1
+
+	AXS, // X = A & X - #{imm}
+
+	LAS,
+
+	// Unstable
+	AHX, // {adr} = A & X & H
+	SHY, // {adr} = Y & H
+	SHX, // {adr} = X & H
+	TAS, // S = A & X; {adr} = S & H
+
+	// Highly unstable
+	XAA, // A = X & #{imm}
+	LAX, // A = X = #{imm}
+};
+
+static const char* InstructionNames[77] = {
+	"NMI",
+	"IRQ",
+
+	"ORA",
+	"AND",
+	"EOR",
+	"ADC",
+	"SBC",
+	"CMP",
+	"CPX",
+	"CPY",
+	"DEC",
+	"DEX",
+	"DEY",
+	"INC",
+	"INX",
+	"INY",
+	"ASL",
+	"ROL",
+	"LSR",
+	"ROR",
+
+	"LDA",
+	"STA",
+	"LDX",
+	"STX",
+	"LDY",
+	"STY",
+	"TAX",
+	"TXA",
+	"TAY",
+	"TYA",
+	"TSX",
+	"TXS",
+	"PLA",
+	"PHA",
+	"PLP",
+	"PHP",
+
+	"BPL",
+	"BMI",
+	"BVC",
+	"BVS",
+	"BCC",
+	"BCS",
+	"BNE",
+	"BEQ",
+	"BRK",
+	"RTI",
+	"JSR",
+	"RTS",
+	"JMP",
+	"BIT",
+	"CLC",
+	"SEC",
+	"CLD",
+	"SED",
+	"CLI",
+	"SEI",
+	"CLV",
+	"NOP",
+
+	"KIL",
+
+	"SLO",
+	"RLA",
+	"SRE",
+	"RRA",
+	"SAX",
+	"DCP",
+	"ISC",
+	"ANC",
+	"ALR",
+	"ARR",
+	"XAA",
+	"LAX",
+	"AXS",
+	"AHX",
+	"SHY",
+	"SHX",
+	"TAS",
+	"LAS"
 };
 
 struct Instruction {

@@ -1,109 +1,24 @@
 #include "mos6502.h"
 #include "Bus.h"
 
-const char* names[77] = {
-	"NMI",
-	"IRQ",
-
-	"ORA",
-	"AND",
-	"EOR",
-	"ADC",
-	"SBC",
-	"CMP",
-	"CPX",
-	"CPY",
-	"DEC",
-	"DEX",
-	"DEY",
-	"INC",
-	"INX",
-	"INY",
-	"ASL",
-	"ROL",
-	"LSR",
-	"ROR",
-
-	"LDA",
-	"STA",
-	"LDX",
-	"STX",
-	"LDY",
-	"STY",
-	"TAX",
-	"TXA",
-	"TAY",
-	"TYA",
-	"TSX",
-	"TXS",
-	"PLA",
-	"PHA",
-	"PLP",
-	"PHP",
-
-	"BPL",
-	"BMI",
-	"BVC",
-	"BVS",
-	"BCC",
-	"BCS",
-	"BNE",
-	"BEQ",
-	"BRK",
-	"RTI",
-	"JSR",
-	"RTS",
-	"JMP",
-	"BIT",
-	"CLC",
-	"SEC",
-	"CLD",
-	"SED",
-	"CLI",
-	"SEI",
-	"CLV",
-	"NOP",
-
-	"KIL",
-
-	"SLO",
-	"RLA",
-	"SRE",
-	"RRA",
-	"SAX",
-	"DCP",
-	"ISC",
-	"ANC",
-	"ALR",
-	"ARR",
-	"XAA",
-	"LAX",
-	"AXS",
-	"AHX",
-	"SHY",
-	"SHX",
-	"TAS",
-	"LAS"
-};
-
 // address mode of jsr changed
 const Instruction lookup[] = {
-	{Instructions::BRK, IMP}, {Instructions::ORA, IZX}, {Instructions::KIL, IMM}, {Instructions::SLO, IZX}, {Instructions::NOP, ZP0}, {Instructions::ORA, ZP0}, {Instructions::ASL, ZP0}, {Instructions::SLO, ZP0}, {Instructions::PHP, IMP}, {Instructions::ORA, IMM}, {Instructions::ASL, IMP}, {Instructions::ANC, IMM}, {Instructions::NOP, ABS}, {Instructions::ORA, ABS}, {Instructions::ASL, ABS}, {Instructions::SLO, ABS},
-	{Instructions::BPL, REL}, {Instructions::ORA, IZY}, {Instructions::KIL, IMM}, {Instructions::SLO, IZY}, {Instructions::NOP, ZPX}, {Instructions::ORA, ZPX}, {Instructions::ASL, ZPX}, {Instructions::SLO, ZPX}, {Instructions::CLC, IMP}, {Instructions::ORA, ABY}, {Instructions::NOP, IMP}, {Instructions::SLO, ABY}, {Instructions::NOP, ABX}, {Instructions::ORA, ABX}, {Instructions::ASL, ABX}, {Instructions::SLO, ABX},
-	{Instructions::JSR, IMP}, {Instructions::AND, IZX}, {Instructions::KIL, IMM}, {Instructions::RLA, IZX}, {Instructions::BIT, ZP0}, {Instructions::AND, ZP0}, {Instructions::ROL, ZP0}, {Instructions::RLA, ZP0}, {Instructions::PLP, IMP}, {Instructions::AND, IMM}, {Instructions::ROL, IMP}, {Instructions::ANC, IMM}, {Instructions::BIT, ABS}, {Instructions::AND, ABS}, {Instructions::ROL, ABS}, {Instructions::RLA, ABS},
-	{Instructions::BMI, REL}, {Instructions::AND, IZY}, {Instructions::KIL, IMM}, {Instructions::RLA, IZY}, {Instructions::NOP, ZPX}, {Instructions::AND, ZPX}, {Instructions::ROL, ZPX}, {Instructions::RLA, ZPX}, {Instructions::SEC, IMP}, {Instructions::AND, ABY}, {Instructions::NOP, IMP}, {Instructions::RLA, ABY}, {Instructions::NOP, ABX}, {Instructions::AND, ABX}, {Instructions::ROL, ABX}, {Instructions::RLA, ABX},
-	{Instructions::RTI, IMP}, {Instructions::EOR, IZX}, {Instructions::KIL, IMM}, {Instructions::SRE, IZX}, {Instructions::NOP, ZP0}, {Instructions::EOR, ZP0}, {Instructions::LSR, ZP0}, {Instructions::SRE, ZP0}, {Instructions::PHA, IMP}, {Instructions::EOR, IMM}, {Instructions::LSR, IMP}, {Instructions::ALR, IMM}, {Instructions::JMP, ABS}, {Instructions::EOR, ABS}, {Instructions::LSR, ABS}, {Instructions::SRE, ABS},
-	{Instructions::BVC, REL}, {Instructions::EOR, IZY}, {Instructions::KIL, IMM}, {Instructions::SRE, IZY}, {Instructions::NOP, ZPX}, {Instructions::EOR, ZPX}, {Instructions::LSR, ZPX}, {Instructions::SRE, ZPX}, {Instructions::CLI, IMP}, {Instructions::EOR, ABY}, {Instructions::NOP, IMP}, {Instructions::SRE, ABY}, {Instructions::NOP, ABX}, {Instructions::EOR, ABX}, {Instructions::LSR, ABX}, {Instructions::SRE, ABX},
-	{Instructions::RTS, IMP}, {Instructions::ADC, IZX}, {Instructions::KIL, IMM}, {Instructions::RRA, IZX}, {Instructions::NOP, ZP0}, {Instructions::ADC, ZP0}, {Instructions::ROR, ZP0}, {Instructions::RRA, ZP0}, {Instructions::PLA, IMP}, {Instructions::ADC, IMM}, {Instructions::ROR, IMP}, {Instructions::ARR, IMM}, {Instructions::JMP, IND}, {Instructions::ADC, ABS}, {Instructions::ROR, ABS}, {Instructions::RRA, ABS},
-	{Instructions::BVS, REL}, {Instructions::ADC, IZY}, {Instructions::KIL, IMM}, {Instructions::RRA, IZY}, {Instructions::NOP, ZPX}, {Instructions::ADC, ZPX}, {Instructions::ROR, ZPX}, {Instructions::RRA, ZPX}, {Instructions::SEI, IMP}, {Instructions::ADC, ABY}, {Instructions::NOP, IMP}, {Instructions::RRA, ABY}, {Instructions::NOP, ABX}, {Instructions::ADC, ABX}, {Instructions::ROR, ABX}, {Instructions::RRA, ABX},
-	{Instructions::NOP, IMM}, {Instructions::STA, IZX}, {Instructions::NOP, IMM}, {Instructions::SAX, IZX}, {Instructions::STY, ZP0}, {Instructions::STA, ZP0}, {Instructions::STX, ZP0}, {Instructions::SAX, ZP0}, {Instructions::DEY, IMP}, {Instructions::NOP, IMM}, {Instructions::TXA, IMP}, {Instructions::XAA, IMM}, {Instructions::STY, ABS}, {Instructions::STA, ABS}, {Instructions::STX, ABS}, {Instructions::SAX, ABS},
-	{Instructions::BCC, REL}, {Instructions::STA, IZY}, {Instructions::KIL, IMM}, {Instructions::AHX, IZY}, {Instructions::STY, ZPX}, {Instructions::STA, ZPX}, {Instructions::STX, ZPY}, {Instructions::SAX, ZPY}, {Instructions::TYA, IMP}, {Instructions::STA, ABY}, {Instructions::TXS, IMP}, {Instructions::TAS, ABY}, {Instructions::SHY, ABX}, {Instructions::STA, ABX}, {Instructions::SHX, ABY}, {Instructions::AHX, ABY},
-	{Instructions::LDY, IMM}, {Instructions::LDA, IZX}, {Instructions::LDX, IMM}, {Instructions::LAX, IZX}, {Instructions::LDY, ZP0}, {Instructions::LDA, ZP0}, {Instructions::LDX, ZP0}, {Instructions::LAX, ZP0}, {Instructions::TAY, IMP}, {Instructions::LDA, IMM}, {Instructions::TAX, IMP}, {Instructions::LAX, IMM}, {Instructions::LDY, ABS}, {Instructions::LDA, ABS}, {Instructions::LDX, ABS}, {Instructions::LAX, ABS},
-	{Instructions::BCS, REL}, {Instructions::LDA, IZY}, {Instructions::KIL, IMM}, {Instructions::LAX, IZY}, {Instructions::LDY, ZPX}, {Instructions::LDA, ZPX}, {Instructions::LDX, ZPY}, {Instructions::LAX, ZPY}, {Instructions::CLV, IMP}, {Instructions::LDA, ABY}, {Instructions::TSX, IMP}, {Instructions::LAS, ABY}, {Instructions::LDY, ABX}, {Instructions::LDA, ABX}, {Instructions::LDX, ABY}, {Instructions::LAX, ABY},
-	{Instructions::CPY, IMM}, {Instructions::CMP, IZX}, {Instructions::NOP, IMM}, {Instructions::DCP, IZX}, {Instructions::CPY, ZP0}, {Instructions::CMP, ZP0}, {Instructions::DEC, ZP0}, {Instructions::DCP, ZP0}, {Instructions::INY, IMP}, {Instructions::CMP, IMM}, {Instructions::DEX, IMP}, {Instructions::AXS, IMM}, {Instructions::CPY, ABS}, {Instructions::CMP, ABS}, {Instructions::DEC, ABS}, {Instructions::DCP, ABS},
-	{Instructions::BNE, REL}, {Instructions::CMP, IZY}, {Instructions::KIL, IMM}, {Instructions::DCP, IZY}, {Instructions::NOP, ZPX}, {Instructions::CMP, ZPX}, {Instructions::DEC, ZPX}, {Instructions::DCP, ZPX}, {Instructions::CLD, IMP}, {Instructions::CMP, ABY}, {Instructions::NOP, IMP}, {Instructions::DCP, ABY}, {Instructions::NOP, ABX}, {Instructions::CMP, ABX}, {Instructions::DEC, ABX}, {Instructions::DCP, ABX},
-	{Instructions::CPX, IMM}, {Instructions::SBC, IZX}, {Instructions::NOP, IMM}, {Instructions::ISC, IZX}, {Instructions::CPX, ZP0}, {Instructions::SBC, ZP0}, {Instructions::INC, ZP0}, {Instructions::ISC, ZP0}, {Instructions::INX, IMP}, {Instructions::SBC, IMM}, {Instructions::NOP, IMP}, {Instructions::SBC, IMM}, {Instructions::CPX, ABS}, {Instructions::SBC, ABS}, {Instructions::INC, ABS}, {Instructions::ISC, ABS},
-	{Instructions::BEQ, REL}, {Instructions::SBC, IZY}, {Instructions::KIL, IMM}, {Instructions::ISC, IZY}, {Instructions::NOP, ZPX}, {Instructions::SBC, ZPX}, {Instructions::INC, ZPX}, {Instructions::ISC, ZPX}, {Instructions::SED, IMP}, {Instructions::SBC, ABY}, {Instructions::NOP, IMP}, {Instructions::ISC, ABY}, {Instructions::NOP, ABX}, {Instructions::SBC, ABX}, {Instructions::INC, ABX}, {Instructions::ISC, ABX},
+	{BRK, IMP}, {ORA, IZX}, {KIL, IMM}, {SLO, IZX}, {NOP, ZP0}, {ORA, ZP0}, {ASL, ZP0}, {SLO, ZP0}, {PHP, IMP}, {ORA, IMM}, {ASL, IMP}, {ANC, IMM}, {NOP, ABS}, {ORA, ABS}, {ASL, ABS}, {SLO, ABS},
+	{BPL, REL}, {ORA, IZY}, {KIL, IMM}, {SLO, IZY}, {NOP, ZPX}, {ORA, ZPX}, {ASL, ZPX}, {SLO, ZPX}, {CLC, IMP}, {ORA, ABY}, {NOP, IMP}, {SLO, ABY}, {NOP, ABX}, {ORA, ABX}, {ASL, ABX}, {SLO, ABX},
+	{JSR, IMP}, {AND, IZX}, {KIL, IMM}, {RLA, IZX}, {BIT, ZP0}, {AND, ZP0}, {ROL, ZP0}, {RLA, ZP0}, {PLP, IMP}, {AND, IMM}, {ROL, IMP}, {ANC, IMM}, {BIT, ABS}, {AND, ABS}, {ROL, ABS}, {RLA, ABS},
+	{BMI, REL}, {AND, IZY}, {KIL, IMM}, {RLA, IZY}, {NOP, ZPX}, {AND, ZPX}, {ROL, ZPX}, {RLA, ZPX}, {SEC, IMP}, {AND, ABY}, {NOP, IMP}, {RLA, ABY}, {NOP, ABX}, {AND, ABX}, {ROL, ABX}, {RLA, ABX},
+	{RTI, IMP}, {EOR, IZX}, {KIL, IMM}, {SRE, IZX}, {NOP, ZP0}, {EOR, ZP0}, {LSR, ZP0}, {SRE, ZP0}, {PHA, IMP}, {EOR, IMM}, {LSR, IMP}, {ALR, IMM}, {JMP, ABS}, {EOR, ABS}, {LSR, ABS}, {SRE, ABS},
+	{BVC, REL}, {EOR, IZY}, {KIL, IMM}, {SRE, IZY}, {NOP, ZPX}, {EOR, ZPX}, {LSR, ZPX}, {SRE, ZPX}, {CLI, IMP}, {EOR, ABY}, {NOP, IMP}, {SRE, ABY}, {NOP, ABX}, {EOR, ABX}, {LSR, ABX}, {SRE, ABX},
+	{RTS, IMP}, {ADC, IZX}, {KIL, IMM}, {RRA, IZX}, {NOP, ZP0}, {ADC, ZP0}, {ROR, ZP0}, {RRA, ZP0}, {PLA, IMP}, {ADC, IMM}, {ROR, IMP}, {ARR, IMM}, {JMP, IND}, {ADC, ABS}, {ROR, ABS}, {RRA, ABS},
+	{BVS, REL}, {ADC, IZY}, {KIL, IMM}, {RRA, IZY}, {NOP, ZPX}, {ADC, ZPX}, {ROR, ZPX}, {RRA, ZPX}, {SEI, IMP}, {ADC, ABY}, {NOP, IMP}, {RRA, ABY}, {NOP, ABX}, {ADC, ABX}, {ROR, ABX}, {RRA, ABX},
+	{NOP, IMM}, {STA, IZX}, {NOP, IMM}, {SAX, IZX}, {STY, ZP0}, {STA, ZP0}, {STX, ZP0}, {SAX, ZP0}, {DEY, IMP}, {NOP, IMM}, {TXA, IMP}, {XAA, IMM}, {STY, ABS}, {STA, ABS}, {STX, ABS}, {SAX, ABS},
+	{BCC, REL}, {STA, IZY}, {KIL, IMM}, {AHX, IZY}, {STY, ZPX}, {STA, ZPX}, {STX, ZPY}, {SAX, ZPY}, {TYA, IMP}, {STA, ABY}, {TXS, IMP}, {TAS, ABY}, {SHY, ABX}, {STA, ABX}, {SHX, ABY}, {AHX, ABY},
+	{LDY, IMM}, {LDA, IZX}, {LDX, IMM}, {LAX, IZX}, {LDY, ZP0}, {LDA, ZP0}, {LDX, ZP0}, {LAX, ZP0}, {TAY, IMP}, {LDA, IMM}, {TAX, IMP}, {LAX, IMM}, {LDY, ABS}, {LDA, ABS}, {LDX, ABS}, {LAX, ABS},
+	{BCS, REL}, {LDA, IZY}, {KIL, IMM}, {LAX, IZY}, {LDY, ZPX}, {LDA, ZPX}, {LDX, ZPY}, {LAX, ZPY}, {CLV, IMP}, {LDA, ABY}, {TSX, IMP}, {LAS, ABY}, {LDY, ABX}, {LDA, ABX}, {LDX, ABY}, {LAX, ABY},
+	{CPY, IMM}, {CMP, IZX}, {NOP, IMM}, {DCP, IZX}, {CPY, ZP0}, {CMP, ZP0}, {DEC, ZP0}, {DCP, ZP0}, {INY, IMP}, {CMP, IMM}, {DEX, IMP}, {AXS, IMM}, {CPY, ABS}, {CMP, ABS}, {DEC, ABS}, {DCP, ABS},
+	{BNE, REL}, {CMP, IZY}, {KIL, IMM}, {DCP, IZY}, {NOP, ZPX}, {CMP, ZPX}, {DEC, ZPX}, {DCP, ZPX}, {CLD, IMP}, {CMP, ABY}, {NOP, IMP}, {DCP, ABY}, {NOP, ABX}, {CMP, ABX}, {DEC, ABX}, {DCP, ABX},
+	{CPX, IMM}, {SBC, IZX}, {NOP, IMM}, {ISC, IZX}, {CPX, ZP0}, {SBC, ZP0}, {INC, ZP0}, {ISC, ZP0}, {INX, IMP}, {SBC, IMM}, {NOP, IMP}, {SBC, IMM}, {CPX, ABS}, {SBC, ABS}, {INC, ABS}, {ISC, ABS},
+	{BEQ, REL}, {SBC, IZY}, {KIL, IMM}, {ISC, IZY}, {NOP, ZPX}, {SBC, ZPX}, {INC, ZPX}, {ISC, ZPX}, {SED, IMP}, {SBC, ABY}, {NOP, IMP}, {ISC, ABY}, {NOP, ABX}, {SBC, ABX}, {INC, ABX}, {ISC, ABX},
 };
 
 static State InstructionType(Instructions instruction) {
@@ -265,7 +180,11 @@ void mos6502::Clock() {
 			}
 
 			#ifdef printDebug
-			strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC, fetched, names[(int)instruction.instruction]);
+			if(NMI || IRQ && !Status.I) {
+				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", 0, fetched, InstructionNames[(int)instruction.instruction]);
+			} else {
+				strPos = sprintf_s(instrStr, "%04X:  %02X  %s ", PC - 1, fetched, InstructionNames[(int)instruction.instruction]);
+			}
 			sprintf_s((instrStr + 27), sizeof(instrStr) - 27, "A:%02X X:%02X Y:%02X P:%02X SP:%02X Cy:%i\n", A, X, Y, Status.reg, SP, bus->systemClockCounter + 1);
 			#endif
 			state = State::FetchOperator;

@@ -52,13 +52,13 @@ enum Domain {
 
 std::vector<MemoryDomain> NesCore::GetMemoryDomains() {
 	return {
-		MemoryDomain { CpuRam, "RAM", 0x800 },
-		MemoryDomain { CpuBus, "Cpu Bus", 0x10000 },
-		MemoryDomain { PpuBus, "Ppu Bus", 0x8000 },
-		MemoryDomain { CIRam, "CIRam (Nametables)", 0x800 },
-		MemoryDomain { Oam, "OAM", 0x100 },
-		MemoryDomain { PrgRom, "Prg Rom", emulator.cartridge->prg.size() },
-		MemoryDomain { ChrRom, "Chr Rom", emulator.cartridge->chr.size() },
+		{ CpuRam, "RAM", 0x800 },
+		{ CpuBus, "Cpu Bus", 0x10000 },
+		{ PpuBus, "Ppu Bus", 0x8000 },
+		{ CIRam, "CIRam (Nametables)", 0x800 },
+		{ Oam, "OAM", 0x100 },
+		{ PrgRom, "Prg Rom", emulator.cartridge->prg.size() },
+		{ ChrRom, "Chr Rom", emulator.cartridge->chr.size() },
 	};
 }
 
@@ -99,14 +99,17 @@ void NesCore::DrawMenuBar(bool& menuOpen) {
 		if(ImGui::MenuItem("Tas Editor", nullptr, false, false)) {
 			// tasEdit.Open();
 		}
-		if(ImGui::MenuItem("CPU Viewer", nullptr, false)) {
+		if(ImGui::MenuItem("CPU Viewer")) {
 			cpuWindow.Open();
 		}
-		if(ImGui::MenuItem("PPU Viewer", nullptr, false)) {
+		if(ImGui::MenuItem("PPU Viewer")) {
 			tables.Open();
 		}
-		if(ImGui::MenuItem("APU Visuals", nullptr, false)) {
+		if(ImGui::MenuItem("APU Visuals")) {
 			apuWindow.Open();
+		}
+		if(ImGui::MenuItem("Disassembler")) {
+			disassembler.Open(emulator.cartridge->prg);
 		}
 
 		ImGui::EndMenu();
@@ -118,6 +121,7 @@ void NesCore::DrawWindows() {
 	tables.DrawWindow();
 	// tasEdit.DrawWindow(0);
 	apuWindow.DrawWindow();
+	disassembler.DrawWindow();
 }
 
 void NesCore::SaveState(saver& saver) {
