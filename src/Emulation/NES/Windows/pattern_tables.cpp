@@ -1,4 +1,4 @@
-#include "imgui_pattern_tables.h"
+#include "pattern_tables.h"
 #include <imgui.h>
 
 static uint8_t FlipByte(uint8_t b) {

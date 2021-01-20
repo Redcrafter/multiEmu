@@ -11,8 +11,8 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include <examples/imgui_impl_opengl3.h>
-#include <examples/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
+#include <backends/imgui_impl_glfw.h>
 
 #include "nativefiledialog/nfd.h"
 
@@ -441,32 +441,6 @@ static void drawSettings() {
 	ImGui::End();
 }
 
-static int drawDockSpace() {
-	ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
-
-	ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(viewport->GetWorkPos());
-	ImGui::SetNextWindowSize(viewport->GetWorkSize());
-	ImGui::SetNextWindowViewport(viewport->ID);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-	window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-	window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-
-
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	ImGui::Begin("Main", nullptr, window_flags);
-	ImGui::PopStyleVar(3);
-
-	// DockSpace
-	ImGuiID dockspace_id = ImGui::GetID("Dockspace");
-	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_AutoHideTabBar);
-
-	ImGui::End();
-
-	return dockspace_id;
-}
-
 static void drawGui() {
 	// fix for menubar closing when menu is too big and creates new context
 	static bool menuOpen = false;
@@ -601,7 +575,7 @@ static void drawGui() {
 	}
 
 	if(settings.UseDockingWindow) {
-		auto dockspace_id = drawDockSpace();
+		auto dockspace_id = ImGui::DockSpaceOverViewport();
 
 		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));

@@ -83,7 +83,7 @@ void MemoryEditor::DrawWindow() {
 	ImGui::SetNextWindowSizeConstraints(ImVec2(0.0f, 0.0f), ImVec2(s.WindowWidth, FLT_MAX));
 
 	if(ImGui::Begin(Title.c_str(), &open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar)) {
-		if(ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseClicked(1)) {
+		if(ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
 			ImGui::OpenPopup("context");
 		}
 
@@ -148,7 +148,10 @@ void MemoryEditor::DrawContents(size_t mem_size) {
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 
 	const int line_total_count = (int)((mem_size + Cols - 1) / Cols);
-	ImGuiListClipper clipper(line_total_count, s.LineHeight);
+	ImGuiListClipper clipper;
+	clipper.Begin(line_total_count, s.LineHeight);
+	clipper.Step();
+	
 	const size_t visible_start_addr = clipper.DisplayStart * Cols;
 	const size_t visible_end_addr = clipper.DisplayEnd * Cols;
 
@@ -251,7 +254,8 @@ void MemoryEditor::DrawContents(size_t mem_size) {
 							data->DeleteChars(0, data->BufTextLen);
 							data->InsertChars(0, user_data->CurrentBufOverwrite);
 							data->SelectionStart = 0;
-							data->SelectionEnd = data->CursorPos = 2;
+							data->SelectionEnd = 2;
+							data->CursorPos = 0;
 						}
 						return 0;
 					}
@@ -327,6 +331,7 @@ void MemoryEditor::DrawContents(size_t mem_size) {
 			}
 		}
 	}
+	IM_ASSERT(clipper.Step() == false);
 	clipper.End();
 	ImGui::PopStyleVar(2);
 	ImGui::EndChild();

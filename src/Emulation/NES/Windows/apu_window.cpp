@@ -1,4 +1,4 @@
-#include "imgui_apu_window.h"
+#include "apu_window.h"
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>

@@ -3,9 +3,10 @@
 #include "Bus.h"
 
 // #include "imguiWindows/imgui_tas_editor.h"
-#include "Windows/imgui_pattern_tables.h"
-#include "Windows/imgui_cpu_state.h"
-#include "Windows/imgui_apu_window.h"
+#include "Windows/pattern_tables.h"
+#include "Windows/cpu_state.h"
+#include "Windows/apu_window.h"
+
 
 class NesCore : public ICore {
     Bus emulator;

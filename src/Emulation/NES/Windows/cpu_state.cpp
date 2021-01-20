@@ -1,4 +1,4 @@
-#include "imgui_cpu_state.h"
+#include "cpu_state.h"
 #include <imgui.h>
 
 CpuStateWindow::CpuStateWindow(std::string title) : Title(std::move(title)) { }
