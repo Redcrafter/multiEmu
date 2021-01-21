@@ -1,6 +1,8 @@
 #include "StandardController.h"
 #include "Input.h"
 
+namespace Nes {
+
 static uint8_t GetController(int number) {
 	int offset = number * 8;
 	uint8_t val = 0;
@@ -11,7 +13,7 @@ static uint8_t GetController(int number) {
 	return val;
 }
 
-StandardController::StandardController(int number): number(number) {
+StandardController::StandardController(int number) : number(number) {
 	// assert(number == 0 || number == 1);
 }
 
@@ -31,4 +33,6 @@ uint8_t StandardController::CpuRead(uint16_t addr, bool readOnly) {
 		ControllerLatch >>= 1;
 	}
 	return ret;
+}
+
 }

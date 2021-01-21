@@ -4,21 +4,29 @@
 #include "../ppu2C02.h"
 #include "RenderImage.h"
 
+namespace Nes {
+
 class PatternTables {
-public:
+	friend class Core;
+
+  private:
 	std::string Title;
 	ppu2C02* ppu = nullptr;
 
 	int pallet1 = 0, pallet2 = 0;
-private:
+
 	bool open = false;
 	RenderImage image;
-public:
+
+  public:
 	PatternTables(std::string title);
 
 	void Open() { open = true; }
 	void DrawWindow();
-private:
+
+  private:
 	void RenderSprite(int i);
 	void DrawPatternTable();
 };
+
+}

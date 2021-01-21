@@ -2,18 +2,20 @@
 #include <cstdint>
 
 // #include "cpu6502.h"
-#include "ppu2C02.h"
 #include "RP2A03.h"
+#include "ppu2C02.h"
 
 #include "Cartridge.h"
 #include "Controller.h"
 #include "mos6502.h"
 
+namespace Nes {
+
 class Bus {
-private:
+  private:
 	bool irqDelay;
 
-    uint8_t CpuRam[2 * 1024];
+	uint8_t CpuRam[2 * 1024];
 	uint8_t cpuOpenBus;
 
 	uint8_t dmaPage;
@@ -22,7 +24,8 @@ private:
 
 	bool dmaTransfer;
 	bool dmaDummy;
-public:
+
+  public:
 	uint64_t systemClockCounter;
 	int CpuStall;
 
@@ -46,5 +49,7 @@ public:
 	void SaveState(saver& saver);
 	void LoadState(saver& saver);
 
-	friend class NesCore;
+	friend class Core;
 };
+
+}

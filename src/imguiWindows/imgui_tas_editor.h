@@ -2,16 +2,17 @@
 #include <string>
 
 class TasEditor {
-public:
+  public:
 	std::string Title;
-private:
+
+  private:
 	bool open = false;
 
 	int selectedRow = -1;
-public:
+
+  public:
 	TasEditor(std::string Title);
 
 	void Open() { open = true; }
 	void DrawWindow(int currentFrame);
 };
-

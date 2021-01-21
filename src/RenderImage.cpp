@@ -1,6 +1,7 @@
 #include "RenderImage.h"
-#include <stdexcept>
+
 #include <cstring>
+#include <stdexcept>
 
 RenderImage::RenderImage(const int width, const int height) {
 	glGenTextures(1, &textureID);
@@ -22,8 +23,12 @@ RenderImage::~RenderImage() {
 	delete[] imgData;
 }
 
-int RenderImage::GetWidth() { return Width; }
-int RenderImage::GetHeight() { return Height; }
+int RenderImage::GetWidth() {
+	return Width;
+}
+int RenderImage::GetHeight() {
+	return Height;
+}
 
 void RenderImage::Clear(Color col) {
 	for(int i = 0; i < Width * Height; ++i) {
@@ -46,7 +51,7 @@ void RenderImage::Line(int x0, int y0, int x1, int y1, Color col) {
 		SetPixel(x0, y0, col);
 		if(x0 == x1 && y0 == y1)
 			break;
-		
+
 		e2 = 2 * err;
 		if(e2 > dy) {
 			err += dy;

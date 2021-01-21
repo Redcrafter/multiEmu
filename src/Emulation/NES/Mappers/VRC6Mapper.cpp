@@ -1,6 +1,8 @@
 #include "VRC6Mapper.h"
 
-VRC6Mapper::VRC6Mapper(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr, bool swap): Mapper(prg, chr), swap(swap) {
+namespace Nes {
+
+VRC6Mapper::VRC6Mapper(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr, bool swap) : Mapper(prg, chr), swap(swap) {
 	prgBanks = prg.size() / 0x4000;
 	chrBanks = chr.size() / 0x2000;
 
@@ -60,4 +62,6 @@ bool VRC6Mapper::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 
 bool VRC6Mapper::ppuWrite(uint16_t addr, uint8_t data) {
 	return false;
+}
+
 }

@@ -1,17 +1,23 @@
 #pragma once
-#include <string>
 #include "../mos6502.h"
+#include <string>
+
+namespace Nes {
 
 class CpuStateWindow {
-private:
+	friend class Core;
+
+  private:
 	bool open = false;
-public:
+
 	std::string Title;
 	mos6502* cpu;
-public:
+
+  public:
 	CpuStateWindow(std::string title);
 
 	void Open();
 	void DrawWindow();
 };
 
+}

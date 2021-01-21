@@ -8,7 +8,7 @@
 
 const uint32_t s[64] = {
 	7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
-	5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+	5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20, 5, 9,  14, 20,
 	4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
 	6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
 };
@@ -72,7 +72,7 @@ md5::md5(std::istream& stream) {
 	if(!stream.good()) {
 		throw std::runtime_error("Bad stream");
 	}
-	
+
 	uint8_t message[64];
 	int pos = 0;
 
@@ -80,7 +80,7 @@ md5::md5(std::istream& stream) {
 		stream.read(reinterpret_cast<char*>(&message), 64);
 		auto count = stream.gcount();
 		pos += count;
-		
+
 		if(count != 64) {
 			break;
 		}
@@ -126,7 +126,7 @@ md5 md5::FromString(const std::string& str) {
 std::string md5::ToString() const {
 	char str[33];
 
-	for (int i = 0; i < 4; i++) {
+	for(int i = 0; i < 4; i++) {
 		printHex(&str[i * 8], h[i]);
 	}
 	str[32] = '\0';
@@ -177,7 +177,7 @@ bool operator<(const md5& left, const md5& right) {
 	if(left.h[0] != right.h[0]) {
 		return left.h[0] < right.h[0];
 	}
-	
+
 	if(left.h[1] != right.h[1]) {
 		return left.h[1] < right.h[1];
 	}
@@ -190,14 +190,14 @@ bool operator<(const md5& left, const md5& right) {
 
 bool operator==(const md5& left, const md5& right) {
 	return left.h[0] == right.h[0] &&
-		left.h[1] == right.h[1] &&
-		left.h[2] == right.h[2] &&
-		left.h[3] == right.h[3];
+		   left.h[1] == right.h[1] &&
+		   left.h[2] == right.h[2] &&
+		   left.h[3] == right.h[3];
 }
 
 bool operator!=(const md5& left, const md5& right) {
 	return left.h[0] != right.h[0] ||
-		left.h[1] != right.h[1] ||
-		left.h[2] != right.h[2] ||
-		left.h[3] != right.h[3];
+		   left.h[1] != right.h[1] ||
+		   left.h[2] != right.h[2] ||
+		   left.h[3] != right.h[3];
 }

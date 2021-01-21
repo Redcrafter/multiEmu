@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+
 #include <GL/gl3w.h>
 
 struct Color {
@@ -7,20 +8,21 @@ struct Color {
 };
 
 class RenderImage {
-private:
+  private:
 	GLuint textureID;
 	int Width, Height;
 	Color* imgData;
-public:
+
+  public:
 	RenderImage(int width, int height);
 	~RenderImage();
-	
+
 	RenderImage(const RenderImage&) = delete;
 	RenderImage& operator=(const RenderImage&) = delete;
 
 	int GetWidth();
 	int GetHeight();
-	
+
 	void Clear(Color col);
 	void SetPixel(int x, int y, Color col);
 	void Line(int x0, int y0, int x1, int y1, Color col);
@@ -28,4 +30,3 @@ public:
 	GLuint GetTextureId() const { return textureID; };
 	void BufferImage();
 };
-

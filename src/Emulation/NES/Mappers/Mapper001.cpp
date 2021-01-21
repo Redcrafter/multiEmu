@@ -1,6 +1,8 @@
 #include "Mapper001.h"
 #include "../Cartridge.h"
 
+namespace Nes {
+
 Mapper001::Mapper001(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
 	prgRam = new uint8_t[0x2000];
 
@@ -107,8 +109,8 @@ bool Mapper001::cpuWrite(uint16_t addr, uint8_t data) {
 		}
 
 		if(Control & 0x10) {
-			chrBankOffset[0] = (chrBank0) * 0x1000;
-			chrBankOffset[1] = (chrBank1) * 0x1000;
+			chrBankOffset[0] = (chrBank0)*0x1000;
+			chrBankOffset[1] = (chrBank1)*0x1000;
 		} else {
 			chrBankOffset[0] = (chrBank0 & ~1) * 0x1000;
 			chrBankOffset[1] = (chrBank0 & ~1) * 0x1000 + 0x1000;
@@ -130,10 +132,10 @@ bool Mapper001::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 
 void Mapper001::SaveState(saver& saver) {
 	saver << lastWrite;
-	
+
 	saver << Control;
 	saver << shiftRegister;
-	
+
 	saver << chrBank0;
 	saver << chrBank1;
 	saver << prgBank;
@@ -148,10 +150,10 @@ void Mapper001::SaveState(saver& saver) {
 
 void Mapper001::LoadState(saver& saver) {
 	saver >> lastWrite;
-	
+
 	saver >> Control;
 	saver >> shiftRegister;
-	
+
 	saver >> chrBank0;
 	saver >> chrBank1;
 	saver >> prgBank;
@@ -169,4 +171,6 @@ void Mapper001::MapSaveRam(const std::string& path) {
 
 	file = new MemoryMapped(path, 0x2000);
 	prgRam = file->begin();
+}
+
 }

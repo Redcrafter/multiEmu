@@ -1,6 +1,8 @@
 #include "mos6502.h"
 #include "Bus.h"
 
+namespace Nes {
+
 // address mode of jsr changed
 const Instruction lookup[] = {
 	{BRK, IMP}, {ORA, IZX}, {KIL, IMM}, {SLO, IZX}, {NOP, ZP0}, {ORA, ZP0}, {ASL, ZP0}, {SLO, ZP0}, {PHP, IMP}, {ORA, IMM}, {ASL, IMP}, {ANC, IMM}, {NOP, ABS}, {ORA, ABS}, {ASL, ABS}, {SLO, ABS},
@@ -1149,4 +1151,6 @@ uint8_t mos6502::ROR(uint8_t val) {
 	Status.N = tmp & 0x80;
 
 	return tmp;
+}
+
 }

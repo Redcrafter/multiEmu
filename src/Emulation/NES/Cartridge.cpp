@@ -1,14 +1,17 @@
-#include <fstream>
+#include "Cartridge.h"
+
 #include <cmath>
+#include <fstream>
 #include <map>
 
-#include "Cartridge.h"
 #include "Mappers/Mappers.h"
+#include "fs.h"
+#include "json.h"
+#include "logger.h"
 #include "md5.h"
 #include "sha1.h"
-#include "logger.h"
-#include "json.h"
-#include "fs.h"
+
+namespace Nes {
 
 struct INESheader {
 	char name[4];
@@ -58,13 +61,13 @@ static void InsertCart(std::string& name, Json& obj) {
 			}
 			sha1 hash = sha1::FromString(entry["@sha1"]);
 
-			dbItem item{ name, (uint16_t)mapper, hash };
+			dbItem item {name, (uint16_t)mapper, hash};
 			InsertPrg(item);
 		}
 	} else {
 		sha1 hash = sha1::FromString(board["prg"]["@sha1"]);
 
-		dbItem item{ name, (uint16_t)mapper, hash };
+		dbItem item {name, (uint16_t)mapper, hash};
 		InsertPrg(item);
 	}
 }
@@ -74,9 +77,9 @@ void LoadCardDb(const std::string& path) {
 		return;
 	}
 	dbInitialized = true;
-	
+
 	logger.Log("Loading nes cart db\n");
-	
+
 	try {
 		Json test;
 		std::ifstream f(path);
@@ -114,9 +117,9 @@ std::shared_ptr<Mapper> LoadCart(const std::string& path) {
 	stream.read((char*)&header, sizeof(header));
 
 	if(!(header.name[0] == 'N' &&
-		header.name[1] == 'E' &&
-		header.name[2] == 'S' &&
-		header.name[3] == 0x1A)) {
+		 header.name[1] == 'E' &&
+		 header.name[2] == 'S' &&
+		 header.name[3] == 0x1A)) {
 		throw std::invalid_argument("Invalid iNES header");
 	}
 
@@ -160,7 +163,7 @@ std::shared_ptr<Mapper> LoadCart(const std::string& path) {
 	} else {
 		logger.Log("Couldn't find cartridge in cartdb\n");
 	}
-	
+
 	logger.Log("Mapper:%i, PRG:%i, CHR:%i  \n", mapperId, prgBanks, chrBanks);
 	std::shared_ptr<Mapper> mapper;
 	switch(mapperId) {
@@ -195,4 +198,6 @@ std::shared_ptr<Mapper> LoadCart(const std::string& path) {
 	}
 
 	return mapper;
+}
+
 }

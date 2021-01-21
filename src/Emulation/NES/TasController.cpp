@@ -1,5 +1,7 @@
 #include "TasController.h"
 
+namespace Nes {
+
 TasController::TasController(std::vector<uint8_t> inputs) : inputs(inputs) {
 	inputIndex = 1;
 }
@@ -15,7 +17,7 @@ uint8_t TasController::CpuRead(uint16_t addr, bool readOnly) {
 	if(ShiftStrobe) {
 		ControllerLatch = inputs[inputIndex];
 	}
-	
+
 	auto ret = ControllerLatch & 1;
 	if(!readOnly) {
 		ControllerLatch >>= 1;
@@ -30,7 +32,7 @@ void TasController::Frame() {
 std::string TasController::GetInput() {
 	auto a = inputs[inputIndex];
 	std::string inputs = "........";
-	
+
 	if(a & (1 << 0))
 		inputs[7] = 'A';
 	if(a & (1 << 1))
@@ -49,4 +51,6 @@ std::string TasController::GetInput() {
 		inputs[0] = 'R';
 
 	return inputs;
+}
+
 }

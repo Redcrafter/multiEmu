@@ -6,16 +6,16 @@
 
 #include "json.h"
 
+namespace Input {
+
 union Key {
 	struct {
 		int key;
 		int mods;
-
-		
 	} Info;
 	uint64_t Reg;
 
-	bool operator ==(Key other) {
+	bool operator==(Key other) {
 		return Reg == other.Reg;
 	}
 };
@@ -34,8 +34,8 @@ struct InputMapper {
 	int selected = -1;
 	bool changed = false;
 
-	InputMapper() { };
-	
+	InputMapper() {};
+
 	InputMapper(const std::string& name, const std::vector<InputItem>& elements);
 
 	bool ShowEditWindow();
@@ -43,14 +43,14 @@ struct InputMapper {
 	bool TryGetId(Key key, int& Id);
 };
 
-namespace Input {
-	void OnKey(int key, int scancode, int action, int mods);
+void OnKey(int key, int scancode, int action, int mods);
 
-	void Load(Json& j);
-	void Save(Json& j);
+void Load(Json& j);
+void Save(Json& j);
 
-	bool ShowEditWindow();
+bool ShowEditWindow();
 
-	void SetMapper(const InputMapper& mapper);
-	bool GetKey(int mappedId);
+void SetMapper(const InputMapper& mapper);
+bool GetKey(int mappedId);
+
 }

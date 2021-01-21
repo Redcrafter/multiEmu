@@ -1,9 +1,11 @@
 #pragma once
 #include "saver.h"
 
+namespace Nes {
+
 class Bus;
 
-struct Stuff {
+struct SoundBase {
 	bool enabled;
 	bool lengthCounterEnabled = true;
 	uint8_t lengthCounterPeriod;
@@ -15,7 +17,7 @@ struct Stuff {
 	void ClockLength();
 };
 
-struct Envelope : Stuff {
+struct Envelope : SoundBase {
 	bool envelopeEnabled;
 	bool envelopeLoop;
 	bool envelopeStart;
@@ -51,7 +53,7 @@ struct Pulse : Envelope {
 	uint8_t Output();
 };
 
-struct Triangle : Stuff {
+struct Triangle : SoundBase {
 	uint8_t dutyValue;
 
 	uint8_t linearCounterPeriod;
@@ -153,15 +155,18 @@ struct RP2A03state {
 
 class RP2A03 : public RP2A03state {
 	friend class ApuWindow;
-private:
+	friend class Core;
+
+  private:
 	Bus* bus = nullptr;
-public:
+
 	int bufferPos = 0;
 	int lastBufferPos = 0;
 	struct {
 		uint8_t noise, dmc;
 	} waveBuffer[bufferLength];
-public:
+
+  public:
 	RP2A03(Bus* bus);
 
 	void Clock();
@@ -179,3 +184,5 @@ public:
 	void SaveState(saver& saver);
 	void LoadState(saver& saver);
 };
+
+}

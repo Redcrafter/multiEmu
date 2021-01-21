@@ -59,11 +59,11 @@ struct JsonArray : public JsonBase {
 
 	std::vector<Json>::iterator begin();
 	std::vector<Json>::iterator end();
-	
+
 	void print(std::ostream& stream) const override;
-	
+
 	Json& operator[](size_t pos) override;
-	
+
 	operator bool() const override;
 };
 
@@ -92,7 +92,7 @@ struct JsonString : public JsonBase {
 
 struct JsonNumber : public JsonBase {
 	const double value;
-	
+
 	JsonNumber(double value);
 
 	void print(std::ostream& stream) const override;
@@ -115,7 +115,7 @@ struct JsonNumber : public JsonBase {
 
 struct JsonBool : public JsonBase {
 	const bool value;
-	
+
 	JsonBool(bool value);
 
 	void print(std::ostream& stream) const override;
@@ -138,28 +138,35 @@ struct JsonBool : public JsonBase {
 
 class Json {
 	std::shared_ptr<JsonBase> root = nullptr;
-public:
-	Json() { }
-	
-	template <typename T>
+
+  public:
+	Json() {}
+
+	template<typename T>
 	Json(std::vector<T> val) {
 		std::vector<Json> elements;
-		for(auto item : val) { elements.push_back(item); }
+		for(auto item : val) {
+			elements.push_back(item);
+		}
 		root = std::make_shared<JsonArray>(elements);
 	}
 
-	template <typename T>
+	template<typename T>
 	Json(std::deque<T> val) {
 		std::vector<Json> elements;
-		for(auto item : val) { elements.push_back(item); }
+		for(auto item : val) {
+			elements.push_back(item);
+		}
 		root = std::make_shared<JsonArray>(elements);
 	}
 
-	template <typename K, typename V>
+	template<typename K, typename V>
 	Json(std::map<K, V> val) {
 		if constexpr(std::is_same<K, std::string>::value) {
 			std::map<std::string, Json> elements;
-			for(auto item : val) { elements[item.first] = item.second; }
+			for(auto item : val) {
+				elements[item.first] = item.second;
+			}
 			root = std::make_shared<JsonObject>(elements);
 		} else {
 			std::vector<Json> elements;
@@ -176,14 +183,14 @@ public:
 	Json(std::initializer_list<std::pair<const std::string, Json>> list) { root = std::make_shared<JsonObject>(list); }
 	// Json(std::initializer_list<Json> list) { root = std::make_shared<JsonArray>(list); }
 
-	Json(const std::shared_ptr<JsonBase> el) : root(el) { }
+	Json(const std::shared_ptr<JsonBase> el) : root(el) {}
 
 	Json(const char* str) { root = std::make_shared<JsonString>(str); }
 	Json(const std::string& str) { root = std::make_shared<JsonString>(str); }
 
 	Json(bool val) { root = std::make_shared<JsonBool>(val); }
 
-	template <class T>
+	template<class T>
 	Json(T val) {
 		static_assert(std::is_arithmetic<T>::value || std::is_enum<T>::value);
 		if constexpr(std::is_arithmetic<T>::value) {
@@ -212,11 +219,11 @@ public:
 		}
 		return false;
 	}
-	template <typename T>
+	template<typename T>
 	bool tryGet(std::vector<T>& out) noexcept {
 		if(auto ref = dynamic_cast<JsonArray*>(root.get())) {
 			out.clear();
-			
+
 			T t;
 			for(auto& item : ref->elements) {
 				if(!item.tryGet(t)) {
@@ -228,7 +235,7 @@ public:
 		}
 		return false;
 	}
-	template <typename T>
+	template<typename T>
 	bool tryGet(std::map<std::string, T>& out) noexcept {
 		if(auto ref = dynamic_cast<JsonObject*>(root.get())) {
 			out.clear();
@@ -244,7 +251,7 @@ public:
 		return false;
 	}
 
-	template <typename T>
+	template<typename T>
 	bool tryGet(T& out) noexcept {
 		// too lazy to make a function for each arithmetic type
 		static_assert(std::is_arithmetic<T>::value);
@@ -264,7 +271,7 @@ public:
 	operator std::vector<T>() const {
 		if(auto arr = dynamic_cast<JsonArray*>(root.get())) {
 			std::vector<T> ret;
-			for(auto item: arr->elements) {
+			for(auto item : arr->elements) {
 				ret.push_back(item);
 			}
 			return ret;

@@ -5,6 +5,8 @@
 
 #include <imgui.h>
 
+namespace Input {
+
 InputMapper::InputMapper(const std::string& name, const std::vector<InputItem>& elements) {
 	this->name = name;
 	items = elements;
@@ -21,7 +23,7 @@ bool InputMapper::ShowEditWindow() {
 		auto& item = items[i];
 		ImGui::Text("%s: ", item.Name.c_str());
 		ImGui::SameLine(200);
-		
+
 		std::string text;
 		if(keyMap.count(item.Id)) {
 			Key key = keyMap[item.Id];
@@ -97,7 +99,7 @@ bool InputMapper::TryGetKey(int Id, Key& key) {
 }
 
 bool InputMapper::TryGetId(Key key, int& Id) {
-	for (auto &item : keyMap) {
+	for(auto& item : keyMap) {
 		if(item.second == key) {
 			Id = item.first;
 			return true;
@@ -110,7 +112,7 @@ static std::set<uint64_t> keys;
 static InputMapper currentMapper;
 static std::map<std::string, std::map<std::string, uint64_t>> knownMappers;
 
-void Input::OnKey(int key, int scancode, int action, int mods) {
+void OnKey(int key, int scancode, int action, int mods) {
 	if(key >= GLFW_KEY_LEFT_SHIFT) {
 		return;
 	}
@@ -139,23 +141,23 @@ void Input::OnKey(int key, int scancode, int action, int mods) {
 	}
 }
 
-void Input::Load(Json& j) {
+void Load(Json& j) {
 	j["keymap"].tryGet(knownMappers);
 }
 
-void Input::Save(Json& j) {
+void Save(Json& j) {
 	j["keymap"] = knownMappers;
 }
 
-bool Input::ShowEditWindow() {
+bool ShowEditWindow() {
 	return currentMapper.ShowEditWindow();
 }
 
-void Input::SetMapper(const InputMapper& mapper) {
+void SetMapper(const InputMapper& mapper) {
 	currentMapper = mapper;
 
 	auto& known = knownMappers[mapper.name];
-	for (auto &&i : currentMapper.items) {
+	for(auto&& i : currentMapper.items) {
 		if(known.count(i.Name)) {
 			currentMapper.keyMap[i.Id].Reg = known[i.Name];
 		}
@@ -167,10 +169,12 @@ void Input::SetMapper(const InputMapper& mapper) {
 	}
 }
 
-bool Input::GetKey(int mappedId) {
+bool GetKey(int mappedId) {
 	Key mapped;
 	if(currentMapper.TryGetKey(mappedId, mapped)) {
 		return keys.count(mapped.Reg);
 	}
 	return false;
+}
+
 }

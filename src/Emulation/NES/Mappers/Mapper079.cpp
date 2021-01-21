@@ -1,6 +1,8 @@
 #include "Mapper079.h"
 
-Mapper079::Mapper079(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) { }
+namespace Nes {
+
+Mapper079::Mapper079(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {}
 
 int Mapper079::cpuRead(uint16_t addr, uint8_t& data) {
 	if(addr >= 0x8000) {
@@ -36,4 +38,6 @@ void Mapper079::SaveState(saver& saver) {
 void Mapper079::LoadState(saver& saver) {
 	saver >> prgBank;
 	saver >> chrBank;
+}
+
 }

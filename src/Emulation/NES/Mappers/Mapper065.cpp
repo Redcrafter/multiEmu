@@ -1,5 +1,7 @@
 #include "Mapper065.h"
 
+namespace Nes {
+
 Mapper065::Mapper065(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
 	prgBankOffset[0] = 0;
 	prgBankOffset[1] = 1;
@@ -84,5 +86,7 @@ void Mapper065::CpuClock() {
 	}
 }
 
-void Mapper065::SaveState(saver& saver) { }
-void Mapper065::LoadState(saver& saver) { }
+void Mapper065::SaveState(saver& saver) {}
+void Mapper065::LoadState(saver& saver) {}
+
+}

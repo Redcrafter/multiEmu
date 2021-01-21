@@ -1,7 +1,9 @@
 #include "Mapper007.h"
 #include "../Cartridge.h"
 
-Mapper007::Mapper007(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr): Mapper(prg, chr) {
+namespace Nes {
+
+Mapper007::Mapper007(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
 	if(chr.size() > 0x2000) {
 		throw std::invalid_argument("Invalid chr size");
 	}
@@ -45,4 +47,6 @@ void Mapper007::SaveState(saver& saver) {
 
 void Mapper007::LoadState(saver& saver) {
 	saver >> prgBank;
+}
+
 }

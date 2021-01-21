@@ -2,26 +2,26 @@
 #include <cstdint>
 #include <stdexcept>
 
-static const char hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+static const char hexChars[16] = { '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F' };
 
 static void printHex(char* buffer, uint8_t val) {
-    buffer[0] = hexChars[val >> 4];
-    buffer[1] = hexChars[val & 0xF];
+	buffer[0] = hexChars[val >> 4];
+	buffer[1] = hexChars[val & 0xF];
 }
 
 static void printHex(char* buffer, uint16_t val) {
-    buffer[0] = hexChars[val >> 12];
-    buffer[1] = hexChars[val >> 8 & 0xF];
-    buffer[2] = hexChars[val >> 4 & 0xF];
-    buffer[3] = hexChars[val >> 0xF];
+	buffer[0] = hexChars[val >> 12];
+	buffer[1] = hexChars[val >> 8 & 0xF];
+	buffer[2] = hexChars[val >> 4 & 0xF];
+	buffer[3] = hexChars[val >> 0xF];
 }
 
 // outpus 8 hex characters
 static void printHex(char* buffer, uint32_t val) {
-    for (int i = 0; i < 8; i++) {
-        buffer[i] = hexChars[val >> 28];
-        val <<= 4;
-    }
+	for(int i = 0; i < 8; i++) {
+		buffer[i] = hexChars[val >> 28];
+		val <<= 4;
+	}
 }
 
 static uint8_t hexToDec(char c) {

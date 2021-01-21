@@ -1,7 +1,7 @@
 #include "logger.h"
 #include <imgui_internal.h>
 
-Logger logger{};
+Logger logger {};
 
 Logger::Logger() {
 	AutoScroll = true;
@@ -30,8 +30,8 @@ void Logger::LogScreen(const char* fmt, ...) {
 	if(buf[size - 2] == '\n') {
 		buf[size - 2] = 0;
 	}
-	
-	logItems.push_back(ScreenLogItem{ buf, std::chrono::steady_clock::now() });
+
+	logItems.push_back(ScreenLogItem { buf, std::chrono::steady_clock::now() });
 
 	delete[] buf;
 }

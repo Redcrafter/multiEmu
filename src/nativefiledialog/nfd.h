@@ -5,29 +5,33 @@
 #include <GLFW/glfw3.h>
 
 namespace NFD {
-	enum class Result {
-		Error, /* programmatic error */
-		Okay,  /* user pressed okay, or successful return */
-		Cancel /* user pressed cancel */
-	};
 
-	struct FilterItem {
-		std::string Name;
-		std::vector<std::string> Extensions;
-	};
-	
-	/* single file open dialog */
-	Result OpenDialog(const std::vector<FilterItem>& filterList, const char* defaultPath, std::string& outPath, GLFWwindow* parent);
+enum class Result {
+	Error, /* programmatic error */
+	Okay,  /* user pressed okay, or successful return */
+	Cancel /* user pressed cancel */
+};
 
-	/* multiple file open dialog */
-	Result OpenDialogMultiple(const std::vector<FilterItem>& filterList, const char* defaultPath, std::vector<std::string>& outPaths, GLFWwindow* parent);
+struct FilterItem {
+	std::string Name;
+	std::vector<std::string> Extensions;
+};
 
-	/* save dialog */
-	Result SaveDialog(const std::vector<FilterItem>& filterList, const char* defaultPath, std::string& outPath, GLFWwindow* parent);
+using FilterList = std::vector<FilterItem>;
 
-	/* select folder dialog */
-	Result PickFolder(const char* defaultPath, std::string& outPath, GLFWwindow* parent);
+/* single file open dialog */
+Result OpenDialog(const FilterList& filterList, const char* defaultPath, std::string& outPath, GLFWwindow* parent);
 
-	/* get last error -- set when Result is NFD_ERROR */
-	std::string GetError();
+/* multiple file open dialog */
+Result OpenDialogMultiple(const FilterList& filterList, const char* defaultPath, std::vector<std::string>& outPaths, GLFWwindow* parent);
+
+/* save dialog */
+Result SaveDialog(const FilterList& filterList, const char* defaultPath, std::string& outPath, GLFWwindow* parent);
+
+/* select folder dialog */
+Result PickFolder(const char* defaultPath, std::string& outPath, GLFWwindow* parent);
+
+/* get last error -- set when Result is NFD_ERROR */
+std::string GetError();
+
 }

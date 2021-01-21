@@ -1,10 +1,12 @@
 #pragma once
+#include <cassert>
 #include <cstdint>
 #include <stdexcept>
-#include <cassert>
 
-#include "saver.h"
 #include "md5.h"
+#include "saver.h"
+
+namespace Nes {
 
 enum class MirrorMode : uint8_t {
 	Horizontal,
@@ -15,19 +17,20 @@ enum class MirrorMode : uint8_t {
 };
 
 class Mapper {
-public:
+  public:
 	std::vector<uint8_t> prg;
 	std::vector<uint8_t> chr;
 
 	size_t prgMask;
 	size_t chrMask;
-	
+
 	bool Irq = false;
 	MirrorMode mirror = (MirrorMode)0;
 	md5 hash;
 
 	bool hasSram = false;
-public:
+
+  public:
 	Mapper(std::vector<uint8_t> prg, std::vector<uint8_t> chr) : prg(std::move(prg)), chr(std::move(chr)) {
 		prgMask = this->prg.size() - 1;
 		chrMask = this->chr.size() - 1;
@@ -36,7 +39,7 @@ public:
 
 	virtual int cpuRead(uint16_t addr, uint8_t& data) = 0; // TODO: bool readOnly
 	virtual bool cpuWrite(uint16_t addr, uint8_t data) { return false; };
-	
+
 	virtual bool ppuRead(uint16_t addr, uint8_t& data, bool readOnly) = 0;
 	virtual bool ppuWrite(uint16_t addr, uint8_t data) { return false; };
 
@@ -48,5 +51,7 @@ public:
 		// throw std::logic_error("Saveram not supported");
 	};
 
-	virtual void CpuClock() { };
+	virtual void CpuClock() {};
 };
+
+}

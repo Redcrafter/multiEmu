@@ -1,31 +1,33 @@
 #pragma once
 #include "saver.h"
 
-#include <string>
 #include <fstream>
+#include <string>
 
 // #define printDebug 1
+
+namespace Nes {
 
 class Bus;
 
 enum AddressingModes : uint8_t {
-	IMP, // Implied 
-	IMM, // Immediate 
+	IMP, // Implied
+	IMM, // Immediate
 	ZP0, // Zero Page
 	ZPX, // Zero page indexed with X
 	ZPY, // Zero page indexed with Y
-	REL, // Relative 
-	ABS, // Absolute 
+	REL, // Relative
+	ABS, // Absolute
 	ABX, // Absolute indexed with X
 	ABY, // Absolute indexed with Y
 	IND, // Indirect
 	IZX, // Indexed indirect (with X)
-	IZY  // Indirect indexed (with Y)
+	IZY	 // Indirect indexed (with Y)
 };
 
 enum Instructions : uint8_t {
 	// implementation defined. only used to inject nmi/irq
-	NMI, 
+	NMI,
 	IRQ,
 
 	// Math
@@ -52,7 +54,7 @@ enum Instructions : uint8_t {
 	LDA, // A = {addr}
 	LDX, // X = {addr}
 	LDY, // Y = {addr}
-	STA, // {addr} = A 
+	STA, // {addr} = A
 	STX, // {addr} = X
 	STY, // {addr} = Y
 	TAX, // X = A
@@ -82,7 +84,7 @@ enum Instructions : uint8_t {
 	JMP, // PC = {adr}
 	BIT, // N = b7; V = b6; Z = A & {adr}
 	CLC, // C = 0
-	SEC, // C = 1 
+	SEC, // C = 1
 	CLD, // D = 0
 	SED, // D = 1
 	CLI, // I = 0
@@ -209,7 +211,7 @@ struct Instruction {
 	AddressingModes addrMode;
 };
 
-enum class State: uint8_t {
+enum class State : uint8_t {
 	FetchOpcode = 0,
 	FetchOperator,
 	WeirdRead,
@@ -231,9 +233,11 @@ enum class State: uint8_t {
 
 class mos6502 {
 	friend class CpuStateWindow;
-public:
+
+  public:
 	bool IRQ;
-private:
+
+  private:
 	bool NMI;
 
 	uint8_t A;
@@ -269,7 +273,7 @@ private:
 #ifdef printDebug
 	std::ofstream file;
 #endif
-public:
+  public:
 	mos6502(Bus* bus);
 	~mos6502();
 
@@ -281,13 +285,16 @@ public:
 
 	void SaveState(saver& saver) const;
 	void LoadState(saver& saver);
-private:
+
+  private:
 	void PushStack(uint8_t val);
 	uint8_t PopStack();
 
 	void ADC(uint8_t val);
 	void SBC(uint8_t val);
-	
+
 	uint8_t ROL(uint8_t val);
 	uint8_t ROR(uint8_t val);
 };
+
+}

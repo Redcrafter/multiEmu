@@ -11,31 +11,31 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include <backends/imgui_impl_opengl3.h>
 #include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
 
 #include "nativefiledialog/nfd.h"
 
-#include "saver.h"
 #include "Input.h"
+#include "saver.h"
 
 #include "imguiWindows/imgui_memory_editor.h"
 // #include "imguiWindows/imgui_tas_editor.h"
 
-#include "logger.h"
 #include "audio.h"
+#include "logger.h"
 
 #include "fs.h"
 #include "json.h"
 
-#include "Emulation/ICore.h"
 #include "Emulation/CHIP-8/chip8.h"
+#include "Emulation/GB/GameboyCore.h"
 #include "Emulation/NES/NesCore.h"
 
 enum class Action {
-	Speedup,		 // Toggle speedup x5
-	Step,			 // Start step & advance frame
-	ResumeRun,		 // Resume running normally
+	Speedup,   // Toggle speedup x5
+	Step,	   // Start step & advance frame
+	ResumeRun, // Resume running normally
 
 	Reset,
 	HardReset,
@@ -48,18 +48,18 @@ enum class Action {
 	Maximise
 };
 
-InputMapper hotkeys = InputMapper("hotkeys", {
-	{"Speedup", (int)Action::Speedup, Key{{GLFW_KEY_Q, 0}}},
-	{"Step", (int)Action::Step, Key{{GLFW_KEY_F, 0}}},
-	{"ResumeRun", (int)Action::ResumeRun, Key{{GLFW_KEY_G, 0}}},
-	{"Reset", (int)Action::Reset, Key{{GLFW_KEY_R, 0}}},
-	{"HardReset", (int)Action::HardReset, Key{{0, 0}}},
-	{"SaveState", (int)Action::SaveState, Key{{GLFW_KEY_K, 0}}},
-	{"LoadState", (int)Action::LoadState, Key{{GLFW_KEY_L, 0}}},
-	{"SelectNextState", (int)Action::SelectNextState, Key{{GLFW_KEY_KP_ADD, 0}}},
-	{"SelectLastState", (int)Action::SelectLastState, Key{{GLFW_KEY_KP_SUBTRACT, 0}}},
-	{"Maximise", (int)Action::Maximise, Key{{GLFW_KEY_F11, 0}}}
-});
+Input::InputMapper hotkeys { "hotkeys", {
+	{ "Speedup",		 (int)Action::Speedup,		   { { GLFW_KEY_Q, 0 } } },
+	{ "Step",			 (int)Action::Step,			   { { GLFW_KEY_F, 0 } } },
+	{ "ResumeRun",		 (int)Action::ResumeRun,	   { { GLFW_KEY_G, 0 } } },
+	{ "Reset",			 (int)Action::Reset,	 	   { { GLFW_KEY_R, 0 } } },
+	{ "HardReset",		 (int)Action::HardReset,	   { { 0, 0 } } },
+	{ "SaveState",		 (int)Action::SaveState,	   { { GLFW_KEY_K, 0 } } },
+	{ "LoadState",		 (int)Action::LoadState,	   { { GLFW_KEY_L, 0 } } },
+	{ "SelectNextState", (int)Action::SelectNextState, { { GLFW_KEY_KP_ADD, 0 } } },
+	{ "SelectLastState", (int)Action::SelectLastState, { { GLFW_KEY_KP_SUBTRACT, 0 } } },
+	{ "Maximise",		 (int)Action::Maximise, 	   { { GLFW_KEY_F11, 0 } } } 
+} };
 
 GLFWwindow* window;
 
@@ -68,7 +68,7 @@ std::unique_ptr<ICore> emulationCore;
 int selectedSaveState = 0;
 std::array<std::unique_ptr<saver>, 10> saveStates;
 
-MemoryEditor memEdit{"Memory Editor"};
+MemoryEditor memEdit { "Memory Editor" };
 
 bool settingsWindow = false;
 bool metricsWindow = false;
@@ -106,9 +106,9 @@ struct {
 			j["useDockingWindow"].tryGet(UseDockingWindow);
 			j["windowScale"].tryGet(windowScale);
 
-			std::vector<std::string> asdf;
-			j["recent"].tryGet(asdf);
-			RecentFiles = std::deque<std::string>(asdf.begin(), asdf.end());
+			std::vector<std::string> files;
+			j["recent"].tryGet(files);
+			RecentFiles = std::deque<std::string>(files.begin(), files.end());
 
 			Input::Load(j);
 		}
@@ -116,11 +116,11 @@ struct {
 
 	void Save() {
 		Json j = {
-			{"enableVsync", EnableVsync},
-			{"autoHideMenu", AutoHideMenu},
-			{"windowScale", windowScale},
-			{"recent", RecentFiles},
-			{"useDockingWindow", UseDockingWindow}
+			{ "enableVsync", EnableVsync },
+			{ "autoHideMenu", AutoHideMenu },
+			{ "windowScale", windowScale },
+			{ "recent", RecentFiles },
+			{ "useDockingWindow", UseDockingWindow }
 		};
 		Input::Save(j);
 
@@ -224,7 +224,7 @@ struct {
 				open = false;
 			}
 			if(ImGui::Button("NES")) {
-				LoadCore<NesCore>(file);
+				LoadCore<Nes::Core>(file);
 				open = false;
 			}
 		}
@@ -233,12 +233,11 @@ struct {
 } emulatorPicker;
 
 static void OpenFile(const std::string& path) {
-	const auto asdf = fs::path(path);
-	auto ext = asdf.extension().string();
+	auto ext = fs::path(path).extension().string();
 	std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
 
 	if(ext == ".nes" || ext == ".nsf" || ext == ".fm2") {
-		LoadCore<NesCore>(path);
+		LoadCore<Nes::Core>(path);
 	} else if(ext == ".ch8") {
 		LoadCore<Chip8Core>(path);
 	} else {
@@ -306,7 +305,7 @@ static void onKey(GLFWwindow* window, int key, int scancode, int action, int mod
 		metricsWindow = !metricsWindow;
 	}
 
-	Key k{{key, mods}};
+	Input::Key k { { key, mods } };
 
 	int mapped;
 	if(!hotkeys.TryGetId(k, mapped)) {
@@ -373,9 +372,7 @@ static void onResize(GLFWwindow* window, int width, int height) {
 }
 
 static void onDrop(GLFWwindow* window, int count, const char** paths) {
-	auto asdf = fs::path(paths[0]);
-
-	if(!is_regular_file(asdf)) {
+	if(!is_regular_file(fs::path(paths[0]))) {
 		return;
 	}
 
@@ -408,7 +405,7 @@ static void drawSettings() {
 				}
 
 				int val = settings.windowScale - 1;
-				static const char* drawModeNames[] = {"x1", "x2", "x3", "x4"};
+				static const char* drawModeNames[] = { "x1", "x2", "x3", "x4" };
 				if(ImGui::Combo("DrawMode", &val, drawModeNames, 4)) {
 					settings.windowScale = val + 1;
 					auto s = CalcWindowSize();
@@ -457,7 +454,7 @@ static void drawGui() {
 
 			if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
 				std::string outPath;
-				const auto res = NFD::OpenDialog({{"Rom Files", {"nes", "nsf", "ch8"}}, {"NES", {"nes", "nsf"}}, {"CHIP-8", {"ch8"}}}, nullptr, outPath, window);
+				const auto res = NFD::OpenDialog({ { "Rom Files", { "nes", "nsf", "ch8" } }, { "NES", { "nes", "nsf" } }, { "CHIP-8", { "ch8" } } }, nullptr, outPath, window);
 
 				if(res == NFD::Result::Okay) {
 					OpenFile(outPath);
@@ -635,7 +632,7 @@ static void drawGui() {
 		texture->BufferImage();
 		ImGui::Image(reinterpret_cast<void*>(texture->GetTextureId()), size);
 	}
-    logger.DrawScreen();
+	logger.DrawScreen();
 	ImGui::End();
 
 	if(emulationCore) {
@@ -734,7 +731,7 @@ int main() {
 				lastTime = time;
 				logger.Log("Dropped frame\n");
 			} else if(dt >= 1 / 60.0) {
-				 // add time for 1 frame to stabilize framerate
+				// add time for 1 frame to stabilize framerate
 				lastTime += 1 / 60.0;
 			} else {
 				// sleep for rest of frame

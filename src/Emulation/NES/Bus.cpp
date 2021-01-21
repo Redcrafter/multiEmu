@@ -1,6 +1,7 @@
 #include "Bus.h"
 #include "StandardController.h"
 
+namespace Nes {
 Bus::Bus() : cpu(mos6502(this)), apu(RP2A03(this)) { }
 
 void Bus::InsertCartridge(std::shared_ptr<Mapper>& cartridge) {
@@ -197,4 +198,5 @@ void Bus::LoadState(saver& saver) {
 	saver >> dmaDummy;
 
 	saver >> systemClockCounter;
+}
 }

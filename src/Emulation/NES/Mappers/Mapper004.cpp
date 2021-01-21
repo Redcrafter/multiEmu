@@ -1,7 +1,9 @@
 #include "Mapper004.h"
 #include "../Cartridge.h"
 
-Mapper004::Mapper004(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr): Mapper(prg, chr) {
+namespace Nes {
+
+Mapper004::Mapper004(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
 	prgRam = new uint8_t[0x2000];
 
 	prgBankOffset[3] = prg.size() - 0x2000; // last bank
@@ -192,4 +194,6 @@ void Mapper004::MapSaveRam(const std::string& path) {
 
 	file = new MemoryMapped(path, 0x2000);
 	prgRam = file->begin();
+}
+
 }

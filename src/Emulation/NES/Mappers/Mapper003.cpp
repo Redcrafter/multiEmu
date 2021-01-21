@@ -1,5 +1,7 @@
 #include "Mapper003.h"
 
+namespace Nes {
+
 Mapper003::Mapper003(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
 	if(this->prg.size() == 0x4000) {
 		prgMask = 0x3FFF;
@@ -15,7 +17,7 @@ int Mapper003::cpuRead(uint16_t addr, uint8_t& data) {
 		data = prg[addr & prgMask];
 		return true;
 	}
-	
+
 	return false;
 }
 
@@ -41,4 +43,6 @@ void Mapper003::SaveState(saver& saver) {
 
 void Mapper003::LoadState(saver& saver) {
 	saver >> selectedBank;
+}
+
 }

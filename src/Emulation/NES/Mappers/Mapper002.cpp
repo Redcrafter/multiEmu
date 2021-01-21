@@ -1,5 +1,7 @@
 #include "Mapper002.h"
 
+namespace Nes {
+
 Mapper002::Mapper002(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
 	if(!chr.empty()) {
 		throw std::invalid_argument("Chr not allowed");
@@ -38,4 +40,6 @@ void Mapper002::SaveState(saver& saver) {
 
 void Mapper002::LoadState(saver& saver) {
 	saver >> selectedBank;
+}
+
 }

@@ -5,6 +5,8 @@
 
 #include "./Emulation/NES/mos6502.h"
 
+namespace Nes {
+
 struct opcode {
 	Instructions instruction;
 	AddressingModes addrMode;
@@ -28,17 +30,21 @@ struct Element {
 };
 
 class DisassemblerWindow {
-private:
-    std::string title;
-    std::vector<Element> lines;
-    bool open = false;
-public:
-    DisassemblerWindow(std::string title) : title(title) { }
+  private:
+	std::string title;
+	std::vector<Element> lines;
+	bool open = false;
+
+  public:
+	DisassemblerWindow(std::string title)
+		: title(title) {}
 
 	void Open(const std::vector<uint8_t>& data);
-    // void Load(const std::vector<uint8_t>& data);
+	// void Load(const std::vector<uint8_t>& data);
 	void DrawWindow();
 
-private:
-	void save(const std::string &path);
+  private:
+	void save(const std::string& path);
 };
+
+}

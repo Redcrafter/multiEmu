@@ -2,8 +2,10 @@
 #include "Mapper.h"
 #include "MemoryMapped.h"
 
+namespace Nes {
+
 class Mapper001 : public Mapper {
-private:
+  private:
 	bool lastWrite = false;
 
 	uint8_t Control = 0b01100;
@@ -18,7 +20,8 @@ private:
 	uint8_t* prgRam = nullptr;
 
 	MemoryMapped* file = nullptr;
-public:
+
+  public:
 	Mapper001(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr);
 	~Mapper001();
 
@@ -31,3 +34,5 @@ public:
 
 	void MapSaveRam(const std::string& path) override;
 };
+
+}

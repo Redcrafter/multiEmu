@@ -1,6 +1,8 @@
 #include "pattern_tables.h"
 #include <imgui.h>
 
+namespace Nes {
+
 static uint8_t FlipByte(uint8_t b) {
 	b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
 	b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
@@ -8,11 +10,11 @@ static uint8_t FlipByte(uint8_t b) {
 	return b;
 }
 
-
-PatternTables::PatternTables(std::string title) : Title(std::move(title)), image(256, 160) {
+PatternTables::PatternTables(std::string title)
+	: Title(std::move(title)), image(256, 160) {
 	// 256x128 pattern tables
 	// two pattern tables 128x128 side by side
-	// 256x32 sprites 
+	// 256x32 sprites
 	// 2 rows of 32 sprites one sprite is 8x16
 }
 
@@ -50,7 +52,8 @@ void PatternTables::DrawWindow() {
 				Color nesColor = ppu->GetPaletteColor(i, j);
 				ImVec4 imColor = ImVec4(nesColor.R / 255.0, nesColor.G / 255.0, nesColor.B / 255.0, 1);
 
-				if(j != 0) ImGui::SameLine();
+				if(j != 0)
+					ImGui::SameLine();
 				ImGui::ColorButton("Test", imColor);
 			}
 		}
@@ -64,7 +67,6 @@ void PatternTables::DrawWindow() {
 		const float h = height * (1 / 160.0);
 
 		int hoveredId = -1;
-
 
 		for(int i = 0; i < 64; i++) {
 			if(i % 16 != 0) {
@@ -101,7 +103,6 @@ void PatternTables::RenderSprite(int id) {
 	const auto patternSprite = ppu->Control.patternSprite;
 	// draw sprites
 	const auto height = spriteSize ? 16 : 8;
-
 
 	for(int y1 = 0; y1 < height; y1++) {
 		uint16_t addr;
@@ -182,4 +183,6 @@ void PatternTables::DrawPatternTable() {
 			}
 		}
 	}
+}
+
 }

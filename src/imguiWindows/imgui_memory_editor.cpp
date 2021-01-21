@@ -1,21 +1,21 @@
 #include "imgui_memory_editor.h"
 
 #ifdef _MSC_VER
-#define _PRISizeT   "I"
-#define ImSnprintf(buffer, bufferSize, frmt, ...)  _snprintf_s(buffer, bufferSize, bufferSize, frmt, __VA_ARGS__)
+#define _PRISizeT "I"
+#define ImSnprintf(buffer, bufferSize, frmt, ...) _snprintf_s(buffer, bufferSize, bufferSize, frmt, __VA_ARGS__)
 #define ImSprintf sprintf_s
 #define ImSscanf sscanf_s
 
 #else
-#define _PRISizeT   "z"
-#define ImSnprintf  snprintf
+#define _PRISizeT "z"
+#define ImSnprintf snprintf
 #define ImSprintf sprintf
 #define ImSscanf sscanf
 
 #endif
 
-const char* descs[] = {"Int8", "Uint8", "Int16", "Uint16", "Int32", "Uint32", "Int64", "Uint64", "Float", "Double"};
-const size_t sizes[] = {1, 1, 2, 2, 4, 4, 8, 8, 4, 8};
+const char* descs[] = { "Int8", "Uint8", "Int16", "Uint16", "Int32", "Uint32", "Int64", "Uint64", "Float", "Double" };
+const size_t sizes[] = { 1, 1, 2, 2, 4, 4, 8, 8, 4, 8 };
 // const char* descs[] = {"Bin", "Dec", "Hex"};
 
 static bool IsBigEndian() {
@@ -151,7 +151,7 @@ void MemoryEditor::DrawContents(size_t mem_size) {
 	ImGuiListClipper clipper;
 	clipper.Begin(line_total_count, s.LineHeight);
 	clipper.Step();
-	
+
 	const size_t visible_start_addr = clipper.DisplayStart * Cols;
 	const size_t visible_end_addr = clipper.DisplayEnd * Cols;
 
@@ -261,7 +261,7 @@ void MemoryEditor::DrawContents(size_t mem_size) {
 					}
 
 					char CurrentBufOverwrite[3]; // Input
-					int CursorPos;               // Output
+					int CursorPos;				 // Output
 				};
 				UserData user_data;
 				user_data.CursorPos = -1;
@@ -353,11 +353,15 @@ void MemoryEditor::DrawContents(size_t mem_size) {
 			ImGui::OpenPopup("context");
 		if(ImGui::BeginPopup("context")) {
 			ImGui::PushItemWidth(56);
-			if(ImGui::DragInt("##cols", &Cols, 0.2f, 4, 32, "%d cols")) { ContentsWidthChanged = true; }
+			if(ImGui::DragInt("##cols", &Cols, 0.2f, 4, 32, "%d cols")) {
+				ContentsWidthChanged = true;
+			}
 			ImGui::PopItemWidth();
 			ImGui::Checkbox("Show Data Preview", &next_show_data_preview);
 			ImGui::Checkbox("Show HexII", &OptShowHexII);
-			if(ImGui::Checkbox("Show Ascii", &OptShowAscii)) { ContentsWidthChanged = true; }
+			if(ImGui::Checkbox("Show Ascii", &OptShowAscii)) {
+				ContentsWidthChanged = true;
+			}
 			ImGui::Checkbox("Grey out zeroes", &OptGreyOutZeroes);
 			ImGui::Checkbox("Uppercase Hex", &OptUpperCaseHex);
 
@@ -444,8 +448,8 @@ void MemoryEditor::CalcSizes(Sizes& s, size_t mem_size, size_t base_display_addr
 		}
 	}
 	s.LineHeight = ImGui::GetTextLineHeight();
-	s.GlyphWidth = ImGui::CalcTextSize("F").x + 1;                  // We assume the font is mono-space
-	s.HexCellWidth = (float)(int)(s.GlyphWidth * 2.5f);             // "FF " we include trailing space in the width to easily catch clicks everywhere
+	s.GlyphWidth = ImGui::CalcTextSize("F").x + 1;					// We assume the font is mono-space
+	s.HexCellWidth = (float)(int)(s.GlyphWidth * 2.5f);				// "FF " we include trailing space in the width to easily catch clicks everywhere
 	s.SpacingBetweenMidCols = (float)(int)(s.HexCellWidth * 0.25f); // Every OptMidColsCount columns we add a bit of extra spacing
 	s.PosHexStart = (s.AddrDigitsCount + 2) * s.GlyphWidth;
 	s.PosHexEnd = s.PosHexStart + (s.HexCellWidth * Cols);
@@ -619,6 +623,6 @@ void MemoryEditor::DisplayPreviewData(size_t addr, size_t mem_size, DataType dat
 		}
 		case DataType_COUNT:
 			break;
-	}             // Switch
+	}			  // Switch
 	IM_ASSERT(0); // Shouldn't reach
 }

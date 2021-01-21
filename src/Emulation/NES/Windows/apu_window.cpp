@@ -4,6 +4,8 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+namespace Nes {
+
 constexpr float cyclesPerFrame = 29780.5;
 
 static ImRect MakeBox(const char* label) {
@@ -30,7 +32,8 @@ static ImRect MakeBox(const char* label) {
 
 	return inner_bb;
 }
-static void DrawPulse(const Pulse& pulse, const char* label) {
+
+void ApuWindow::DrawPulse(const Pulse& pulse, const char* label) const {
 	const ImRect inner_bb = MakeBox(label);
 	
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -92,7 +95,8 @@ static void DrawPulse(const Pulse& pulse, const char* label) {
 
 	DrawList->PathStroke(lineColor, false, 2);
 }
-static void DrawTriangle(const Triangle& triangle) {
+void ApuWindow::DrawTriangle() const {
+	const auto &triangle = apu->triangle;
 	const ImRect inner_bb = MakeBox("Triangle");
 
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -141,7 +145,9 @@ static void DrawTriangle(const Triangle& triangle) {
 
 	DrawList->PathStroke(lineColor, false, 2);
 }
-static void DrawNoise(const RP2A03& apu, const int available) {
+void ApuWindow::DrawNoise() const {
+	const int available = apu->lastBufferPos;
+
 	const ImRect inner_bb = MakeBox("Noise");
 	
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -154,7 +160,7 @@ static void DrawNoise(const RP2A03& apu, const int available) {
 	DrawList->PathLineTo(inner_bb.Min);
 
 	for(int i = 0; i < available; i++) {
-		auto val = apu.waveBuffer[i].noise;
+		auto val = apu->waveBuffer[i].noise;
 		if(last != val) {
 			auto x = inner_bb.Min.x + pps * i;
 			auto y = inner_bb.Min.y + pph * val;
@@ -170,7 +176,9 @@ static void DrawNoise(const RP2A03& apu, const int available) {
 	DrawList->PathLineTo(ImVec2(inner_bb.Max.x, lastY));
 	DrawList->PathStroke(ImGui::GetColorU32(ImVec4(1, 1, 1, 1)), false, 1);
 }
-static void DrawDMC(const RP2A03& apu, const int available) {
+void ApuWindow::DrawDMC() const {
+	const int available = apu->lastBufferPos;
+
 	const ImRect inner_bb = MakeBox("DMC");
 	
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -185,7 +193,7 @@ static void DrawDMC(const RP2A03& apu, const int available) {
 
 
 	for(int i = 0; i < available; i += 2) {
-		auto val = apu.waveBuffer[i].dmc;
+		auto val = apu->waveBuffer[i].dmc;
 		if(last != val) {
 			auto x = inner_bb.Min.x + pps * i;
 			auto y = inner_bb.Min.y + pph * (val / 8);
@@ -202,7 +210,9 @@ static void DrawDMC(const RP2A03& apu, const int available) {
 	DrawList->PathStroke(ImGui::GetColorU32(ImVec4(1, 1, 1, 1)), false, 1);
 }
 
-static void DrawVrc6Pulse(const vrc6Pulse& pulse, const ImRect& inner_bb, const int freqShift) {
+void ApuWindow::DrawVrc6Pulse(const vrc6Pulse& pulse, const char* label) const {
+	const ImRect inner_bb = MakeBox(label);
+
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	const auto DrawList = window->DrawList;
 	const auto width = inner_bb.GetWidth();
@@ -259,7 +269,8 @@ static void DrawVrc6Pulse(const vrc6Pulse& pulse, const ImRect& inner_bb, const 
 
 	DrawList->PathStroke(lineColor, false, 2);
 }
-static void DrawVrc6Saw(const vrc6Sawtooth& saw) {
+void ApuWindow::DrawVrc6Saw() const {
+	const auto& saw = apu->vrc6Saw;
 	const ImRect inner_bb = MakeBox("vrc6 Sawtooth");
 
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -309,9 +320,7 @@ void ApuWindow::DrawWindow() {
 	if(!open || !apu) {
 		return;
 	}
-
-	const int available = apu->lastBufferPos;
-
+	
 	ImGui::SetNextWindowSize(ImVec2(500, 500), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSizeConstraints(ImVec2(200, 0), ImVec2(INFINITY, INFINITY));
 	if(ImGui::Begin(Title.c_str(), &open)) {
@@ -319,16 +328,18 @@ void ApuWindow::DrawWindow() {
 
 		DrawPulse(apu->pulse1, "Pulse1");
 		DrawPulse(apu->pulse2, "Pulse2");
-		DrawTriangle(apu->triangle);
-		DrawNoise(*apu, available);
-		DrawDMC(*apu, available);
+		DrawTriangle();
+		DrawNoise();
+		DrawDMC();
 		
 		if(apu->vrc6) {
-			DrawVrc6Pulse(apu->vrc6Pulse1, MakeBox("vrc6 Pulse1"), apu->vrc6FreqShift);
-			DrawVrc6Pulse(apu->vrc6Pulse2, MakeBox("vrc6 Pulse2"), apu->vrc6FreqShift);
-			DrawVrc6Saw(apu->vrc6Saw);
+			DrawVrc6Pulse(apu->vrc6Pulse1, "vrc6 Pulse1");
+			DrawVrc6Pulse(apu->vrc6Pulse2, "vrc6 Pulse2");
+			DrawVrc6Saw();
 		}
 	}
 
 	ImGui::End();
+}
+
 }

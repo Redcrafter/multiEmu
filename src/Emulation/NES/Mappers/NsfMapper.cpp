@@ -1,16 +1,63 @@
 #include "NsfMapper.h"
+
 #include <cstring>
+#include <fstream>
+
+
+#include "fs.h"
+
+namespace Nes {
+
+NsfFormat::NsfFormat(const std::string& path) {
+	std::ifstream stream(path, std::ios::binary);
+
+	stream.read((char*)&format, 5);
+
+	stream.read((char*)&version, 1);
+	stream.read((char*)&numSongs, 1);
+	stream.read((char*)&startSong, 1);
+
+	stream.read((char*)&loadAddress, 2);
+	stream.read((char*)&initAddress, 2);
+	stream.read((char*)&playAddress, 2);
+
+	stream.read((char*)&songName, 32);
+	stream.read((char*)&artist, 32);
+	stream.read((char*)&copyright, 32);
+
+	stream.read((char*)&playSpeedNtsc, 2);
+
+	stream.read((char*)&bankInit, 8);
+
+	stream.read((char*)&playSpeedPal, 2);
+
+	stream.read((char*)&palNtsc, 1);
+
+	stream.read((char*)&extraSoundChip, 1);
+
+	length = 0;
+
+	stream.read((char*)&length, 1); // reserverd
+	stream.read((char*)&length, 3); // actual length
+
+	if(length == 0) {
+		length = fs::file_size(path) - 0x80;
+	}
+
+	rom.resize(length);
+	stream.read((char*)rom.data(), length);
+}
 
 //NSF ROM and general approaches are heavily derived from BizHawk. the general ideas:
 //1. Have a hardcoded NSF driver rom loaded to 0x3800
 //2. Have fake registers at $3FFx for the NSF driver to use
 //3. These addresses are chosen because no known NSF could possibly use them for anything.
-//4. Patch the PRG with our own IRQ vectors when the NSF play and init routines aren't running. 
+//4. Patch the PRG with our own IRQ vectors when the NSF play and init routines aren't running.
 //   That way we can use NMI for overall control and cause our code to be the NMI handler without breaking the NSF data by corrupting the last few bytes
 
 const uint16_t NMI_VECTOR = 0x3800;
 const uint16_t RESET_VECTOR = 0x3820;
-// 
+//
 NsfMapper::NsfMapper(const std::string& path) : Mapper({}, {}), nsf(path) {
 	NSFROM[0x12] = nsf.initAddress;
 	NSFROM[0x13] = nsf.initAddress >> 8;
@@ -35,7 +82,7 @@ NsfMapper::NsfMapper(const std::string& path) : Mapper({}, {}), nsf(path) {
 		int load_size = nsf.length;
 
 		std::memset(FakePRG, 0, sizeof(FakePRG));
-		std::memcpy(FakePRG + load_start, nsf.rom, load_size);
+		std::memcpy(FakePRG + load_start, nsf.rom.data(), load_size);
 	}
 }
 
@@ -80,7 +127,8 @@ int NsfMapper::cpuRead(uint16_t addr, uint8_t& data) {
 	} else {
 		addr -= 0x8000;
 		if(BankSwitched) {
-			data = nsf.rom[(addr & 0xFFF) | (prg_banks_4k[(addr >> 12) & 0b111] << 12)];;
+			data = nsf.rom[(addr & 0xFFF) | (prg_banks_4k[(addr >> 12) & 0b111] << 12)];
+			;
 		} else {
 			data = FakePRG[addr];
 		}
@@ -120,5 +168,7 @@ bool NsfMapper::ppuWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-void NsfMapper::SaveState(saver& saver) { }
-void NsfMapper::LoadState(saver& saver) { }
+void NsfMapper::SaveState(saver& saver) {}
+void NsfMapper::LoadState(saver& saver) {}
+
+}

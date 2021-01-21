@@ -11,11 +11,10 @@ static uint32_t leftRotate(uint32_t x, uint32_t c) {
 }
 
 static uint32_t reverseBytes(uint32_t val) {
-	return
-		((val << 24) & 0xFF000000) |
-		((val << 8) & 0x00FF0000) |
-		((val >> 8) & 0x0000FF00) |
-		((val >> 24) & 0x000000FF);
+	return ((val << 24) & 0xFF000000) |
+		   ((val << 8) & 0x00FF0000) |
+		   ((val >> 8) & 0x0000FF00) |
+		   ((val >> 24) & 0x000000FF);
 }
 
 sha1::sha1(const std::string& str) : sha1(str.c_str(), str.length()) {}
@@ -134,7 +133,7 @@ bool operator<(const sha1& left, const sha1& right) {
 	if(left.h[0] != right.h[0]) {
 		return left.h[0] < right.h[0];
 	}
-	
+
 	if(left.h[1] != right.h[1]) {
 		return left.h[1] < right.h[1];
 	}
@@ -152,16 +151,16 @@ bool operator<(const sha1& left, const sha1& right) {
 
 bool operator==(const sha1& left, const sha1& right) {
 	return left.h[0] == right.h[0] &&
-		left.h[1] == right.h[1] &&
-		left.h[2] == right.h[2] &&
-		left.h[3] == right.h[3] &&
-		left.h[4] == right.h[4];
+		   left.h[1] == right.h[1] &&
+		   left.h[2] == right.h[2] &&
+		   left.h[3] == right.h[3] &&
+		   left.h[4] == right.h[4];
 }
 
 bool operator!=(const sha1& left, const sha1& right) {
 	return left.h[0] != right.h[0] ||
-		left.h[1] != right.h[1] ||
-		left.h[2] != right.h[2] ||
-		left.h[3] != right.h[3] ||
-		left.h[4] != right.h[4];
+		   left.h[1] != right.h[1] ||
+		   left.h[2] != right.h[2] ||
+		   left.h[3] != right.h[3] ||
+		   left.h[4] != right.h[4];
 }

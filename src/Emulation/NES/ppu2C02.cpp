@@ -5,6 +5,8 @@
 #include <cassert>
 #include <cstring>
 
+namespace Nes {
+
 static const uint32_t ioBusCountDown = 4288392;
 
 static const Color colors[] = {
@@ -693,4 +695,6 @@ Color ppu2C02::GetPaletteColor(uint8_t palette, uint8_t pixel) const {
 	}
 
 	return colors[palettes[addr] & 0x3F];
+}
+
 }

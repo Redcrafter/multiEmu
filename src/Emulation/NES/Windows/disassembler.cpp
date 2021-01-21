@@ -9,6 +9,8 @@
 #include "logger.h"
 #include "nativefiledialog/nfd.h"
 
+namespace Nes {
+
 constexpr int CYCLES_CROSS_PAGE_ADDS_ONE = 1;
 constexpr int CYCLES_BRANCH_TAKEN_ADDS_ONE = 2;
 
@@ -437,4 +439,6 @@ void DisassemblerWindow::DrawWindow() {
 	}
 
 	ImGui::End();
+}
+
 }

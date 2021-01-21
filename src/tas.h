@@ -1,6 +1,6 @@
 #pragma once
-#include <vector>
 #include <string>
+#include <vector>
 
 struct TasInputs {
 	std::vector<uint8_t> Controller1;

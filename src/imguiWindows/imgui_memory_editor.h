@@ -46,14 +46,15 @@
 
 #pragma once
 #include <cstdint>
-#include <string>
 #include <memory>
+#include <string>
+
 #include <imgui.h>
 
 #include "Emulation/ICore.h"
 
 class MemoryEditor {
-protected:
+  protected:
 	enum DataType {
 		DataType_S8,
 		DataType_U8,
@@ -87,48 +88,51 @@ protected:
 		float PosAsciiEnd;
 		float WindowWidth;
 	};
-private:
-	std::string Title;
-	
-	// Settings
-	bool ReadOnly = false;           // disable any editing.
-	int Cols = 16;                   // number of columns to display.
-	bool OptShowOptions = true;      // display options button/context menu. when disabled, options will be locked unless you provide your own UI for them.
-	bool OptShowDataPreview = false; // display a footer previewing the decimal/binary/hex/float representation of the currently selected bytes.
-	bool OptShowHexII = false;       // display values in HexII representation instead of regular hexadecimal: hide null/zero bytes, ascii values as ".X".
-	bool OptShowAscii = true;        // display ASCII representation on the right side.
-	bool OptGreyOutZeroes = true;    // display null/zero bytes using the TextDisabled color.
-	bool OptUpperCaseHex = true;     // display hexadecimal values as "FF" instead of "ff".
-	int OptMidColsCount = 8;         // set to 0 to disable extra spacing between every mid-cols.
-	int OptAddrDigitsCount = 0;      // number of addr digits to display (default calculated based on maximum displayed addr).
 
-	ImU32 HighlightColor = IM_COL32(255, 255, 255, 50);             // background color of highlighted bytes.
+  private:
+	std::string Title;
+
+	// Settings
+	bool ReadOnly = false;			 // disable any editing.
+	int Cols = 16;					 // number of columns to display.
+	bool OptShowOptions = true;		 // display options button/context menu. when disabled, options will be locked unless you provide your own UI for them.
+	bool OptShowDataPreview = false; // display a footer previewing the decimal/binary/hex/float representation of the currently selected bytes.
+	bool OptShowHexII = false;		 // display values in HexII representation instead of regular hexadecimal: hide null/zero bytes, ascii values as ".X".
+	bool OptShowAscii = true;		 // display ASCII representation on the right side.
+	bool OptGreyOutZeroes = true;	 // display null/zero bytes using the TextDisabled color.
+	bool OptUpperCaseHex = true;	 // display hexadecimal values as "FF" instead of "ff".
+	int OptMidColsCount = 8;		 // set to 0 to disable extra spacing between every mid-cols.
+	int OptAddrDigitsCount = 0;		 // number of addr digits to display (default calculated based on maximum displayed addr).
+
+	ImU32 HighlightColor = IM_COL32(255, 255, 255, 50); // background color of highlighted bytes.
 
 	ICore* currentCore = nullptr;
 	std::vector<MemoryDomain> domains;
 	int selectedDomain = 0;
-protected:
+
+  protected:
 	bool open = false;
 
 	bool ContentsWidthChanged = false;
 	size_t DataPreviewAddr = -1;
 	size_t DataEditingAddr = -1;
 	bool DataEditingTakeFocus = false;
-	char DataInputBuf[32]{};
-	char AddrInputBuf[32]{};
+	char DataInputBuf[32] {};
+	char AddrInputBuf[32] {};
 	size_t GotoAddr = -1;
 	size_t HighlightMin = -1;
 	size_t HighlightMax = -1;
 	int PreviewEndianess = 0;
 	DataType PreviewDataType = DataType_S32;
-public:
+
+  public:
 	MemoryEditor(std::string title);
 
 	void SetCore(ICore* core) {
 		currentCore = core;
 		domains = core->GetMemoryDomains();
 	}
-	
+
 	void Open() { open = true; }
 	void Close() { open = false; }
 
@@ -137,16 +141,17 @@ public:
 	// Standalone Memory Editor window
 	void DrawWindow();
 
-private:
+  private:
 	bool HighlightFn(size_t addr) const;
 	uint8_t ReadFn(size_t addr) const;
 	void WriteFn(size_t addr, uint8_t val);
 
 	uint32_t GetDomainSize() const;
-protected:
+
+  protected:
 	// Memory Editor contents only
 	void DrawContents(size_t mem_size);
-	
+
 	void CalcSizes(Sizes& s, size_t mem_size, size_t base_display_addr);
 
 	void* EndianessCopy(void* dst, void* src, size_t size) const;

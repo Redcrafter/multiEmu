@@ -4,9 +4,10 @@
 #include <vector>
 
 class saver {
-private:
+  private:
 	std::vector<uint8_t> data;
-public:
+
+  public:
 	uint32_t readPos = 0;
 
 	saver() {}
@@ -14,14 +15,14 @@ public:
 
 	void Save(const std::string& path);
 
-	template <typename T>
+	template<typename T>
 	void Write(T* data, size_t size) {
 		char* ptr = (char*)data;
 		for(size_t i = 0; i < size * sizeof(T); i++) {
 			this->data.push_back(ptr[i]);
 		}
 	}
-	template <typename T>
+	template<typename T>
 	void Read(T* data, size_t size) {
 		char* ptr = (char*)data;
 		for(size_t i = 0; i < size * sizeof(T); ++i) {
@@ -30,17 +31,17 @@ public:
 		}
 	}
 
-	void operator <<(bool val);
-	void operator <<(uint8_t val);
-	void operator <<(uint16_t val);
-	void operator <<(int32_t val);
-	void operator <<(uint32_t val);
-	void operator <<(uint64_t val);
+	void operator<<(bool val);
+	void operator<<(uint8_t val);
+	void operator<<(uint16_t val);
+	void operator<<(int32_t val);
+	void operator<<(uint32_t val);
+	void operator<<(uint64_t val);
 
-	void operator >>(bool& val);
-	void operator >>(uint8_t& val);
-	void operator >>(uint16_t& val);
-	void operator >>(int32_t& val);
-	void operator >>(uint32_t& val);
-	void operator >>(uint64_t& val);
+	void operator>>(bool& val);
+	void operator>>(uint8_t& val);
+	void operator>>(uint16_t& val);
+	void operator>>(int32_t& val);
+	void operator>>(uint32_t& val);
+	void operator>>(uint64_t& val);
 };

@@ -1,8 +1,8 @@
 #include "audio.h"
 
+#include <cmath>
 #include <cstdint>
 #include <memory>
-#include <cmath>
 
 #include <RtAudio.h>
 
@@ -38,7 +38,7 @@ static int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBu
 	if(readPos < writePos) {
 		lastSample = buffer[(writePos - 1) % bufferSize];
 	}
-	
+
 	size_t i = 0;
 	// output number of requested samples
 	for(; i < nBufferFrames && readPos < writePos; i++) {
@@ -84,7 +84,7 @@ bool Audio::Init() {
 
 			audioRunning = false;
 		}
-	} catch(RtAudioError & e) {
+	} catch(RtAudioError& e) {
 		logger.Log("Failed to initialize audio driver: %s\n", e.what());
 
 		audioRunning = false;
@@ -96,7 +96,7 @@ bool Audio::Init() {
 void Audio::Dispose() {
 	try {
 		dac->stopStream();
-	} catch(RtAudioError & e) {
+	} catch(RtAudioError& e) {
 		logger.Log("Failed to stop audio stream: %s\n", e.what());
 	}
 
@@ -110,9 +110,9 @@ void Audio::Resample() {
 		pushPos = 0;
 		return;
 	}
-	
+
 	// TODO: prevent aliasing?
-	for (size_t i = 0; i < 735; i++) {
+	for(size_t i = 0; i < 735; i++) {
 		auto pos = i / 734.0 * (pushPos - 1);
 		float f = std::fmod(pos, 1);
 

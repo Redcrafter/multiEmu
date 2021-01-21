@@ -1,17 +1,20 @@
 #pragma once
 #include "Mapper.h"
 
+namespace Nes {
+
 class Mapper065 : public Mapper {
-private:
+  private:
 	uint32_t prgBankOffset[4];
-    uint32_t chrBankOffset[8] {};
+	uint32_t chrBankOffset[8] {};
 
 	bool irqEnable = false;
 	uint16_t irqCounter = 0;
 	uint16_t irqReload = 0;
-public:
+
+  public:
 	Mapper065(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr);
-	
+
 	int cpuRead(uint16_t addr, uint8_t& data) override;
 	bool cpuWrite(uint16_t addr, uint8_t data) override;
 	bool ppuRead(uint16_t addr, uint8_t& data, bool readOnly) override;
@@ -22,3 +25,5 @@ public:
 
 	void CpuClock() override;
 };
+
+}

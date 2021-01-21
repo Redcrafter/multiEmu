@@ -18,9 +18,9 @@ static void NFDi_SetError(const char* msg) {
 }
 
 #ifdef _WIN32
+#include <shobjidl.h>
 #include <wchar.h>
 #include <windows.h>
-#include <shobjidl.h>
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
@@ -97,17 +97,17 @@ static Result AddFiltersToDialog(IFileDialog* fileOpenDialog, const std::vector<
 		wchar_t* name = nullptr;
 		wchar_t* spec = nullptr;
 
-		std::string asdf;
+		std::string ext;
 
 		for(int i = 0; i < filter.Extensions.size(); ++i) {
 			if(i > 0) {
-				asdf += ";";
+				ext += ";";
 			}
-			asdf += "*" + filter.Extensions[i];
+			ext += "*" + filter.Extensions[i];
 		}
 
 		CopyNFDCharToWChar(filter.Name.c_str(), &name);
-		CopyNFDCharToWChar(asdf.c_str(), &spec);
+		CopyNFDCharToWChar(ext.c_str(), &spec);
 
 		specList.push_back({ name, spec });
 	}
@@ -203,7 +203,6 @@ static Result SetDefaultPath(IFileDialog* dialog, const char* defaultPath) {
 Result NFD::OpenDialog(const std::vector<FilterItem>& filterList, const char* defaultPath, std::string& outPath, GLFWwindow* parent) {
 	Result nfdResult = Result::Error;
 
-
 	HRESULT coResult = COMInit();
 	if(!COMIsInitialized(coResult)) {
 		NFDi_SetError("Could not initialize COM.");
@@ -275,7 +274,6 @@ end:
 
 Result NFD::OpenDialogMultiple(const std::vector<FilterItem>& filterList, const char* defaultPath, std::vector<std::string>& outPaths, GLFWwindow* parent) {
 	Result nfdResult = Result::Error;
-
 
 	HRESULT coResult = COMInit();
 	if(!COMIsInitialized(coResult)) {
@@ -683,7 +681,6 @@ Result NFD::PickFolder(const char* defaultPath, std::string& outPath, GLFWwindow
 
 	GtkWidget* dialog = gtk_file_chooser_dialog_new("Select folder", NULL, GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, "_Cancel", GTK_RESPONSE_CANCEL, "_Select", GTK_RESPONSE_ACCEPT, NULL);
 	gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
-
 
 	/* Set the default path */
 	SetDefaultPath(dialog, defaultPath);

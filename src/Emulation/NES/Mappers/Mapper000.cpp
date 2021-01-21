@@ -1,5 +1,7 @@
 #include "Mapper000.h"
 
+namespace Nes {
+
 Mapper000::Mapper000(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
 	if(this->prg.size() > 0x8000) {
 		throw std::invalid_argument("Invalid prg size");
@@ -23,4 +25,6 @@ bool Mapper000::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 		return true;
 	}
 	return false;
+}
+
 }

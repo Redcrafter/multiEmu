@@ -1,6 +1,8 @@
 #include "Mapper232.h"
 
-Mapper232::Mapper232(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) { 
+namespace Nes {
+
+Mapper232::Mapper232(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
 	prgBanks[0] = 0;
 	prgBanks[1] = 0xFF;
 }
@@ -16,7 +18,7 @@ int Mapper232::cpuRead(uint16_t addr, uint8_t& data) {
 
 bool Mapper232::cpuWrite(uint16_t addr, uint8_t data) {
 	if(addr >= 0x8000) {
-		switch (addr & 0x4000) {
+		switch(addr & 0x4000) {
 			case 0x0000:
 				prgBanks[0] = (data >> 1 & 0xC) | (prgBanks[0] & 3);
 				prgBanks[1] = (data >> 1 & 0xC) | 3;
@@ -47,4 +49,6 @@ void Mapper232::SaveState(saver& saver) {
 void Mapper232::LoadState(saver& saver) {
 	saver >> prgBanks[0];
 	saver >> prgBanks[1];
+}
+
 }

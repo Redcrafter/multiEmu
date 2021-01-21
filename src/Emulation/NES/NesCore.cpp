@@ -1,34 +1,37 @@
 #include "NesCore.h"
-#include "logger.h"
-#include "Input.h"
 
 #include <algorithm>
 
+#include "Input.h"
+#include "logger.h"
+#include "fs.h"
+
 #include "Mappers/NsfMapper.h"
 #include "StandardController.h"
-#include "audio.h"
 
-NesCore::NesCore(): texture(256, 240) {
+namespace Nes {
+
+Core::Core() : texture(256, 240) {
 	LoadCardDb("./NesCarts (2017-08-21).json");
 
-	Input::SetMapper(InputMapper("Nes", {
-		{ "Controller1 A", 0, Key {{ GLFW_KEY_A, 0 }} },
-		{ "Controller1 B", 1, Key {{ GLFW_KEY_B, 0 }} },
-		{ "Controller1 Start", 2, Key {{ GLFW_KEY_S, 0 }} },
-		{ "Controller1 Select", 3, Key {{ GLFW_KEY_ENTER, 0 }} },
-		{ "Controller1 Up", 4, Key {{ GLFW_KEY_UP, 0 }} },
-		{ "Controller1 Down", 5, Key {{ GLFW_KEY_DOWN, 0 }} },
-		{ "Controller1 Left", 6, Key {{ GLFW_KEY_LEFT, 0 }} },
-		{ "Controller1 Right", 7, Key {{ GLFW_KEY_RIGHT, 0 }} },
+	Input::SetMapper(Input::InputMapper("Nes", {
+		{ "Controller1 A",      0,  {{ GLFW_KEY_A,     0 }} },
+		{ "Controller1 B",      1,  {{ GLFW_KEY_B,     0 }} },
+		{ "Controller1 Start",  2,  {{ GLFW_KEY_S,     0 }} },
+		{ "Controller1 Select", 3,  {{ GLFW_KEY_ENTER, 0 }} },
+		{ "Controller1 Up",     4,  {{ GLFW_KEY_UP,    0 }} },
+		{ "Controller1 Down",   5,  {{ GLFW_KEY_DOWN,  0 }} },
+		{ "Controller1 Left",   6,  {{ GLFW_KEY_LEFT,  0 }} },
+		{ "Controller1 Right",  7,  {{ GLFW_KEY_RIGHT, 0 }} },
 
-		{ "Controller2 A", 8, Key {{ 0, 0 }} },
-		{ "Controller2 B", 9, Key {{ 0, 0 }} },
-		{ "Controller2 Start", 10, Key {{ 0, 0 }} },
-		{ "Controller2 Select", 11, Key {{ 0, 0 }} },
-		{ "Controller2 Up", 12, Key {{ 0, 0 }} },
-		{ "Controller2 Down", 13, Key {{ 0, 0 }} },
-		{ "Controller2 Left", 14, Key {{ 0, 0 }} },
-		{ "Controller2 Right", 15, Key {{ 0, 0 }} },
+		{ "Controller2 A",      8,  {{ 0, 0 }} },
+		{ "Controller2 B",      9,  {{ 0, 0 }} },
+		{ "Controller2 Start",  10, {{ 0, 0 }} },
+		{ "Controller2 Select", 11, {{ 0, 0 }} },
+		{ "Controller2 Up",     12, {{ 0, 0 }} },
+		{ "Controller2 Down",   13, {{ 0, 0 }} },
+		{ "Controller2 Left",   14, {{ 0, 0 }} },
+		{ "Controller2 Right",  15, {{ 0, 0 }} },
 	}));
 
 	emulator.controller1 = std::make_shared<StandardController>(0);
@@ -50,7 +53,7 @@ enum Domain {
 	ChrRom
 };
 
-std::vector<MemoryDomain> NesCore::GetMemoryDomains() {
+std::vector<MemoryDomain> Core::GetMemoryDomains() {
 	return {
 		{ CpuRam, "RAM", 0x800 },
 		{ CpuBus, "Cpu Bus", 0x10000 },
@@ -62,7 +65,7 @@ std::vector<MemoryDomain> NesCore::GetMemoryDomains() {
 	};
 }
 
-void NesCore::WriteMemory(int domain, size_t address, uint8_t val) {
+void Core::WriteMemory(int domain, size_t address, uint8_t val) {
 	switch(domain) {
 		case CpuRam:
 			emulator.CpuRam[address] = val;
@@ -79,7 +82,7 @@ void NesCore::WriteMemory(int domain, size_t address, uint8_t val) {
 		case ChrRom: break;
 	}
 }
-uint8_t NesCore::ReadMemory(int domain, size_t address) {
+uint8_t Core::ReadMemory(int domain, size_t address) {
 	switch(domain) {
 		case CpuRam: return emulator.CpuRam[address];
 		case CpuBus: return emulator.CpuRead(address, true);
@@ -92,7 +95,7 @@ uint8_t NesCore::ReadMemory(int domain, size_t address) {
 	return 0;
 }
 
-void NesCore::DrawMenuBar(bool& menuOpen) {
+void Core::DrawMenuBar(bool& menuOpen) {
 	if(ImGui::BeginMenu("NES")) {
 		menuOpen = true;
 
@@ -116,7 +119,7 @@ void NesCore::DrawMenuBar(bool& menuOpen) {
 	}
 }
 
-void NesCore::DrawWindows() {
+void Core::DrawWindows() {
 	cpuWindow.DrawWindow();
 	tables.DrawWindow();
 	// tasEdit.DrawWindow(0);
@@ -124,36 +127,35 @@ void NesCore::DrawWindows() {
 	disassembler.DrawWindow();
 }
 
-void NesCore::SaveState(saver& saver) {
+void Core::SaveState(saver& saver) {
 	emulator.SaveState(saver);
 }
 
-void NesCore::LoadState(saver& saver) {
+void Core::LoadState(saver& saver) {
 	emulator.LoadState(saver);
 }
 
-void NesCore::LoadRom(const std::string& path) {
-    const auto asdf = fs::path(path);
-    auto ext = asdf.extension().string();
-    std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
+void Core::LoadRom(const std::string& path) {
+	auto ext = fs::path(path).extension().string();
+	std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
 
-    if(ext == ".nes") {
-        std::shared_ptr<Mapper> cart;
+	if(ext == ".nes") {
+		std::shared_ptr<Mapper> cart;
 
-        try {
-            cart = LoadCart(path);
-        } catch(std::exception& e) {
-            logger.Log("Failed to load rom: %s\n", e.what());
-            return;
-        }
+		try {
+			cart = LoadCart(path);
+		} catch(std::exception& e) {
+			logger.Log("Failed to load rom: %s\n", e.what());
+			return;
+		}
 
-    	// TODO: hard reset
+		// TODO: hard reset
 		emulator.apu.vrc6 = false;
 		emulator.InsertCartridge(cart);
 		emulator.HardReset();
 
 		currentFile = path;
-    } else if(ext == ".nsf") {
+	} else if(ext == ".nsf") {
 		const auto mapper = std::make_shared<NsfMapper>(path);
 
 		std::shared_ptr<Mapper> ptr = mapper;
@@ -183,7 +185,7 @@ void NesCore::LoadRom(const std::string& path) {
 		}
 
 		currentFile = path;
-    } else if(ext == ".fm2") {
+	} else if(ext == ".fm2") {
 		/*if(!nes) {
 			return;
 		}
@@ -193,21 +195,21 @@ void NesCore::LoadRom(const std::string& path) {
 		nes->Reset();
 		nes->controller1 = controller1 = std::make_shared<TasController>(inputs.Controller1);
 		nes->controller2 = controller2 = std::make_shared<TasController>(inputs.Controller2);*/
-    } else {
+	} else {
 		logger.Log("Unknown file type");
-    }
+	}
 }
 
-void NesCore::Reset() {
+void Core::Reset() {
 	emulator.Reset();
 }
 
-void NesCore::HardReset() {
+void Core::HardReset() {
 	emulator.HardReset();
 }
 
-void NesCore::Update() {
-	// 89342 cycles per frame 
+void Core::Update() {
+	// 89342 cycles per frame
 	while(!emulator.ppu.frameComplete) {
 		emulator.Clock();
 	}
@@ -221,4 +223,6 @@ void NesCore::Update() {
 	// step = false;
 	emulator.apu.lastBufferPos = emulator.apu.bufferPos;
 	emulator.apu.bufferPos = 0;
+}
+
 }

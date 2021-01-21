@@ -7,27 +7,28 @@
 #include "Input.h"
 
 struct Chip8 {
-    uint8_t V[16];
-    uint8_t memory[0x1000];
+	uint8_t V[16];
+	uint8_t memory[0x1000];
 
-    uint16_t I, PC;
-    uint8_t delay_timer, sound_timer;
+	uint16_t I, PC;
+	uint8_t delay_timer, sound_timer;
 
-    uint8_t SP;
-    uint16_t stack[0x100];
+	uint8_t SP;
+	uint16_t stack[0x100];
 
-    uint8_t gfx[64 * 32];
-public:
-    Chip8();
+	uint8_t gfx[64 * 32];
 
-    void LoadRom(const std::string& path);
+  public:
+	Chip8();
 
-    void Reset();
-    void Clock();
+	void LoadRom(const std::string& path);
+
+	void Reset();
+	void Clock();
 };
 
 class Chip8Core : public ICore {
-    Chip8 emulator;
+	Chip8 emulator;
 	RenderImage texture;
 
 	std::string currentFile;
@@ -35,16 +36,17 @@ class Chip8Core : public ICore {
 
 	int beepFrames = 12;
 	int beepPos = 0;
-public:
+
+  public:
 	Chip8Core();
 
 	std::string GetName() override {
 		return "Chip-8";
-    }
+	}
 
 	RenderImage* GetMainTexture() override {
 		return &texture;
-    }
+	}
 	float GetPixelRatio() override {
 		return 1;
 	}
@@ -57,8 +59,8 @@ public:
 	void WriteMemory(int domain, size_t address, uint8_t val) override;
 	uint8_t ReadMemory(int domain, size_t address) override;
 
-	void DrawMenuBar(bool& menuOpen) override { }
-	void DrawWindows() override { }
+	void DrawMenuBar(bool& menuOpen) override {}
+	void DrawWindows() override {}
 
 	void SaveState(saver& saver) override;
 	void LoadState(saver& saver) override;
@@ -71,7 +73,7 @@ public:
 		currentFileHash = md5(file);
 
 		currentFile = path;
-    }
+	}
 
 	void Reset() override {
 		emulator.Reset();

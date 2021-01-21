@@ -1,8 +1,11 @@
 #pragma once
 #include <cstdint>
+
 #include "Cartridge.h"
 #include "RenderImage.h"
 #include "saver.h"
+
+namespace Nes {
 
 class PatternTables;
 class Bus;
@@ -102,7 +105,11 @@ struct PpuState {
 };
 
 class ppu2C02 : PpuState {
-public:
+	friend class Bus;
+	friend class PatternTables;
+	friend class Core;
+
+  public:
 	bool frameComplete = false;
 
 	union {
@@ -122,12 +129,13 @@ public:
 
 	std::shared_ptr<Mapper> cartridge;
 	uint8_t* pOAM = reinterpret_cast<uint8_t*>(oam);
-public:
+
+  public:
 	RenderImage* texture;
 
 	ppu2C02();
 	ppu2C02(const ppu2C02&) = delete;
-	
+
 	void Reset();
 	void HardReset();
 	void Clock();
@@ -143,12 +151,10 @@ public:
 	uint8_t ppuRead(uint16_t addr, bool readOnly = false);
 	void ppuWrite(uint16_t addr, uint8_t data);
 
-private:
+  private:
 	Color GetPaletteColor(uint8_t palette, uint8_t pixel) const;
 	void LoadBackgroundShifters();
 	uint8_t& getRef(uint16_t addr);
-
-	friend class Bus;
-	friend class PatternTables;
-	friend class NesCore;
 };
+
+}

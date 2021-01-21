@@ -1,7 +1,7 @@
 #pragma once
 #include "Mapper.h"
-#include "fs.h"
-#include <fstream>
+
+namespace Nes {
 
 struct NsfFormat {
 	char format[5];
@@ -21,7 +21,7 @@ struct NsfFormat {
 	uint16_t playSpeedNtsc;
 
 	uint8_t bankInit[8];
-	
+
 	uint16_t playSpeedPal;
 	bool palNtsc;
 
@@ -37,55 +37,9 @@ struct NsfFormat {
 	} extraSoundChip;
 
 	uint32_t length;
-	uint8_t* rom;
-	// std::vector<uint8_t> rom;
+	std::vector<uint8_t> rom;
 
-	NsfFormat(NsfFormat& other) = delete;
-	NsfFormat(const std::string& path) {
-		std::ifstream stream(path, std::ios::binary);
-		
-		stream.read((char*)&format, 5);
-		
-		stream.read((char*)&version, 1);
-		stream.read((char*)&numSongs, 1);
-		stream.read((char*)&startSong, 1);
-		
-		stream.read((char*)&loadAddress, 2);
-		stream.read((char*)&initAddress, 2);
-		stream.read((char*)&playAddress, 2);
-
-		stream.read((char*)&songName, 32);
-		stream.read((char*)&artist, 32);
-		stream.read((char*)&copyright, 32);
-		
-		stream.read((char*)&playSpeedNtsc, 2);
-		
-		stream.read((char*)&bankInit, 8);
-		
-		stream.read((char*)&playSpeedPal, 2);
-		
-		stream.read((char*)&palNtsc, 1);
-		
-		stream.read((char*)&extraSoundChip, 1);
-
-		// stream.read(nullptr, 1);
-		length = 0;
-
-		stream.read((char*)&length, 1); // reserverd
-		stream.read((char*)&length, 3);
-
-		size_t fileSize = fs::file_size(path);
-
-		if(length == 0) {
-			length = fileSize - 0x80;
-		}
-
-		rom = new uint8_t[length];
-		stream.read((char*)rom, length);
-	}
-	~NsfFormat() {
-		delete[] rom;
-	}
+	NsfFormat(const std::string& path);
 };
 
 class NsfMapper : public Mapper {
@@ -172,3 +126,5 @@ public:
 	void SaveState(saver& saver) override;
 	void LoadState(saver& saver) override;
 };
+
+}
