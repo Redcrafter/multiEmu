@@ -29,7 +29,6 @@
 #include "json.h"
 
 #include "Emulation/CHIP-8/chip8.h"
-#include "Emulation/GB/GameboyCore.h"
 #include "Emulation/NES/NesCore.h"
 
 enum class Action {
@@ -169,7 +168,7 @@ static ImVec2 CalcWindowSize() {
 	return size;
 }
 
-template <typename T>
+template<typename T>
 static void LoadCore(const std::string& path) {
 	if(emulationCore == nullptr || typeid(*emulationCore) != typeid(T)) {
 		emulationCore = std::make_unique<T>();
@@ -672,7 +671,7 @@ int main() {
 
 	auto s = ImVec2(256, 256) * settings.windowScale;
 	// Open a window and create its OpenGL context
-	window = glfwCreateWindow(s.x, s.y, "NES emulator", nullptr, nullptr);
+	window = glfwCreateWindow(s.x, s.y, "Multi Emulator", nullptr, nullptr);
 	if(window == nullptr) {
 		glfwTerminate();
 		return -1;

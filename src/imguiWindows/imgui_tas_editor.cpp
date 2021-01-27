@@ -24,7 +24,8 @@ void TasEditor::DrawWindow(int currentFrame) {
 		for(int i = 1; i < 9; ++i) {
 			ImGui::SetColumnWidth(i, 20);
 		}
-		ImGuiListClipper clipper(count);
+		ImGuiListClipper clipper;
+		clipper.Begin(count);
 
 		while(clipper.Step()) {
 			for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {

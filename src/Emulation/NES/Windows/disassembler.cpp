@@ -223,7 +223,7 @@ static int InstructionSize(const AddressingModes mode) {
 		case ABX:
 		case ABY:
 		case IND: return 3;
-		default: throw std::exception("unreachable");
+		default: throw std::logic_error("unreachable");
 	}
 }
 
@@ -423,7 +423,8 @@ void DisassemblerWindow::DrawWindow() {
 		ImGui::TableSetupColumn("Notes");
 		ImGui::TableHeadersRow();
 
-		ImGuiListClipper clipper(lines.size());
+		ImGuiListClipper clipper;
+		clipper.Begin(lines.size());
 		
 		while(clipper.Step()) {
 			for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {

@@ -131,7 +131,7 @@ class ppu2C02 : PpuState {
 	uint8_t* pOAM = reinterpret_cast<uint8_t*>(oam);
 
   public:
-	RenderImage* texture;
+	RenderImage* texture = nullptr;
 
 	ppu2C02();
 	ppu2C02(const ppu2C02&) = delete;
