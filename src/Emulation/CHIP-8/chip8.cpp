@@ -1,11 +1,13 @@
 #include "chip8.h"
 
 #define _USE_MATH_DEFINES
-#include <audio.h>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+
 #include <math.h>
+
+#include "../../audio.h"
 
 static const uint8_t chip8_fontset[] = {
 	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0

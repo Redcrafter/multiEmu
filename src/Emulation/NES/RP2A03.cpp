@@ -1,6 +1,6 @@
 #include "RP2A03.h"
 #include "Bus.h"
-#include "audio.h"
+#include "../../audio.h"
 
 #include <cassert>
 

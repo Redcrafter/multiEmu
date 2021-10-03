@@ -9,7 +9,7 @@ AlignAfterOpenBracket: Align
 # AllowShortBlocksOnASingleLine: true
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Inline
-# AllowShortIfStatementsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: true
 # AllowShortLoopsOnASingleLine: true
 # AlwaysBreakAfterDefinitionReturnType: None
 # AlwaysBreakAfterReturnType: None

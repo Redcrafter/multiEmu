@@ -2,8 +2,8 @@
 #include <cstdint>
 
 #include "Cartridge.h"
-#include "RenderImage.h"
-#include "saver.h"
+#include "../../RenderImage.h"
+#include "../../saver.h"
 
 namespace Nes {
 

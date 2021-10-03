@@ -2,7 +2,7 @@
 #include <string>
 
 #include "../ppu2C02.h"
-#include "RenderImage.h"
+#include "../../../RenderImage.h"
 
 namespace Nes {
 

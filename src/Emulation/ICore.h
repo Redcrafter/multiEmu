@@ -1,9 +1,9 @@
 #pragma once
 #include <string>
 
-#include "RenderImage.h"
-#include "md5.h"
-#include "saver.h"
+#include "../RenderImage.h"
+#include "../md5.h"
+#include "../saver.h"
 
 struct MemoryDomain {
 	int Id;

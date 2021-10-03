@@ -51,7 +51,7 @@
 
 #include <imgui.h>
 
-#include "Emulation/ICore.h"
+#include "../Emulation/ICore.h"
 
 class MemoryEditor {
   protected:

@@ -4,7 +4,7 @@
 #include <string>
 
 #include "../ICore.h"
-#include "Input.h"
+#include "../../Input.h"
 
 struct Chip8 {
 	uint8_t V[16];

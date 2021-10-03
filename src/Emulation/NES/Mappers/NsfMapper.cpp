@@ -4,7 +4,7 @@
 #include <fstream>
 
 
-#include "fs.h"
+#include "../../../fs.h"
 
 namespace Nes {
 

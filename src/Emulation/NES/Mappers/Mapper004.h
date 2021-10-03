@@ -1,6 +1,6 @@
 #pragma once
 #include "Mapper.h"
-#include "MemoryMapped.h"
+#include "../../../MemoryMapped.h"
 
 namespace Nes {
 

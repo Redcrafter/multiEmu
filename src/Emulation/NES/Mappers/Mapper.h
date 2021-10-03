@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <stdexcept>
 
-#include "md5.h"
-#include "saver.h"
+#include "../../../md5.h"
+#include "../../../saver.h"
 
 namespace Nes {
 

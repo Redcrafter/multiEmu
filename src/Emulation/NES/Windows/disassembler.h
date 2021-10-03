@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "./Emulation/NES/mos6502.h"
+#include "../../NES/mos6502.h"
 
 namespace Nes {
 

@@ -2,9 +2,9 @@
 
 #include <algorithm>
 
-#include "Input.h"
-#include "logger.h"
-#include "fs.h"
+#include "../../Input.h"
+#include "../../logger.h"
+#include "../../fs.h"
 
 #include "Mappers/NsfMapper.h"
 #include "StandardController.h"

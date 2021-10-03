@@ -5,11 +5,11 @@
 #include <map>
 
 #include "Mappers/Mappers.h"
-#include "fs.h"
-#include "json.h"
-#include "logger.h"
-#include "md5.h"
-#include "sha1.h"
+#include "../../fs.h"
+#include "../../json.h"
+#include "../../logger.h"
+#include "../../md5.h"
+#include "../../sha1.h"
 
 namespace Nes {
 
