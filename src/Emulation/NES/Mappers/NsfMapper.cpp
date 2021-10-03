@@ -3,37 +3,41 @@
 #include <cstring>
 #include <fstream>
 
-
 #include "../../../fs.h"
+
+template<typename T>
+void read(std::ifstream& stream, T& ref) {
+	stream.read((char*)&ref, sizeof(T));
+}
 
 namespace Nes {
 
 NsfFormat::NsfFormat(const std::string& path) {
 	std::ifstream stream(path, std::ios::binary);
 
-	stream.read((char*)&format, 5);
+	read(stream, format);
 
-	stream.read((char*)&version, 1);
-	stream.read((char*)&numSongs, 1);
-	stream.read((char*)&startSong, 1);
+	read(stream, version);
+	read(stream, numSongs);
+	read(stream, startSong);
 
-	stream.read((char*)&loadAddress, 2);
-	stream.read((char*)&initAddress, 2);
-	stream.read((char*)&playAddress, 2);
+	read(stream, loadAddress);
+	read(stream, initAddress);
+	read(stream, playAddress);
 
-	stream.read((char*)&songName, 32);
-	stream.read((char*)&artist, 32);
-	stream.read((char*)&copyright, 32);
+	read(stream, songName);
+	read(stream, artist);
+	read(stream, copyright);
 
-	stream.read((char*)&playSpeedNtsc, 2);
+	read(stream, playSpeedNtsc);
 
-	stream.read((char*)&bankInit, 8);
+	read(stream, bankInit);
 
-	stream.read((char*)&playSpeedPal, 2);
+	read(stream, playSpeedPal);
 
-	stream.read((char*)&palNtsc, 1);
+	read(stream, palNtsc);
 
-	stream.read((char*)&extraSoundChip, 1);
+	read(stream, extraSoundChip);
 
 	length = 0;
 
@@ -57,11 +61,12 @@ NsfFormat::NsfFormat(const std::string& path) {
 
 const uint16_t NMI_VECTOR = 0x3800;
 const uint16_t RESET_VECTOR = 0x3820;
-//
-NsfMapper::NsfMapper(const std::string& path) : Mapper({}, {}), nsf(path) {
-	NSFROM[0x12] = nsf.initAddress;
+
+NsfMapper::NsfMapper(const std::string& path)
+	: Mapper({}, {}), nsf(path) {
+	NSFROM[0x12] = nsf.initAddress & 0xFF;
 	NSFROM[0x13] = nsf.initAddress >> 8;
-	NSFROM[0x19] = nsf.playAddress;
+	NSFROM[0x19] = nsf.playAddress & 0xFF;
 	NSFROM[0x1A] = nsf.playAddress >> 8;
 
 	BankSwitched = false;
@@ -118,20 +123,18 @@ int NsfMapper::cpuRead(uint16_t addr, uint8_t& data) {
 
 	if(Patch_Vectors) {
 		switch(addr) {
-			case 0xFFFA: data = NMI_VECTOR & 0xFF; break;
-			case 0xFFFB: data = (NMI_VECTOR >> 8) & 0xFF; break;
-			case 0xFFFC: data = RESET_VECTOR & 0xFF; break;
-			case 0xFFFD: data = (RESET_VECTOR >> 8) & 0xFF; break;
-			default: data = 0; break;
+			case 0xFFFA: data = NMI_VECTOR & 0xFF; return true;
+			case 0xFFFB: data = (NMI_VECTOR >> 8) & 0xFF; return true;
+			case 0xFFFC: data = RESET_VECTOR & 0xFF; return true;
+			case 0xFFFD: data = (RESET_VECTOR >> 8) & 0xFF; return true;
 		}
+	}
+
+	addr -= 0x8000;
+	if(BankSwitched) {
+		data = nsf.rom[(addr & 0xFFF) | (prg_banks_4k[(addr >> 12) & 7] << 12)];
 	} else {
-		addr -= 0x8000;
-		if(BankSwitched) {
-			data = nsf.rom[(addr & 0xFFF) | (prg_banks_4k[(addr >> 12) & 0b111] << 12)];
-			;
-		} else {
-			data = FakePRG[addr];
-		}
+		data = FakePRG[addr];
 	}
 
 	return true;
@@ -150,10 +153,7 @@ bool NsfMapper::cpuWrite(uint16_t addr, uint8_t data) {
 		case 0x5FFD:
 		case 0x5FFE:
 		case 0x5FFF:
-			if(!BankSwitched) {
-				break;
-			}
-			prg_banks_4k[addr - 0x5FF8] = data;
+			prg_banks_4k[addr - 0x5FF8] = data >= (nsf.length >> 12) ? 0 : data;
 			return true;
 	}
 

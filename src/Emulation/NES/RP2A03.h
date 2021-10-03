@@ -50,7 +50,7 @@ struct Pulse : Envelope {
 	void Clock();
 	void ClockSweep();
 
-	uint8_t Output();
+	uint8_t Output() const;
 };
 
 struct Triangle : SoundBase {
@@ -125,9 +125,9 @@ struct DMC {
 	uint16_t timer = 0;
 	uint16_t timerPeriod = 0;
 
-	void Clock(Bus* bus);
+	void Clock(Bus& bus);
 	void Reload();
-	void FillBuffer(Bus* bus);
+	void FillBuffer(Bus& bus);
 };
 
 static constexpr int bufferLength = 32 * 1024; // 32 KiB
