@@ -3,6 +3,18 @@
 #include <cstring>
 #include <stdexcept>
 
+#define GL_RGB 0x1907
+#define GL_NEAREST 0x2600
+#define GL_BGR 0x80E0
+
+void _glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels);
+typedef void(APIENTRYP PFNGLTEXSUBIMAGE2DPROC)(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels);
+PFNGLTEXSUBIMAGE2DPROC glTexSubImage2D = _glTexSubImage2D;
+void _glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels) {
+	glTexSubImage2D = (PFNGLTEXSUBIMAGE2DPROC)imgl3wGetProcAddress("glTexSubImage2D");
+	return glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
+}
+
 RenderImage::RenderImage(const int width, const int height) {
 	glGenTextures(1, &textureID);
 	Width = width;

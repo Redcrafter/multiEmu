@@ -416,7 +416,7 @@ void DisassemblerWindow::DrawWindow() {
 		ImGui::EndMenuBar();
 	}
 
-	if(ImGui::BeginTable("##testTable", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_ColumnsWidthFixed)) {
+	if(ImGui::BeginTable("##testTable", 4, ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit)) {
 		ImGui::TableSetupColumn("Address");
 		ImGui::TableSetupColumn("Bytes");
 		ImGui::TableSetupColumn("Disassembly");

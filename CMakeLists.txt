@@ -94,11 +94,9 @@ file(GLOB imgui_sources "./extern/imgui/*.cpp")
 add_executable(emu WIN32 ${Common_sources} ${imgui_sources} 
                          "./extern/imgui/backends/imgui_impl_opengl3.cpp" 
                          "./extern/imgui/backends/imgui_impl_glfw.cpp"
-                         "./extern/imgui/examples/libs/gl3w/GL/gl3w.c"
                          "./extern/rtaudio/RtAudio.cpp")
 
-
-target_include_directories(emu PRIVATE "extern/imgui" "extern/imgui/examples/libs/gl3w" "extern/rtaudio" glfw ${INCLUDES})
+target_include_directories(emu PRIVATE "extern/imgui" "extern/rtaudio" glfw ${INCLUDES})
 target_link_libraries(emu PRIVATE glfw ${LIBS})
 target_compile_definitions(emu PRIVATE IMGUI_IMPL_OPENGL_LOADER_GL3W)
 set_project_warnings(emu)

@@ -4,7 +4,7 @@
 #include <fstream>
 #include <thread>
 
-#include <GL/gl3w.h>
+#include <backends/imgui_impl_opengl3_loader.h>
 #include <GLFW/glfw3.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -599,8 +599,8 @@ static void drawGui() {
 			ImGuiWindowFlags_NoDocking;
 
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImGui::SetNextWindowPos(viewport->GetWorkPos());
-		ImGui::SetNextWindowSize(viewport->GetWorkSize());
+		ImGui::SetNextWindowPos(viewport->WorkPos);
+		ImGui::SetNextWindowSize(viewport->WorkSize);
 		ImGui::SetNextWindowViewport(viewport->ID);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -679,20 +679,12 @@ int main() {
 	glfwMakeContextCurrent(window);
 	glfwSwapInterval(settings.EnableVsync);
 
-	// Initialize gl3w
-	if(gl3wInit() != 0) {
-		logger.Log("Failed to initialize gl3w\n");
-		return -1;
-	}
-
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
 	glfwSetKeyCallback(window, onKey); // TODO: support controllers
 	glfwSetWindowSizeCallback(window, onResize);
 	glfwSetDropCallback(window, onDrop);
-
-	onResize(window, s.x, s.y);
 	#pragma endregion
 
 	#pragma region ImGui Init
@@ -712,6 +704,8 @@ int main() {
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init();
 	#pragma endregion
+
+	onResize(window, s.x, s.y);
 
 	auto lastTime = glfwGetTime();
 
@@ -745,7 +739,7 @@ int main() {
 		}
 		#pragma endregion
 
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT);
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
