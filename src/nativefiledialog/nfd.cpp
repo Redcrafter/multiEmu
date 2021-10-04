@@ -212,6 +212,7 @@ Result NFD::OpenDialog(const std::vector<FilterItem>& filterList, const char* de
 	// Create dialog
 	IFileOpenDialog* fileOpenDialog = nullptr;
 	HRESULT result = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpenDialog));
+	HWND wind = nullptr;
 
 	if(!SUCCEEDED(result)) {
 		NFDi_SetError("Could not create dialog.");
@@ -228,7 +229,6 @@ Result NFD::OpenDialog(const std::vector<FilterItem>& filterList, const char* de
 		goto end;
 	}
 
-	HWND wind = nullptr;
 	if(parent) {
 		wind = glfwGetWin32Window(parent);
 	}
@@ -284,6 +284,7 @@ Result NFD::OpenDialogMultiple(const std::vector<FilterItem>& filterList, const 
 	// Create dialog
 	IFileOpenDialog* fileOpenDialog(nullptr);
 	HRESULT result = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&fileOpenDialog));
+	HWND wind = nullptr;
 
 	if(!SUCCEEDED(result)) {
 		fileOpenDialog = nullptr;
@@ -314,7 +315,6 @@ Result NFD::OpenDialogMultiple(const std::vector<FilterItem>& filterList, const 
 		goto end;
 	}
 
-	HWND wind = nullptr;
 	if(parent) {
 		wind = glfwGetWin32Window(parent);
 	}
@@ -364,8 +364,9 @@ Result NFD::SaveDialog(const std::vector<FilterItem>& filterList, const char* de
 	}
 
 	// Create dialog
-	::IFileSaveDialog* fileSaveDialog(nullptr);
+	IFileSaveDialog* fileSaveDialog(nullptr);
 	HRESULT result = CoCreateInstance(CLSID_FileSaveDialog, nullptr, CLSCTX_ALL, IID_IFileSaveDialog, reinterpret_cast<void**>(&fileSaveDialog));
+	HWND wind = nullptr;
 
 	if(!SUCCEEDED(result)) {
 		fileSaveDialog = nullptr;
@@ -383,7 +384,6 @@ Result NFD::SaveDialog(const std::vector<FilterItem>& filterList, const char* de
 		goto end;
 	}
 
-	HWND wind = nullptr;
 	if(parent) {
 		wind = glfwGetWin32Window(parent);
 	}
@@ -440,6 +440,8 @@ Result NFD::PickFolder(const char* defaultPath, std::string& outPath, GLFWwindow
 	// Create dialog
 	IFileOpenDialog* fileDialog(nullptr);
 	HRESULT result = CoCreateInstance(CLSID_FileOpenDialog, nullptr, CLSCTX_ALL, IID_PPV_ARGS(&fileDialog));
+	HWND wind = nullptr;
+
 	if(!SUCCEEDED(result)) {
 		NFDi_SetError("CoCreateInstance for CLSID_FileOpenDialog failed.");
 		goto end;
@@ -463,7 +465,6 @@ Result NFD::PickFolder(const char* defaultPath, std::string& outPath, GLFWwindow
 		goto end;
 	}
 
-	HWND wind = nullptr;
 	if(parent) {
 		wind = glfwGetWin32Window(parent);
 	}

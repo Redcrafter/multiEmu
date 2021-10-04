@@ -3,18 +3,6 @@
 #include <cstring>
 #include <stdexcept>
 
-#define GL_RGB 0x1907
-#define GL_NEAREST 0x2600
-#define GL_BGR 0x80E0
-
-void _glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels);
-typedef void(APIENTRYP PFNGLTEXSUBIMAGE2DPROC)(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels);
-PFNGLTEXSUBIMAGE2DPROC glTexSubImage2D = _glTexSubImage2D;
-void _glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels) {
-	glTexSubImage2D = (PFNGLTEXSUBIMAGE2DPROC)imgl3wGetProcAddress("glTexSubImage2D");
-	return glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
-}
-
 RenderImage::RenderImage(const int width, const int height) {
 	glGenTextures(1, &textureID);
 	Width = width;
@@ -24,7 +12,7 @@ RenderImage::RenderImage(const int width, const int height) {
 	memset(imgData, 0, width * height * sizeof(Color));
 
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Width, Height, 0, GL_BGR, GL_UNSIGNED_BYTE, imgData);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Width, Height, 0, GL_RGB, GL_UNSIGNED_BYTE, imgData);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

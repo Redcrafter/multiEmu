@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-#include <backends/imgui_impl_opengl3_loader.h>
+#include <GLFW/glfw3.h>
 
 struct Color {
 	uint8_t R, G, B;

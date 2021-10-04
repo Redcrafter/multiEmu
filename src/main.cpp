@@ -4,7 +4,6 @@
 #include <fstream>
 #include <thread>
 
-#include <backends/imgui_impl_opengl3_loader.h>
 #include <GLFW/glfw3.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -24,7 +23,6 @@
 
 #include "audio.h"
 #include "logger.h"
-
 #include "fs.h"
 #include "json.h"
 
