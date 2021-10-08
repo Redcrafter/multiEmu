@@ -1,14 +1,14 @@
 #pragma once
 
+#include <array>
 #include <fstream>
 #include <string>
 
-#include "../ICore.h"
-#include "../../Input.h"
+namespace Chip8 {
 
 struct Chip8 {
 	uint8_t V[16];
-	uint8_t memory[0x1000];
+	std::array<uint8_t, 0x1000> memory;
 
 	uint16_t I, PC;
 	uint8_t delay_timer, sound_timer;
@@ -27,61 +27,4 @@ struct Chip8 {
 	void Clock();
 };
 
-class Chip8Core : public ICore {
-	Chip8 emulator;
-	RenderImage texture;
-
-	std::string currentFile;
-	md5 currentFileHash {};
-
-	int beepFrames = 12;
-	int beepPos = 0;
-
-  public:
-	Chip8Core();
-
-	std::string GetName() override {
-		return "Chip-8";
-	}
-
-	RenderImage* GetMainTexture() override {
-		return &texture;
-	}
-	float GetPixelRatio() override {
-		return 1;
-	}
-
-	md5 GetRomHash() override {
-		return currentFileHash;
-	}
-
-	std::vector<MemoryDomain> GetMemoryDomains() override;
-	void WriteMemory(int domain, size_t address, uint8_t val) override;
-	uint8_t ReadMemory(int domain, size_t address) override;
-
-	void DrawMenuBar(bool& menuOpen) override {}
-	void DrawWindows() override {}
-
-	void SaveState(saver& saver) override;
-	void LoadState(saver& saver) override;
-
-	void LoadRom(const std::string& path) override {
-		emulator.Reset();
-		emulator.LoadRom(path);
-
-		std::ifstream file(path, std::ios::binary);
-		currentFileHash = md5(file);
-
-		currentFile = path;
-	}
-
-	void Reset() override {
-		emulator.Reset();
-		emulator.LoadRom(currentFile);
-	}
-	void HardReset() override {
-		emulator.Reset();
-		emulator.LoadRom(currentFile);
-	}
-	void Update() override;
-};
+}

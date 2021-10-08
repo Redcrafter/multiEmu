@@ -1,13 +1,10 @@
 #include "chip8.h"
 
-#define _USE_MATH_DEFINES
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 
-#include <math.h>
-
-#include "../../audio.h"
+#include "../../Input.h"
 
 static const uint8_t chip8_fontset[] = {
 	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -28,6 +25,8 @@ static const uint8_t chip8_fontset[] = {
 	0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 };
 
+namespace Chip8 {
+
 Chip8::Chip8() {
 	Reset();
 }
@@ -40,7 +39,7 @@ void Chip8::LoadRom(const std::string& path) {
 	}
 
 	stream.seekg(0, std::ios::beg);
-	stream.read((char*)(memory + 0x200), len);
+	stream.read((char*)(&memory[0x200]), len);
 }
 
 void Chip8::Reset() {
@@ -51,9 +50,9 @@ void Chip8::Reset() {
 	std::memset(gfx, 0, sizeof(gfx));
 	std::memset(V, 0, sizeof(V));
 	std::memset(stack, 0, sizeof(stack));
-	std::memset(memory, 0, sizeof(memory));
+	std::memset(memory.data(), 0, sizeof(memory));
 
-	std::memcpy(memory, chip8_fontset, 80);
+	std::memcpy(memory.data(), chip8_fontset, 80);
 
 	delay_timer = 0;
 	sound_timer = 0;
@@ -242,94 +241,4 @@ void Chip8::Clock() {
 	}
 }
 
-Chip8Core::Chip8Core() : texture(64, 32) {
-	Input::SetMapper(Input::InputMapper("Chip-8", {
-	    {"0", 0, { { GLFW_KEY_1, 0 } } },
-	    {"1", 1,  { { GLFW_KEY_2, 0 } } },
-	    {"2", 2,  { { GLFW_KEY_3, 0 } } },
-	    {"3", 3,  { { GLFW_KEY_4, 0 } } },
-	    {"4", 4,  { { GLFW_KEY_Q, 0 } } },
-	    {"5", 5,  { { GLFW_KEY_W, 0 } } },
-	    {"6", 6,  { { GLFW_KEY_E, 0 } } },
-	    {"7", 7,  { { GLFW_KEY_R, 0 } } },
-	    {"8", 8,  { { GLFW_KEY_A, 0 } } },
-	    {"9", 9,  { { GLFW_KEY_S, 0 } } },
-	    {"A", 10, { { GLFW_KEY_D, 0 } } },
-	    {"B", 11, { { GLFW_KEY_F, 0 } } },
-	    {"C", 12, { { GLFW_KEY_Y, 0 } } },
-	    {"D", 13, { { GLFW_KEY_X, 0 } } },
-	    {"E", 14, { { GLFW_KEY_C, 0 } } },
-	    {"F", 15, { { GLFW_KEY_V, 0 } } },
-	}));
-}
-
-std::vector<MemoryDomain> Chip8Core::GetMemoryDomains() {
-	return {
-		MemoryDomain { 0, "RAM", sizeof(emulator.memory) },
-		MemoryDomain { 1, "Stack", sizeof(emulator.stack) }
-	};
-}
-
-void Chip8Core::WriteMemory(int domain, size_t address, uint8_t val) {
-	switch(domain) {
-		case 0: emulator.memory[address] = val; break;
-		case 1:
-			reinterpret_cast<uint8_t*>(&emulator.stack)[address] = val;
-			break;
-	}
-}
-
-uint8_t Chip8Core::ReadMemory(int domain, size_t address) {
-	switch(domain) {
-		case 0: return emulator.memory[address];
-		case 1: return reinterpret_cast<uint8_t*>(&emulator.stack)[address];
-	}
-	return 0;
-}
-
-void Chip8Core::SaveState(saver& saver) {
-	saver.Write(&emulator, sizeof(emulator));
-}
-
-void Chip8Core::LoadState(saver& saver) {
-	saver.Read(&emulator, sizeof(emulator));
-}
-
-void Chip8Core::Update() {
-	// target clock rate 540hz/60 = 9
-	for(int i = 0; i < 9; i++) {
-		emulator.Clock();
-	}
-	if(emulator.delay_timer > 0) {
-		emulator.delay_timer--;
-	}
-
-	if(emulator.sound_timer > 0) {
-		emulator.sound_timer--;
-		if(emulator.sound_timer == 0) {
-			// beep should play for 200 ms
-			// 200ms / 16.66ms = 12 frames
-			beepFrames = 12;
-			beepPos = 0;
-		}
-	}
-
-	if(beepFrames > 0) {
-		// beep plays at 800hz
-		const auto frac = (M_PI * 800 * 2) / (735 * 60);
-		for(int i = 0; i < 735; ++i) {
-			Audio::PushSample(std::sin(beepPos * frac) * 0.1);
-			beepPos++;
-		}
-		beepFrames--;
-	}
-
-	Color black { 0, 0, 0 };
-	Color white { 255, 255, 255 };
-
-	for(int y = 0; y < 32; ++y) {
-		for(int x = 0; x < 64; ++x) {
-			texture.SetPixel(x, y, emulator.gfx[x + y * 64] ? white : black);
-		}
-	}
 }

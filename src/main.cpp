@@ -26,7 +26,7 @@
 #include "fs.h"
 #include "json.h"
 
-#include "Emulation/CHIP-8/chip8.h"
+#include "Emulation/CHIP-8/core.h"
 #include "Emulation/NES/NesCore.h"
 
 enum class Action {
@@ -217,7 +217,7 @@ struct {
 			ImGui::Text("Unknown file type. Choose an emulator:");
 
 			if(ImGui::Button("Chip-8")) {
-				LoadCore<Chip8Core>(file);
+				LoadCore<Chip8::Core>(file);
 				open = false;
 			}
 			if(ImGui::Button("NES")) {
@@ -236,7 +236,7 @@ static void OpenFile(const std::string& path) {
 	if(ext == ".nes" || ext == ".nsf" || ext == ".fm2") {
 		LoadCore<Nes::Core>(path);
 	} else if(ext == ".ch8") {
-		LoadCore<Chip8Core>(path);
+		LoadCore<Chip8::Core>(path);
 	} else {
 		emulatorPicker.Open(path);
 	}
