@@ -22,11 +22,12 @@
 // #include "imguiWindows/imgui_tas_editor.h"
 
 #include "audio.h"
-#include "logger.h"
 #include "fs.h"
 #include "json.h"
+#include "logger.h"
 
 #include "Emulation/CHIP-8/core.h"
+#include "Emulation/GB/GameboyCore.h"
 #include "Emulation/NES/NesCore.h"
 
 enum class Action {
@@ -224,6 +225,10 @@ struct {
 				LoadCore<Nes::Core>(file);
 				open = false;
 			}
+			if(ImGui::Button("Gameboy Color")) {
+				LoadCore<Gameboy::GameboyColorCore>(file);
+				open = false;
+			}
 		}
 		ImGui::End();
 	}
@@ -237,6 +242,8 @@ static void OpenFile(const std::string& path) {
 		LoadCore<Nes::Core>(path);
 	} else if(ext == ".ch8") {
 		LoadCore<Chip8::Core>(path);
+	} else if(ext == ".gb" || ext == ".gbc") {
+		LoadCore<Gameboy::GameboyColorCore>(path);
 	} else {
 		emulatorPicker.Open(path);
 	}
@@ -451,7 +458,12 @@ static void drawGui() {
 
 			if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
 				std::string outPath;
-				const auto res = NFD::OpenDialog({ { "Rom Files", { "nes", "nsf", "ch8" } }, { "NES", { "nes", "nsf" } }, { "CHIP-8", { "ch8" } } }, nullptr, outPath, window);
+				const auto res = NFD::OpenDialog({ 
+					{ "Rom Files", { "nes", "nsf", "ch8" } },
+					{ "NES", { "nes", "nsf" } },
+					{ "CHIP-8", { "ch8" } },
+					{ "Gameboy", { "gb", "gbc" } }
+					}, nullptr, outPath, window);
 
 				if(res == NFD::Result::Okay) {
 					OpenFile(outPath);
