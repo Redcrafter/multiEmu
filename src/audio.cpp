@@ -8,6 +8,25 @@
 
 #include "logger.h"
 
+struct sample {
+	float left;
+	float right;
+
+	sample& operator*=(const float val) {
+		left *= val;
+		right *= val;
+		return *this;
+	}
+
+	friend sample operator*(const float b, const sample& a) {
+		return { a.left * b, a.right * b };
+	}
+
+	friend sample operator+(const sample& a, const sample& b) {
+		return { a.left + b.left, a.right + b.right };
+	}
+};
+
 // normal audio quality 44100hz
 constexpr uint32_t sampleRate = 44100;
 
@@ -19,21 +38,21 @@ static size_t readPos = 0;
 // write position of input
 static size_t writePos = 0;
 // sample buffer
-static float buffer[bufferSize];
+static std::array<sample, bufferSize> buffer;
 
 // used to prevent popping
-static float lastSample = 0;
+static sample lastSample { 0, 0 };
 
 // used to prevent unnecessary resize of inBuffer
 static int pushPos;
 // samples added by PushSample
-static std::vector<float> inBuffer;
+static std::vector<sample> inBuffer;
 
 static std::unique_ptr<RtAudio> dac;
 static bool audioRunning = false;
 
 static int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBufferFrames, double streamTime, RtAudioStreamStatus status, void* userData) {
-	const auto outBuffer = static_cast<float*>(outputBuffer);
+	const auto outBuffer = static_cast<sample*>(outputBuffer);
 
 	if(readPos < writePos) {
 		lastSample = buffer[(writePos - 1) % bufferSize];
@@ -43,7 +62,7 @@ static int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBu
 	// output number of requested samples
 	for(; i < nBufferFrames && readPos < writePos; i++) {
 		// copy buffer to left and right channel
-		outBuffer[i * 2] = outBuffer[i * 2 + 1] = buffer[readPos % bufferSize];
+		outBuffer[i] = buffer[readPos % bufferSize];
 		readPos++;
 	}
 
@@ -52,7 +71,7 @@ static int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBu
 		// Repeat last sample to prevent popping and fade out over time
 		// so single frame drops don't pop and there's no noise over time
 		for(; i < nBufferFrames; i++) {
-			outBuffer[i * 2] = outBuffer[i * 2 + 1] = lastSample;
+			outBuffer[i] = lastSample;
 			lastSample *= 0.9999;
 		}
 	}
@@ -124,11 +143,15 @@ void Audio::Resample() {
 }
 
 void Audio::PushSample(float value) {
+	PushSample(value, value);
+}
+
+void Audio::PushSample(float left, float right) {
 	// reduce buffer allocation by overwriting old values
 	if(pushPos < inBuffer.size()) {
-		inBuffer[pushPos] = value;
+		inBuffer[pushPos] = { left, right };
 	} else {
-		inBuffer.push_back(value);
+		inBuffer.push_back({ left, right });
 	}
 	pushPos++;
 }

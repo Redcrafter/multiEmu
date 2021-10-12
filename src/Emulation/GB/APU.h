@@ -484,17 +484,30 @@ class APU {
 		if(sampleCounter == 23) {
 			sampleCounter = 0;
 
-			auto leftVolume = (nr50 >> 4) & 7;
-			// auto rightVolume = (nr50 >> 4) & 7;
-
 			auto left = 0.0;
-			if(nr51 & 0x10) left += ch1.output();
-			if(nr51 & 0x20) left += ch2.output();
-			if(nr51 & 0x40) left += ch3.output();
-			if(nr51 & 0x80) left += ch4.output();
-			left = (leftVolume / 7.0) * (left / 4.0);
+			auto right = 0.0;
 
-			Audio::PushSample(left);
+			// todo: cache output values?
+
+			if(nr51 & 0x10) left += ch1.output();
+			if(nr51 & 0x01) right += ch1.output();
+
+			if(nr51 & 0x20) left += ch2.output();
+			if(nr51 & 0x02) right += ch2.output();
+
+			if(nr51 & 0x40) left += ch3.output();
+			if(nr51 & 0x04) right += ch3.output();
+
+			if(nr51 & 0x80) left += ch4.output();
+			if(nr51 & 0x08) right += ch4.output();
+
+			auto leftVolume = (nr50 >> 4) & 7;
+			auto rightVolume = (nr50 >> 4) & 7;
+
+			left = (leftVolume / 7.0) * (left / 4.0);
+			right = (rightVolume / 7.0) * (right / 4.0);
+
+			Audio::PushSample(left, right);
 		}
 	}
 
