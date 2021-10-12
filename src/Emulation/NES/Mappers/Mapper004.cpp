@@ -124,8 +124,8 @@ bool Mapper004::ppuWrite(uint16_t addr, uint8_t data) {
 void Mapper004::SaveState(saver& saver) {
 	saver << bankSelect.reg;
 
-	saver.Write(prgBankOffset, 4);
-	saver.Write(chrBankOffset, 8);
+	saver << prgBankOffset;
+	saver << chrBankOffset;
 
 	saver << reloadIrq;
 	saver << irqEnable;
@@ -133,15 +133,15 @@ void Mapper004::SaveState(saver& saver) {
 	saver << irqCounter;
 	saver << irqLatch;
 
-	saver.Write(prgRam, 0x2000);
+	saver << prgRam;
 	// saver << ramEnable;
 }
 
 void Mapper004::LoadState(saver& saver) {
 	saver >> bankSelect.reg;
 
-	saver.Read(prgBankOffset, 4);
-	saver.Read(chrBankOffset, 8);
+	saver >> prgBankOffset;
+	saver >> chrBankOffset;
 
 	saver >> reloadIrq;
 	saver >> irqEnable;
@@ -149,7 +149,7 @@ void Mapper004::LoadState(saver& saver) {
 	saver >> irqCounter;
 	saver >> irqLatch;
 
-	saver.Read(prgRam, 0x2000);
+	saver >> prgRam;
 	// saver >> ramEnable;
 }
 

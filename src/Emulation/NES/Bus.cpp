@@ -2,7 +2,7 @@
 #include "StandardController.h"
 
 namespace Nes {
-Bus::Bus() : cpu(mos6502(this)), apu(RP2A03(this)) { }
+Bus::Bus() : cpu(mos6502(this)), apu(RP2A03(this)) {}
 
 void Bus::InsertCartridge(std::shared_ptr<Mapper>& cartridge) {
 	this->cartridge = cartridge;
@@ -79,7 +79,7 @@ void Bus::Clock() {
 			}
 			cpu.Clock();
 			cartridge->CpuClock();
-			
+
 			cpu.IRQ = irqDelay || cartridge->Irq;
 			irqDelay = apu.GetIrq();
 		}
@@ -171,7 +171,7 @@ void Bus::SaveState(saver& saver) {
 
 	cartridge->SaveState(saver);
 
-	saver.Write(CpuRam, sizeof(CpuRam));
+	saver << CpuRam;
 	saver << dmaPage;
 	saver << dmaAddr;
 	saver << dmaData;
@@ -188,8 +188,8 @@ void Bus::LoadState(saver& saver) {
 	apu.LoadState(saver);
 
 	cartridge->LoadState(saver);
-	
-	saver.Read(CpuRam, sizeof(CpuRam));
+
+	saver >> CpuRam;
 	saver >> dmaPage;
 	saver >> dmaAddr;
 	saver >> dmaData;

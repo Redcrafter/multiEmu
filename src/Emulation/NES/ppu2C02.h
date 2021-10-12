@@ -75,6 +75,21 @@ struct PpuState {
 		uint8_t reg = 0xA0;
 	} Status;
 
+	union {
+		struct {
+			uint8_t nametableX : 1;
+			uint8_t nametableY : 1;
+			uint8_t vramIncrement : 1;
+			uint8_t patternSprite : 1;
+			uint8_t patternBackground : 1;
+			uint8_t spriteSize : 1;
+			uint8_t slaveMode : 1;
+			uint8_t enableNMI : 1;
+		};
+
+		uint8_t reg = 0;
+	} Control;
+
 	uint8_t fineX = 0;
 
 	uint8_t bgNextTileId, bgNextTileAttrib;
@@ -104,28 +119,13 @@ struct PpuState {
 	uint8_t oamAddr = 0;
 };
 
-class ppu2C02 : PpuState {
+class ppu2C02 : public PpuState {
 	friend class Bus;
 	friend class PatternTables;
 	friend class Core;
 
   public:
 	bool frameComplete = false;
-
-	union {
-		struct {
-			uint8_t nametableX : 1;
-			uint8_t nametableY : 1;
-			uint8_t vramIncrement : 1;
-			uint8_t patternSprite : 1;
-			uint8_t patternBackground : 1;
-			uint8_t spriteSize : 1;
-			uint8_t slaveMode : 1;
-			uint8_t enableNMI : 1;
-		};
-
-		uint8_t reg = 0;
-	} Control;
 
 	std::shared_ptr<Mapper> cartridge;
 	uint8_t* pOAM = reinterpret_cast<uint8_t*>(oam);

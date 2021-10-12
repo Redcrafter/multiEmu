@@ -120,13 +120,13 @@ void mos6502::SaveState(saver& saver) const {
 	saver << PC;
 
 	saver << Status.reg;
-	saver.Write(&state, 1);
+	saver << state;
 
 	saver << ptr;
 	saver << addr_abs;
 
-	saver.Write(&instruction.instruction, 1);
-	saver.Write(&instruction.addrMode, 1);
+	saver << instruction.instruction;
+	saver << instruction.addrMode;
 }
 
 void mos6502::LoadState(saver& saver) {
@@ -140,13 +140,13 @@ void mos6502::LoadState(saver& saver) {
 	saver >> PC;
 
 	saver >> Status.reg;
-	saver.Read(&state, 1);
+	saver >> state;
 
 	saver >> ptr;
 	saver >> addr_abs;
 
-	saver.Read(&instruction.instruction, 1);
-	saver.Read(&instruction.addrMode, 1);
+	saver >> instruction.instruction;
+	saver >> instruction.addrMode;
 }
 
 void mos6502::Clock() {

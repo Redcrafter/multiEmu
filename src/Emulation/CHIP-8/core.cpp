@@ -67,13 +67,8 @@ void Core::DrawMenuBar(bool& menuOpen) {
 	}
 }
 
-void Core::SaveState(saver& saver) {
-	saver.Write(&emulator, sizeof(emulator));
-}
-
-void Core::LoadState(saver& saver) {
-	saver.Read(&emulator, sizeof(emulator));
-}
+void Core::SaveState(saver& saver) { saver << emulator; }
+void Core::LoadState(saver& saver) { saver >> emulator; }
 
 void Core::Update() {
 	// target clock rate 540hz/60 = 9

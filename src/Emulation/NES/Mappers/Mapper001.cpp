@@ -140,12 +140,12 @@ void Mapper001::SaveState(saver& saver) {
 	saver << chrBank1;
 	saver << prgBank;
 
-	saver.Write(prgBankOffset, 2);
-	saver.Write(chrBankOffset, 2);
+	saver << prgBankOffset;
+	saver << chrBankOffset;
 
 	saver << ramEnable;
 
-	saver.Write(prgRam, sizeof(prgRam));
+	saver << prgRam;
 }
 
 void Mapper001::LoadState(saver& saver) {
@@ -158,12 +158,12 @@ void Mapper001::LoadState(saver& saver) {
 	saver >> chrBank1;
 	saver >> prgBank;
 
-	saver.Read(prgBankOffset, 2);
-	saver.Read(chrBankOffset, 2);
+	saver >> prgBankOffset;
+	saver >> chrBankOffset;
 
 	saver >> ramEnable;
 
-	saver.Read(prgRam, sizeof(prgRam));
+	saver >> prgRam;
 }
 
 void Mapper001::MapSaveRam(const std::string& path) {

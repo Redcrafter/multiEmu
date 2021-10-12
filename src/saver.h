@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -16,32 +17,15 @@ class saver {
 	void Save(const std::string& path);
 
 	template<typename T>
-	void Write(T* data, size_t size) {
-		char* ptr = (char*)data;
-		for(size_t i = 0; i < size * sizeof(T); i++) {
-			this->data.push_back(ptr[i]);
-		}
+	void operator<<(const T& value) {
+		// todo: make more efficient? 
+		data.reserve(data.size() + sizeof(T));
+		std::copy_n((uint8_t*)&value, sizeof(T), std::back_inserter(data));
 	}
+
 	template<typename T>
-	void Read(T* data, size_t size) {
-		char* ptr = (char*)data;
-		for(size_t i = 0; i < size * sizeof(T); ++i) {
-			ptr[i] = this->data[readPos];
-			readPos++;
-		}
+	void operator>>(T& value) {
+		std::copy_n(this->data.begin() + readPos, sizeof(T), (uint8_t*)&value);
+		readPos += sizeof(T);
 	}
-
-	void operator<<(bool val);
-	void operator<<(uint8_t val);
-	void operator<<(uint16_t val);
-	void operator<<(int32_t val);
-	void operator<<(uint32_t val);
-	void operator<<(uint64_t val);
-
-	void operator>>(bool& val);
-	void operator>>(uint8_t& val);
-	void operator>>(uint16_t& val);
-	void operator>>(int32_t& val);
-	void operator>>(uint32_t& val);
-	void operator>>(uint64_t& val);
 };

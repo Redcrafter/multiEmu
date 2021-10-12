@@ -485,14 +485,12 @@ void ppu2C02::Clock() {
 
 void ppu2C02::SaveState(saver& saver) {
 	saver << Control.reg;
-
-	saver.Write(reinterpret_cast<char*>(this), sizeof(PpuState));
+	saver << *reinterpret_cast<PpuState*>(this);
 }
 
 void ppu2C02::LoadState(saver& saver) {
 	saver >> Control.reg;
-
-	saver.Read(reinterpret_cast<char*>(this), sizeof(PpuState));
+	saver >> *reinterpret_cast<PpuState*>(this);
 }
 
 uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {

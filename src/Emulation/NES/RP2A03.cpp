@@ -642,12 +642,12 @@ bool RP2A03::GetIrq() {
 }
 
 void RP2A03::SaveState(saver& saver) {
-	saver.Write(reinterpret_cast<const char*>(this), sizeof(RP2A03state));
+	saver << *reinterpret_cast<RP2A03state*>(this);
 	assert(bufferPos == 0);
 }
 
 void RP2A03::LoadState(saver& saver) {
-	saver.Read(reinterpret_cast<char*>(this), sizeof(RP2A03state));
+	saver >> *reinterpret_cast<RP2A03state*>(this);
 	bufferPos = 0;
 }
 
