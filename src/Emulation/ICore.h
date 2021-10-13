@@ -13,6 +13,8 @@ struct MemoryDomain {
 
 class ICore {
   public:
+	virtual ~ICore() = default;
+
 	virtual std::string GetName() = 0;
 	virtual RenderImage* GetMainTexture() = 0;
 	virtual float GetPixelRatio() = 0;

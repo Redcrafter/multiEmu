@@ -8,26 +8,8 @@ Json& JsonBase::operator[](const size_t pos) { throw std::runtime_error("not all
 JsonBase::operator std::string() const { throw std::runtime_error("not allowed"); }
 
 JsonBase::operator double() const { throw std::runtime_error("not allowed"); }
-JsonBase::operator float() const { throw std::runtime_error("not allowed"); }
-
-JsonBase::operator uint64_t() const { throw std::runtime_error("not allowed"); }
-JsonBase::operator uint32_t() const { throw std::runtime_error("not allowed"); }
-JsonBase::operator uint16_t() const { throw std::runtime_error("not allowed"); }
-JsonBase::operator uint8_t() const { throw std::runtime_error("not allowed"); }
-
-JsonBase::operator int64_t() const { throw std::runtime_error("not allowed"); }
-JsonBase::operator int32_t() const { throw std::runtime_error("not allowed"); }
-JsonBase::operator int16_t() const { throw std::runtime_error("not allowed"); }
-JsonBase::operator int8_t() const { throw std::runtime_error("not allowed"); }
-
 JsonBase::operator bool() const { throw std::runtime_error("not allowed"); }
 
-
-
-JsonObject::JsonObject(const std::map<std::string, Json>& elements) : elements(elements) { }
-
-std::map<std::string, Json>::iterator JsonObject::begin() { return elements.begin(); }
-std::map<std::string, Json>::iterator JsonObject::end() { return elements.end(); }
 
 void JsonObject::print(std::ostream& stream) const {
 	stream << "{";
@@ -43,18 +25,6 @@ void JsonObject::print(std::ostream& stream) const {
 	stream << "}";
 }
 
-Json& JsonObject::operator[](const char* name) { return elements[std::string(name)]; }
-Json& JsonObject::operator[](const std::string& name) { return elements[name]; }
-
-JsonObject::operator bool() const { return true; }
-
-
-
-JsonArray::JsonArray(const std::vector<Json>& elements) : elements(elements) { }
-
-std::vector<Json>::iterator JsonArray::begin() { return elements.begin(); }
-std::vector<Json>::iterator JsonArray::end() { return elements.end(); }
-
 void JsonArray::print(std::ostream& stream) const {
 	stream << "[";
 	bool first = true;
@@ -68,14 +38,6 @@ void JsonArray::print(std::ostream& stream) const {
 	}
 	stream << "]";
 }
-
-Json& JsonArray::operator[](size_t pos) { return elements[pos]; }
-
-JsonArray::operator bool() const { return true; };
-
-
-
-JsonString::JsonString(const std::string& value) : value(value) { }
 
 void JsonString::print(std::ostream& stream) const {
 	stream << '"';
@@ -94,71 +56,16 @@ void JsonString::print(std::ostream& stream) const {
 	stream << '"';
 }
 
-JsonString::operator double() const { return std::stod(value); }
-JsonString::operator float() const { return std::stof(value); }
-
-JsonString::operator uint64_t() const { return std::stoull(value); }
-JsonString::operator uint32_t() const { return std::stoul(value); }
-JsonString::operator uint16_t() const { return std::stoul(value); }
-JsonString::operator uint8_t() const { return std::stoul(value); }
-
-JsonString::operator int64_t() const { return std::stoll(value); }
-JsonString::operator int32_t() const { return std::stoi(value); }
-JsonString::operator int16_t() const { return std::stoi(value); }
-JsonString::operator int8_t() const { return std::stoi(value); }
-
-JsonString::operator std::string() const { return value; }
-
-
-
-JsonNumber::JsonNumber(double value) : value(value) { }
-
 void JsonNumber::print(std::ostream& stream) const {
 	stream << value;
 }
-
-JsonNumber::operator double() const { return value; }
-JsonNumber::operator float() const { return value; }
-
-JsonNumber::operator uint64_t() const { return value; }
-JsonNumber::operator uint32_t() const { return value; }
-JsonNumber::operator uint16_t() const { return value; }
-JsonNumber::operator uint8_t() const { return value; }
-
-JsonNumber::operator int64_t() const { return value; }
-JsonNumber::operator int32_t() const { return value; }
-JsonNumber::operator int16_t() const { return value; }
-JsonNumber::operator int8_t() const { return value; }
-
-JsonNumber::operator bool() const { return value; }
-
-
-
-JsonBool::JsonBool(bool value) : value(value) { }
 
 void JsonBool::print(std::ostream& stream) const { 
 	stream << (value ? "true" : "false"); 
 }
 
-JsonBool::operator double() const { return value; }
-JsonBool::operator float() const { return value; }
-
-JsonBool::operator uint64_t() const { return value; }
-JsonBool::operator uint32_t() const { return value; }
-JsonBool::operator uint16_t() const { return value; }
-JsonBool::operator uint8_t() const { return value; }
-
-JsonBool::operator int64_t() const { return value; }
-JsonBool::operator int32_t() const { return value; }
-JsonBool::operator int16_t() const { return value; }
-JsonBool::operator int8_t() const { return value; }
-
-JsonBool::operator bool() const { return value; }
-
-
-
-static bool isNumber(char c) {
-	return c >= 48 && c <= 57;
+static bool isNumber(int c) {
+	return c >= '0' && c <= '9';
 }
 
 struct JsonParser {
@@ -168,7 +75,7 @@ struct JsonParser {
 	int line = 1;
 	int row = 1;
 
-	JsonParser(std::istream& str) : stream(str) {
+	explicit JsonParser(std::istream& str) : stream(str) {
 		currentChar = stream.get();
 		skipSpace();
 	}
@@ -303,7 +210,7 @@ struct JsonParser {
 				if(isNumber(currentChar)) {
 					int div = 10;
 					while(isNumber(currentChar)) {
-						num += (currentChar - 48) / div;
+						num += (currentChar - '0') / (double)div;
 						div *= 10;
 
 						acceptSingle();
@@ -328,14 +235,13 @@ struct JsonParser {
 		throw std::runtime_error(msg.c_str());
 	}
 	std::shared_ptr<JsonBool> parseBool() {
-		// todo: improve
 		bool val;
 		if(currentChar == 't') {
 			accept('t');
 			accept('r');
 			accept('u');
 			accept('e');
-			
+
 			val = true;
 		} else {
 			accept('f');
@@ -351,7 +257,6 @@ struct JsonParser {
 		return std::make_shared<JsonBool>(val);
 	}
 	std::shared_ptr<JsonBase> parseNull() {
-		// todo: improve
 		accept('n');
 		accept('u');
 		accept('l');

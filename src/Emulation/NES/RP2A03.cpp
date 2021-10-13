@@ -317,7 +317,7 @@ void RP2A03::Clock() {
 			case 29829:
 				ClockEnvelope();
 				ClockLength();
-				// break;
+				[[fallthrough]];
 			case 29828:
 			case 29830:
 				if(!IRQinhibit) {

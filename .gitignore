@@ -1,4 +1,5 @@
-test-roms/
+/settings.json
+/imgui.ini
 
 # Prerequisites
 *.d
@@ -39,3 +40,6 @@ test-roms/
 # Build folders
 cmake-build-debug/
 build/
+
+# vs code
+.vscode/

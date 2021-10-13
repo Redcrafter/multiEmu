@@ -22,7 +22,7 @@ class DisassemblerWindow {
 	bool open = false;
 
   public:
-	DisassemblerWindow(Chip8& chip8) : chip8(chip8) { }
+	DisassemblerWindow(Chip8& chip8) : chip8(chip8) {}
 
 	void Open();
 	void Update();

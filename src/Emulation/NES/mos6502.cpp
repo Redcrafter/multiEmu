@@ -150,7 +150,7 @@ void mos6502::LoadState(saver& saver) {
 }
 
 void mos6502::Clock() {
-	uint8_t fetched = 0;
+	uint8_t fetched;
 	#ifdef printDebug
 	static char instrStr[256] = "\0";
 	static int strPos = 0;
@@ -213,6 +213,7 @@ void mos6502::Clock() {
 						case Instructions::JSR:
 						case Instructions::BRK:
 							PC++;
+							[[fallthrough]];
 						case Instructions::NMI:
 						case Instructions::IRQ:
 						case Instructions::PHP:
@@ -297,21 +298,14 @@ void mos6502::Clock() {
 							Status.Z = Y == 0x00;
 							Status.N = Y & 0x80;
 							break;
-						case Instructions::SEC: Status.C = true;
-							break;
-						case Instructions::SED: Status.D = true;
-							break;
-						case Instructions::SEI: Status.I = true;
-							break;
-						case Instructions::CLC: Status.C = false;
-							break;
-						case Instructions::CLD: Status.D = false;
-							break;
-						case Instructions::CLI: Status.I = false;
-							break;
-						case Instructions::CLV: Status.V = false;
-							break;
-						case Instructions::NOP: break;
+						case Instructions::SEC: Status.C = true; break;
+						case Instructions::SED: Status.D = true; break;
+						case Instructions::SEI: Status.I = true; break;
+						case Instructions::CLC: Status.C = false; break;
+						case Instructions::CLD: Status.D = false; break;
+						case Instructions::CLI: Status.I = false; break;
+						case Instructions::CLV: Status.V = false; break;
+						default: break;
 					}
 					break;
 				case IMM:
@@ -417,7 +411,7 @@ void mos6502::Clock() {
 							Status.Z = A == 0;
 							Status.N = A & 0x80;
 							break;
-						case Instructions::NOP: break;
+						default: break;
 					}
 					state = State::FetchOpcode;
 					break;
@@ -437,22 +431,15 @@ void mos6502::Clock() {
 					PC++;
 					bool take = false;
 					switch(instruction.instruction) {
-						case Instructions::BPL: take = !Status.N;
-							break;
-						case Instructions::BMI: take = Status.N;
-							break;
-						case Instructions::BVC: take = !Status.V;
-							break;
-						case Instructions::BVS: take = Status.V;
-							break;
-						case Instructions::BCC: take = !Status.C;
-							break;
-						case Instructions::BCS: take = Status.C;
-							break;
-						case Instructions::BNE: take = !Status.Z;
-							break;
-						case Instructions::BEQ: take = Status.Z;
-							break;
+						case Instructions::BPL: take = !Status.N; break;
+						case Instructions::BMI: take =  Status.N; break;
+						case Instructions::BVC: take = !Status.V; break;
+						case Instructions::BVS: take =  Status.V; break;
+						case Instructions::BCC: take = !Status.C; break;
+						case Instructions::BCS: take =  Status.C; break;
+						case Instructions::BNE: take = !Status.Z; break;
+						case Instructions::BEQ: take =  Status.Z; break;
+						default: break;
 					}
 
 					if(take) {
@@ -494,6 +481,7 @@ void mos6502::Clock() {
 					addr_abs = (addr_abs + Y) & 0xFF;
 					state = InstructionType(instruction.instruction);
 					break;
+				default: break;
 			}
 			break;
 		case State::ReadPC:
@@ -557,6 +545,7 @@ void mos6502::Clock() {
 								state = InstructionType(instruction.instruction);
 								break;
 							}
+							[[fallthrough]];
 						default:
 							state = State::PageError;
 							break;
@@ -588,6 +577,7 @@ void mos6502::Clock() {
 								state = InstructionType(instruction.instruction);
 								break;
 							}
+							[[fallthrough]];
 						default:
 							state = State::PageError;
 							break;
@@ -597,6 +587,7 @@ void mos6502::Clock() {
 					ptr = addr_abs | (fetched << 8);
 					state = State::ReadAddrLo;
 					break;
+				default: break;
 			}
 
 			break;
@@ -634,6 +625,7 @@ void mos6502::Clock() {
 								state = InstructionType(instruction.instruction);
 								break;
 							}
+							[[fallthrough]];
 						default:
 							state = State::PageError;
 							break;
@@ -647,6 +639,7 @@ void mos6502::Clock() {
 					#endif
 					state = State::FetchOpcode;
 					break;
+				default: break;
 			}
 			break;
 		case State::ReadInstr:
@@ -921,6 +914,7 @@ void mos6502::Clock() {
 					break;
 				case Instructions::TAS:
 					SP = A & X; // IDK
+					[[fallthrough]];
 				case Instructions::AHX:
 					ptr = ((addr_abs - Y) & 0xFF00) | (addr_abs & 0xFF);
 
@@ -972,6 +966,7 @@ void mos6502::Clock() {
 					Status.B = false;
 					state = State::FetchOpcode;
 					break;
+				default: break;
 			}
 			break;
 		case State::StackShit2:
@@ -1009,12 +1004,14 @@ void mos6502::Clock() {
 					PushStack(PC >> 8);
 					state = State::StackShit3;
 					break;
+				default: break;
 			}
 			break;
 		case State::StackShit3:
 			switch(instruction.instruction) {
 				case Instructions::BRK:
 					Status.B = true;
+					[[fallthrough]];
 				case Instructions::IRQ:
 					if(NMI) {
 						goto nmi;
@@ -1039,6 +1036,7 @@ void mos6502::Clock() {
 				case Instructions::JSR:
 					PushStack(PC);
 					break;
+				default: break;
 			}
 			state = State::StackShit4;
 			break;
@@ -1067,6 +1065,7 @@ void mos6502::Clock() {
 					strPos += sprintf_s((instrStr + strPos), 27 - strPos, "$%04X", PC);
 					#endif
 					break;
+				default: break;
 			}
 			break;
 		case State::StackShit5:
@@ -1091,6 +1090,7 @@ void mos6502::Clock() {
 					addr_abs += Y;
 					state = InstructionType(instruction.instruction);
 					break;
+				default: break;
 			}
 			break;
 	}

@@ -10,6 +10,7 @@ class Mapper079 : public Mapper {
 
   public:
 	Mapper079(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr);
+	~Mapper079() override = default;
 
 	int cpuRead(uint16_t addr, uint8_t& data) override;
 	bool cpuWrite(uint16_t addr, uint8_t data) override;

@@ -17,6 +17,7 @@ class VRC6Mapper : public Mapper {
 
   public:
 	VRC6Mapper(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr, bool swap);
+	~VRC6Mapper() override = default;
 
 	int cpuRead(uint16_t addr, uint8_t& data) override;
 	bool cpuWrite(uint16_t addr, uint8_t data) override;

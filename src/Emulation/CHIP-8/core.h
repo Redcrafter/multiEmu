@@ -19,6 +19,7 @@ class Core : public ICore {
 
   public:
 	Core();
+	~Core() override = default;
 
 	std::string GetName() override {
 		return "Chip-8";

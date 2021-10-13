@@ -16,6 +16,7 @@ class MBC1 : public MBC {
 
   public:
 	MBC1(const std::vector<uint8_t>& rom, uint32_t ramSize) : MBC(rom, ramSize) {}
+	~MBC1() override = default;
 
 	uint8_t CpuRead(uint16_t addr) const override;
 	void CpuWrite(uint16_t addr, uint8_t val) override;

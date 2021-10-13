@@ -37,7 +37,7 @@ class Mapper004 : public Mapper {
 	// bool ramEnable;
   public:
 	Mapper004(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr);
-	~Mapper004();
+	~Mapper004() override;
 
 	int cpuRead(uint16_t addr, uint8_t& data) override;
 	bool cpuWrite(uint16_t addr, uint8_t data) override;

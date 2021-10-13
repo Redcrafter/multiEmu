@@ -11,7 +11,7 @@ class saver {
   public:
 	uint32_t readPos = 0;
 
-	saver() {}
+	saver() = default;
 	saver(const std::string& path);
 
 	void Save(const std::string& path);

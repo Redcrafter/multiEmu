@@ -48,8 +48,9 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 
 	switch(addr & 0xF000) {
 		case 0x0000:
+#if false
 			if(inBios) {
-				/*if(gbc) {
+				if(gbc) {
                     if(addr < sizeof(cgb_bios)) {
                         return cgb_bios[addr];
                     }
@@ -57,8 +58,9 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
                     if(addr < sizeof(dmg_boot)) {
                         return dmg_boot[addr];
                     }
-                }*/
+                }
 			}
+#endif
 		case 0x1000:
 		case 0x2000:
 		case 0x3000: // 0000-3FFF    16KB ROM Bank 00     (in cartridge, fixed at bank 00)

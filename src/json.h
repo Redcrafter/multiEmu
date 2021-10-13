@@ -12,135 +12,91 @@
 class Json;
 
 struct JsonBase {
+	virtual ~JsonBase() = default;
+
 	virtual void print(std::ostream& stream) const = 0;
 
 	virtual Json& operator[](const char* name);
 	virtual Json& operator[](const std::string& name);
-	virtual Json& operator[](const size_t pos);
+	virtual Json& operator[](size_t pos);
 
 	virtual operator std::string() const;
 
 	virtual operator double() const;
-	virtual operator float() const;
-
-	virtual operator uint64_t() const;
-	virtual operator uint32_t() const;
-	virtual operator uint16_t() const;
-	virtual operator uint8_t() const;
-
-	virtual operator int64_t() const;
-	virtual operator int32_t() const;
-	virtual operator int16_t() const;
-	virtual operator int8_t() const;
-
 	virtual operator bool() const;
 };
 
-struct JsonObject : public JsonBase {
+struct JsonObject final : public JsonBase {
 	std::map<std::string, Json> elements;
 
-	JsonObject(const std::map<std::string, Json>& elements);
+	JsonObject(const std::map<std::string, Json>& elements) : elements(elements) {}
+	~JsonObject() override = default;
 
-	std::map<std::string, Json>::iterator begin();
-	std::map<std::string, Json>::iterator end();
+	auto begin() { return elements.begin(); }
+	auto end() { return elements.end(); }
 
 	void print(std::ostream& stream) const override;
 
-	Json& operator[](const char* name) override;
-	Json& operator[](const std::string& name) override;
+	Json& operator[](const char* name) override { return elements[std::string(name)]; }
+	Json& operator[](const std::string& name) override { return elements[name]; }
 
-	operator bool() const override;
+	operator bool() const override { return true; }
 };
 
-struct JsonArray : public JsonBase {
+struct JsonArray final : public JsonBase {
 	std::vector<Json> elements;
 
-	JsonArray(const std::vector<Json>& elements);
+	JsonArray(const std::vector<Json>& elements) : elements(elements) {}
+	~JsonArray() override = default;
 
-	std::vector<Json>::iterator begin();
-	std::vector<Json>::iterator end();
+	auto begin() { return elements.begin(); }
+	auto end() { return elements.end(); }
 
 	void print(std::ostream& stream) const override;
 
-	Json& operator[](size_t pos) override;
+	Json& operator[](size_t pos) override { return elements[pos]; }
 
-	operator bool() const override;
+	operator bool() const override { return true; }
 };
 
 struct JsonString : public JsonBase {
 	const std::string value;
 
-	JsonString(const std::string& value);
+	JsonString(std::string value) : value(std::move(value)) {}
+	~JsonString() override = default;
 
 	void print(std::ostream& stream) const override;
 
-	operator double() const override;
-	operator float() const override;
-
-	operator uint64_t() const override;
-	operator uint32_t() const override;
-	operator uint16_t() const override;
-	operator uint8_t() const override;
-
-	operator int64_t() const override;
-	operator int32_t() const override;
-	operator int16_t() const override;
-	operator int8_t() const override;
-
-	operator std::string() const override;
+	operator std::string() const override { return value; }
 };
 
 struct JsonNumber : public JsonBase {
 	const double value;
 
-	JsonNumber(double value);
+	JsonNumber(double value) : value(value) {}
+	~JsonNumber() override = default;
 
 	void print(std::ostream& stream) const override;
 
-	operator double() const override;
-	operator float() const override;
-
-	operator uint64_t() const override;
-	operator uint32_t() const override;
-	operator uint16_t() const override;
-	operator uint8_t() const override;
-
-	operator int64_t() const override;
-	operator int32_t() const override;
-	operator int16_t() const override;
-	operator int8_t() const override;
-
-	operator bool() const override;
+	operator double() const override { return value; }
 };
 
 struct JsonBool : public JsonBase {
 	const bool value;
 
-	JsonBool(bool value);
+	JsonBool(bool value) : value(value) {}
+	~JsonBool() override = default;
 
 	void print(std::ostream& stream) const override;
 
-	operator double() const override;
-	operator float() const override;
-
-	operator uint64_t() const override;
-	operator uint32_t() const override;
-	operator uint16_t() const override;
-	operator uint8_t() const override;
-
-	operator int64_t() const override;
-	operator int32_t() const override;
-	operator int16_t() const override;
-	operator int8_t() const override;
-
-	operator bool() const override;
+	operator bool() const override { return value; }
 };
 
 class Json {
 	std::shared_ptr<JsonBase> root = nullptr;
 
   public:
-	Json() {}
+	Json() = default;
 
 	template<typename T>
 	Json(std::vector<T> val) {
@@ -174,7 +130,7 @@ class Json {
 				std::vector<Json> sub;
 				sub.push_back(item.first);
 				sub.push_back(item.second);
-				elements.push_back(sub);
+				elements.emplace_back(sub);
 			}
 			root = std::make_shared<JsonArray>(elements);
 		}
@@ -254,7 +210,7 @@ class Json {
 	template<typename T>
 	bool tryGet(T& out) noexcept {
 		// too lazy to make a function for each arithmetic type
-		static_assert(std::is_arithmetic<T>::value);
+		static_assert(std::is_arithmetic_v<T>);
 		if(auto ref = dynamic_cast<JsonNumber*>(root.get())) {
 			out = ref->value;
 			return true;
@@ -293,10 +249,7 @@ class Json {
 	}
 
 	operator std::string() const { return *root; }
-
 	operator double() const { return *root; }
-	operator int() const { return *root; }
-	operator uint64_t() const { return *root; }
 	operator bool() const { return *root; }
 
 	friend std::ostream& operator<<(std::ostream& stream, const Json& json);

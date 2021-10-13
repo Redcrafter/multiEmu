@@ -23,6 +23,7 @@ class Core : public ICore {
 	std::string currentFile;
 public:
 	Core();
+	~Core() override = default;
 
 	std::string GetName() override {
 		return "NES";

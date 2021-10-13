@@ -1,8 +1,6 @@
 #include "sha1.h"
 
 #include <cassert>
-#include <istream>
-#include <stdexcept>
 
 #include "hexHelper.h"
 

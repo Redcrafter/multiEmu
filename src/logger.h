@@ -15,7 +15,7 @@ struct Logger {
 	bool Show = false;
 	ImGuiTextBuffer Buf;
 	ImGuiTextFilter Filter;
-	ImVector<int> LineOffsets; // Index to lines offset. We maintain this with AddLog() calls, allowing us to have a random access on lines
+	ImVector<int> LineOffsets; // Index to line offset. We maintain this with AddLog() calls, allowing us to have random access on lines
 	bool AutoScroll;		   // Keep scrolling if already at the bottom
 
 	std::vector<ScreenLogItem> logItems;

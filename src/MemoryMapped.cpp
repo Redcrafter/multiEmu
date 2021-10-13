@@ -42,8 +42,6 @@ MemoryMapped::~MemoryMapped() {
 #else // Linux
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
-// #include <sys/types.h>
 #include <unistd.h>
 
 #include "fs.h"
@@ -70,7 +68,7 @@ MemoryMapped::MemoryMapped(const std::string& filePath, size_t size) {
 	map = (uint8_t*)mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, file, 0);
 	close(file);
 	if(map == MAP_FAILED) {
-		throw std::runtime_error("Error mmapping the file");
+		throw std::runtime_error("Error memory mapping the file");
 	}
 }
 

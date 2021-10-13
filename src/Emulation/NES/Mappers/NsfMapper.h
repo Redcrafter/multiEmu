@@ -117,6 +117,7 @@ private:
 public:
 	NsfMapper(const std::string& path);
 	// NsfMapper(const NsfFormat header);
+	~NsfMapper() override = default;
 
 	int cpuRead(uint16_t addr, uint8_t& data) override;
 	bool cpuWrite(uint16_t addr, uint8_t data) override;

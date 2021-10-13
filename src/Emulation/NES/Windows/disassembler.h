@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "../../NES/mos6502.h"
@@ -36,8 +37,7 @@ class DisassemblerWindow {
 	bool open = false;
 
   public:
-	DisassemblerWindow(std::string title)
-		: title(title) {}
+	DisassemblerWindow(std::string title): title(std::move(title)) {}
 
 	void Open(const std::vector<uint8_t>& data);
 	// void Load(const std::vector<uint8_t>& data);

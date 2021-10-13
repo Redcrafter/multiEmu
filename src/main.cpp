@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <array>
 #include <deque>
-#include <fstream>
 #include <thread>
 
 #include <GLFW/glfw3.h>

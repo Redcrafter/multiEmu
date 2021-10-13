@@ -1,6 +1,5 @@
 #include "RenderImage.h"
 
-#include <cstring>
 #include <stdexcept>
 
 RenderImage::RenderImage(const int width, const int height) {
@@ -8,11 +7,10 @@ RenderImage::RenderImage(const int width, const int height) {
 	Width = width;
 	Height = height;
 
-	imgData = new Color[width * height];
-	memset(imgData, 0, width * height * sizeof(Color));
+	imgData.resize(width * height);
 
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Width, Height, 0, GL_RGB, GL_UNSIGNED_BYTE, imgData);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, Width, Height, 0, GL_RGB, GL_UNSIGNED_BYTE, imgData.data());
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -20,7 +18,6 @@ RenderImage::RenderImage(const int width, const int height) {
 
 RenderImage::~RenderImage() {
 	glDeleteTextures(1, &textureID);
-	delete[] imgData;
 }
 
 int RenderImage::GetWidth() {
@@ -67,5 +64,5 @@ void RenderImage::Line(int x0, int y0, int x1, int y1, Color col) {
 
 void RenderImage::BufferImage() {
 	glBindTexture(GL_TEXTURE_2D, textureID);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_RGB, GL_UNSIGNED_BYTE, imgData);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_RGB, GL_UNSIGNED_BYTE, imgData.data());
 }

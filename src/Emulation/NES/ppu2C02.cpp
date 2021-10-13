@@ -461,7 +461,7 @@ void ppu2C02::Clock() {
 
 		if(spriteZeroPossible && spriteZeroBeingRendered &&
 			Mask.renderBackground && Mask.renderSprites &&
-			((Mask.backgroundLeft && Mask.spriteLeft || scanlineX >= 9) && scanlineX < 256)) {
+			(((Mask.backgroundLeft && Mask.spriteLeft) || scanlineX >= 9) && scanlineX < 256)) {
 			// ScanlineX >= 2
 			Status.sprite0Hit = true;
 		}

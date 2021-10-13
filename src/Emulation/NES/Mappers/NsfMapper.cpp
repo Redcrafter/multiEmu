@@ -92,7 +92,7 @@ NsfMapper::NsfMapper(const std::string& path)
 }
 
 int NsfMapper::cpuRead(uint16_t addr, uint8_t& data) {
-	if(addr >= NMI_VECTOR && addr - NMI_VECTOR <= sizeof(NSFROM)) {
+	if(NMI_VECTOR <= addr && addr <= NMI_VECTOR + sizeof(NSFROM)) {
 		data = NSFROM[addr - NMI_VECTOR];
 		return true;
 	}

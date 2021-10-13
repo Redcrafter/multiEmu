@@ -25,11 +25,12 @@ elseif(APPLE)
 
     set(LIBS pthread "-framework OpenGL") # -framework Cocoa
 elseif(UNIX)
-    # auto detect alsa installation
+    # auto detect installation
     find_package(ALSA QUIET)
+    find_package(PulseAudio QUIET)
 
-    option(alsa "ALSA" ALSA_FOUND)
-    option(pulse "PulseAudio" OFF)
+    option(alsa "ALSA" ${ALSA_FOUND})
+    option(pulse "PulseAudio" ${PulseAudio_FOUND})
     option(oss "OSS" OFF)
     option(jack "Jack Audio Server" OFF)
 
@@ -52,7 +53,7 @@ endif()
 if(alsa)
     add_definitions(-D__LINUX_ALSA__)
     find_package(ALSA REQUIRED)
-    
+
     list(APPEND INCLUDES ${ALSA_INCLUDE_DIRS})
     list(APPEND LIBS ${ALSA_LIBRARIES})
 endif()
@@ -84,6 +85,8 @@ if(core)
 endif()
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(extern/glfw)
 
 file(GLOB_RECURSE Common_sources 

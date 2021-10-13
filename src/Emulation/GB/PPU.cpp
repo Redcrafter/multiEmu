@@ -216,7 +216,7 @@ void PPU::DrawSprites() {
 		auto pal = s.gbPalletNumber ? OBP1 : OBP0;
 
 		// address of used tile. aligned to even space when 8x16
-		int addr = (s.Number & ~Control.spriteSize) << 4;
+		int addr = (s.Number & ~(int)Control.spriteSize) << 4;
 		if(s.verticalFlip) {
 			addr |= (spriteSize - 1 - y) << 1;
 		} else {

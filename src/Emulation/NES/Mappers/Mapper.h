@@ -36,6 +36,7 @@ class Mapper {
 		chrMask = this->chr.size() - 1;
 	};
 	Mapper(const Mapper&) = delete;
+	virtual ~Mapper() = default;
 
 	virtual int cpuRead(uint16_t addr, uint8_t& data) = 0; // TODO: bool readOnly
 	virtual bool cpuWrite(uint16_t addr, uint8_t data) { return false; };

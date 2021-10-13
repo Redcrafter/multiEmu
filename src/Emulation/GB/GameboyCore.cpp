@@ -57,7 +57,7 @@ std::vector<MemoryDomain> GameboyColorCore::GetMemoryDomains() {
 void GameboyColorCore::WriteMemory(int domain, size_t address, uint8_t val) {
 	switch(domain) {
 		case CpuRam: ((uint8_t*)&gameboy.ram)[address] = val; break;
-		case Hram: gameboy.hram[address]; break;
+		case Hram: gameboy.hram[address] = val; break;
 		case CpuBus: gameboy.CpuWrite(address, val); break;
 		case VRam: ((uint8_t*)&gameboy.ppu.VRAM)[address] = val; break;
 		case Oam: gameboy.ppu.OAM[address] = val; break;
@@ -81,14 +81,14 @@ uint8_t GameboyColorCore::ReadMemory(int domain, size_t address) {
 void GameboyColorCore::LoadRom(const std::string& path) {
 	auto data = readFile(path);
 
-	for(int i = 0; i < sizeof(logo); i++) {
+	for(size_t i = 0; i < sizeof(logo); i++) {
 		if(data[0x0104 + i] != logo[i]) {
 			throw std::runtime_error("Not a gameboy game");
 		}
 	}
 
-	uint8_t cgbFlag = data[0x143];
-	/*if(cgbFlag == 0x80) {
+	/*uint8_t cgbFlag = data[0x143];
+	if(cgbFlag == 0x80) {
         // Game supports CGB functions, but works on old gameboys also.
         gameboy.gbc = true;
     } else if(cgbFlag == 0xC0) {

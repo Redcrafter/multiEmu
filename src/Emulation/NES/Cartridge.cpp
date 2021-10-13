@@ -55,10 +55,6 @@ static void InsertCart(std::string& name, Json& obj) {
 
 	if(auto arr = board["prg"].asArray()) {
 		for(auto& entry : *arr) {
-			std::string n = name;
-			if(entry.contains("@name")) {
-				n = (std::string)entry["@name"];
-			}
 			sha1 hash = sha1::FromString(entry["@sha1"]);
 
 			dbItem item {name, (uint16_t)mapper, hash};

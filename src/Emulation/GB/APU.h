@@ -186,7 +186,7 @@ struct Wave : Length {
 		// TODO: not channelEnabled?
 		if(dacEnabled && channelEnabled) {
 			auto sample = (waveRam[wavePos / 2] >> (wavePos & 1 ? 4 : 0)) & 0xF;
-			int volumeShift;
+			int volumeShift = 0;
 			switch(outputLevel) {
 				case 0: volumeShift = 4; break;
 				case 1: volumeShift = 0; break;
@@ -216,21 +216,17 @@ struct Noise : Envelope, Length {
 		if(freqTimer == 0) {
 			freqTimer = (divider == 0 ? 8 : divider << 4) << shiftClock;
 
-			auto xorResult = (lfsr & 1) ^ ((lfsr & 2) >> 1);
-
-			lfsr = (lfsr >> 1) | (xorResult << 14);
-
-			if(counterStep) {
-				lfsr &= !(1 << 6);
-				lfsr |= xorResult << 6;
-			}
+			auto mask = counterStep ? 0x4040 : 0x4000;
+			auto newHigh = (lfsr ^ (lfsr >> 1)) & 1;
+			lfsr >>= 1;
+			lfsr = newHigh ? lfsr | mask : lfsr & ~mask;
 		}
 		freqTimer--;
 	}
 
 	float output() {
 		if(dacEnabled && channelEnabled) {
-			return ((!(lfsr & 1)) * envVolume) / 7.5 - 1;
+			return ((!(lfsr & 1)) * envVolume) / 7.5f - 1;
 		}
 		return 0;
 	}
@@ -238,16 +234,16 @@ struct Noise : Envelope, Length {
 
 class APU {
   private:
-	bool enabled = true;
+	bool enabled;
 
 	Square1 ch1;
 	Square2 ch2;
 	Wave ch3;
 	Noise ch4;
 
-	uint16_t cycles = 0;
-	uint16_t fsStep = 0;
-	uint16_t sampleCounter = 0;
+	uint16_t cycles;
+	uint16_t fsStep;
+	uint16_t sampleCounter;
 
 	uint8_t nr50;
 	uint8_t nr51;
@@ -514,6 +510,8 @@ class APU {
 	void reset() {
 		enabled = true;
 		cycles = 0;
+		fsStep = 0;
+		sampleCounter = 0;
 
 		write(0xFF10, 0x80);
 		write(0xFF11, 0xBF);

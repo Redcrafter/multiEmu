@@ -13,7 +13,7 @@ class sha1 {
 	};
 
   public:
-	sha1() {};
+	sha1() = default;
 	sha1(const std::string& str);
 	sha1(const char* data, uint64_t length);
 

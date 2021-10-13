@@ -11,7 +11,7 @@ InputMapper::InputMapper(const std::string& name, const std::vector<InputItem>& 
 	this->name = name;
 	items = elements;
 
-	for(auto item : items) {
+	for(auto&& item : items) {
 		if(item.Default.Reg != 0) {
 			keyMap[item.Id] = item.Default;
 		}
@@ -80,7 +80,7 @@ bool InputMapper::ShowEditWindow() {
 		}
 		text += "###" + std::to_string(i);
 
-		if(ImGui::Selectable(text.c_str(), i == selected)) {
+		if(ImGui::Selectable(text.c_str(), (int)i == selected)) {
 			selected = i;
 		}
 	}
@@ -117,9 +117,7 @@ void OnKey(int key, int scancode, int action, int mods) {
 		return;
 	}
 
-	Key k;
-	k.Info.key = key;
-	k.Info.mods = mods;
+	Key k { { key, mods } };
 
 	// TODO: somehow get keys from other viewports
 	if(currentMapper.selected != -1) {

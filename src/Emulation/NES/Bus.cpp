@@ -124,9 +124,6 @@ void Bus::CpuWrite(uint16_t addr, uint8_t data) {
 		if(controller2 != nullptr) {
 			controller2->CpuWrite(addr, data);
 		}
-	} else if(addr == 0x4017) {
-		// last4017 = 0;
-		apu.CpuWrite(addr, data);
 	} else {
 		apu.CpuWrite(addr, data);
 	}

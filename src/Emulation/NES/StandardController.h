@@ -12,6 +12,7 @@ class StandardController : public Controller {
 
   public:
 	StandardController(int number);
+	~StandardController() override = default;
 
 	void CpuWrite(uint16_t addr, uint8_t data) override;
 	uint8_t CpuRead(uint16_t addr, bool readOnly) override;

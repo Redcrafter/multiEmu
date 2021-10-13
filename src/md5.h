@@ -12,7 +12,7 @@ class md5 {
 	};
 
   public:
-	md5() {};
+	md5() = default;
 	md5(const std::string& str);
 	md5(const char* data, uint64_t length);
 	md5(std::istream& stream);

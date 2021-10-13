@@ -4,7 +4,7 @@
 
 namespace Gameboy {
 
-class GameboyColorCore : public ICore {
+class GameboyColorCore final : public ICore {
   private:
 	RenderImage texture;
 
@@ -13,6 +13,7 @@ class GameboyColorCore : public ICore {
 
   public:
 	GameboyColorCore();
+	~GameboyColorCore() override = default;
 
 	std::string GetName() override { return "GBC"; }
 	RenderImage* GetMainTexture() override { return &texture; }
@@ -30,7 +31,7 @@ class GameboyColorCore : public ICore {
 	void SaveState(saver& saver) override {}
 	void LoadState(saver& saver) override {}
 
-	void LoadRom(const std::string& path);
+	void LoadRom(const std::string& path) override;
 
 	void Reset() override;
 	void HardReset() override {

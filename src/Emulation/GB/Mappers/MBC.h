@@ -26,6 +26,7 @@ class MBC {
 		romMask = rom.size() - 1;
 		ramMask = ramSize - 1;
 	}
+	virtual ~MBC() = default;
 
 	uint8_t Bank0(uint16_t addr) const {
 		return rom[addr];

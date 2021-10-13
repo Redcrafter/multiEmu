@@ -183,11 +183,10 @@ void DisassemblerWindow::DrawWindow() {
 		}
 
 		ImGui::Text("PC = %04X  I: %04X", chip8.PC, chip8.I);
-		for (size_t i = 0; i < 16; i++) {
+		for (int i = 0; i < 16; i++) {
 			if(i > 0 && i != 8) ImGui::SameLine();
 			ImGui::Text("V%X: %02X", i, chip8.V[i]);
 		}
-		
 
 		ImGui::BeginChild("##tableScroll");
 

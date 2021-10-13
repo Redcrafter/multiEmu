@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <vector>
 
 #include <GLFW/glfw3.h>
 
@@ -11,7 +12,7 @@ class RenderImage {
   private:
 	GLuint textureID;
 	int Width, Height;
-	Color* imgData;
+	std::vector<Color> imgData;
 
   public:
 	RenderImage(int width, int height);

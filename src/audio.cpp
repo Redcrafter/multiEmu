@@ -44,7 +44,7 @@ static std::array<sample, bufferSize> buffer;
 static sample lastSample { 0, 0 };
 
 // used to prevent unnecessary resize of inBuffer
-static int pushPos;
+static size_t pushPos;
 // samples added by PushSample
 static std::vector<sample> inBuffer;
 

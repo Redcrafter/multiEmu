@@ -34,7 +34,7 @@ struct InputMapper {
 	int selected = -1;
 	bool changed = false;
 
-	InputMapper() {};
+	InputMapper() = default;
 
 	InputMapper(const std::string& name, const std::vector<InputItem>& elements);
 

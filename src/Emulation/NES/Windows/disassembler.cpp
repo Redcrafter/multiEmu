@@ -43,9 +43,8 @@ static bool isIllegal(uint8_t opCode, const opcode& instr) {
 		case SHX:
 			return true;
 		case NOP: return opCode != 0xEA;
+		default: return false;
 	}
-
-	return false;
 }
 
 void assertBreak(bool expression) {

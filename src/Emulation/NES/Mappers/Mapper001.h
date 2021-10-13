@@ -23,7 +23,7 @@ class Mapper001 : public Mapper {
 
   public:
 	Mapper001(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr);
-	~Mapper001();
+	~Mapper001() override;
 
 	int cpuRead(uint16_t addr, uint8_t& data) override;
 	bool cpuWrite(uint16_t addr, uint8_t data) override;

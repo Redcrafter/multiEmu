@@ -16,6 +16,7 @@ class TasController : public Controller {
 
   public:
 	TasController(std::vector<uint8_t> inputs);
+	~TasController() override = default;
 
 	void CpuWrite(uint16_t addr, uint8_t data) override;
 	uint8_t CpuRead(uint16_t addr, bool readOnly) override;

@@ -482,8 +482,8 @@ void LR35902::Clock() {
 			auto temp = RightReg(opcode);
 			auto c = F.C;
 
-			F.H = ((A & 0xF) - ((temp & 0xF) + c) & 0x10) != 0;
-			F.C = (A - (temp + c) & 0x100) != 0;
+			F.H = (A & 0xF) < (temp & 0xF) + c;
+			F.C = A - (temp + c) > 0xFF;
 			A -= temp + c;
 
 			F.Z = A == 0;
@@ -561,8 +561,8 @@ void LR35902::Clock() {
 			auto c = F.C;
 			cycles = 2;
 
-			F.H = ((A & 0xF) - ((temp & 0xF) + c) & 0x10) != 0;
-			F.C = (A - (temp + c) & 0x100) != 0;
+			F.H = (A & 0xF) < (temp & 0xF) + c;
+			F.C = A - (temp + c) > 0xFF;
 			A -= temp + c;
 
 			F.Z = A == 0;
@@ -785,4 +785,4 @@ void LR35902::Prefix() {
 	}
 }
 
-};
+}
