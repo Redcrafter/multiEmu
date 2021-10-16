@@ -64,12 +64,12 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 		case 0x1000:
 		case 0x2000:
 		case 0x3000: // 0000-3FFF    16KB ROM Bank 00     (in cartridge, fixed at bank 00)
-			return mbc->Bank0(addr);
+			return mbc->Read0(addr);
 		case 0x4000:
 		case 0x5000:
 		case 0x6000:
 		case 0x7000: // 4000-7FFF    16KB ROM Bank 01..NN (in cartridge, switchable bank number)
-			return mbc->CpuRead(addr);
+			return mbc->Read4(addr);
 		case 0x8000:
 		case 0x9000: // 8000-9FFF    8KB Video RAM (VRAM) (switchable bank 0-1 in CGB Mode)
 			if(ppu.STAT.modeFlag != 3) {
@@ -80,7 +80,7 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 			}
 		case 0xA000:
 		case 0xB000: // A000-BFFF    8KB External RAM     (in cartridge, switchable bank, if any)
-			return mbc->CpuRead(addr);
+			return mbc->ReadA(addr);
 		case 0xC000: // C000-CFFF    4KB Work RAM Bank 0 (WRAM)
 			return ram[0][addr & 0xFFF];
 		case 0xD000: // D000-DFFF    4KB Work RAM Bank 1 (WRAM)  (switchable bank 1-7 in CGB Mode)
@@ -164,13 +164,17 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 		case 0x1000:
 		case 0x2000:
 		case 0x3000: // 0000-3FFF    16KB ROM Bank 00     (in cartridge, fixed at bank 00)
+			mbc->Write0(addr, val);
+			break;
 		case 0x4000:
 		case 0x5000:
 		case 0x6000:
 		case 0x7000: // 4000-7FFF    16KB ROM Bank 01..NN (in cartridge, switchable bank number)
+			mbc->Write4(addr, val);
+			break;
 		case 0xA000:
 		case 0xB000: // A000-BFFF    8KB External RAM     (in cartridge, switchable bank, if any)
-			mbc->CpuWrite(addr, val);
+			mbc->WriteA(addr, val);
 			break;
 		case 0x8000:
 		case 0x9000: // 8000-9FFF    8KB Video RAM (VRAM) (switchable bank 0-1 in CGB Mode)
@@ -220,43 +224,13 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 					case 0xFF06: TMA = val; break;
 					case 0xFF07: TAC = val; break;
 					case 0xFF0F: InterruptFlag = val & 0x1F; break;
-					case 0xFF10:
-					case 0xFF11:
-					case 0xFF12:
-					case 0xFF13:
-					case 0xFF14: // Sound Channel 1:
-					case 0xFF16:
-					case 0xFF17:
-					case 0xFF18:
-					case 0xFF19: // Sound Channel 2:
-					case 0xFF1A:
-					case 0xFF1B:
-					case 0xFF1C:
-					case 0xFF1D:
-					case 0xFF1E: // Sound Channel 3:
-					case 0xFF20:
-					case 0xFF21:
-					case 0xFF22:
-					case 0xFF23: // Sound Channel 4:
-					case 0xFF24:
-					case 0xFF25:
-					case 0xFF26: // Sound Control:
-					case 0xFF30:
-					case 0xFF31:
-					case 0xFF32:
-					case 0xFF33:
-					case 0xFF34:
-					case 0xFF35:
-					case 0xFF36:
-					case 0xFF37: // FF30-FF3F Wave Pattern RAM
-					case 0xFF38:
-					case 0xFF39:
-					case 0xFF3A:
-					case 0xFF3B:
-					case 0xFF3C:
-					case 0xFF3D:
-					case 0xFF3E:
-					case 0xFF3F:
+					case 0xFF10: case 0xFF11: case 0xFF12: case 0xFF13: case 0xFF14: // Sound Channel 1:
+					case 0xFF16: case 0xFF17: case 0xFF18: case 0xFF19: // Sound Channel 2:
+					case 0xFF1A: case 0xFF1B: case 0xFF1C: case 0xFF1D: case 0xFF1E: // Sound Channel 3:
+					case 0xFF20: case 0xFF21: case 0xFF22: case 0xFF23: // Sound Channel 4:
+					case 0xFF24: case 0xFF25: case 0xFF26: // Sound Control:
+					case 0xFF30: case 0xFF31: case 0xFF32: case 0xFF33: case 0xFF34: case 0xFF35: case 0xFF36: case 0xFF37: // FF30-FF3F Wave Pattern RAM
+					case 0xFF38: case 0xFF39: case 0xFF3A: case 0xFF3B: case 0xFF3C: case 0xFF3D: case 0xFF3E: case 0xFF3F:
 						apu.write(addr, val);
 						break;
 					case 0xFF40: ppu.Control.reg = val; break;

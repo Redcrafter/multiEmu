@@ -6,15 +6,12 @@
 #include "../../Input.h"
 
 #include "Mappers/MBC1.h"
+#include "Mappers/MBC2.h"
+#include "Mappers/MBC3.h"
+#include "Mappers/MBC5.h"
 #include "Mappers/NoMBC.h"
 
 namespace Gameboy {
-
-static const uint8_t logo[] = {
-	0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D,
-	0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E, 0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99,
-	0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E
-};
 
 static std::vector<uint8_t> readFile(const std::string& path) {
 	std::ifstream input(path, std::ios::binary);
@@ -81,10 +78,8 @@ uint8_t GameboyColorCore::ReadMemory(int domain, size_t address) {
 void GameboyColorCore::LoadRom(const std::string& path) {
 	auto data = readFile(path);
 
-	for(size_t i = 0; i < sizeof(logo); i++) {
-		if(data[0x0104 + i] != logo[i]) {
-			throw std::runtime_error("Not a gameboy game");
-		}
+	if(!checkLogo(&data[0x0104])) {
+		throw std::runtime_error("Not a gameboy game");
 	}
 
 	/*uint8_t cgbFlag = data[0x143];
@@ -105,7 +100,7 @@ void GameboyColorCore::LoadRom(const std::string& path) {
 	}
 	uint8_t cartType = data[0x0147];
 	uint32_t romSize = data[0x0148];
-	if(romSize < 8) {
+	if(romSize < 9) {
 		romSize = 0x8000 << romSize;
 	} else {
 		throw std::runtime_error("Invalid rom size");
@@ -147,41 +142,28 @@ void GameboyColorCore::LoadRom(const std::string& path) {
 	romHash = md5((char*)data.data(), data.size());
 
 	switch(cartType) {
-		case 0:
-			assert(ramSize == 0);
-			gameboy.mbc = std::make_unique<NoMBC>(data, ramSize);
-			gameboy.mbc->hasRam = false;
-			gameboy.mbc->hasBattery = false;
-			break;
-		case 1:
-			assert(ramSize == 0);
-			gameboy.mbc = std::make_unique<MBC1>(data, ramSize);
-			gameboy.mbc->hasRam = false;
-			gameboy.mbc->hasBattery = false;
-			break;
-		case 2:
-			gameboy.mbc = std::make_unique<MBC1>(data, ramSize);
-			gameboy.mbc->hasRam = ramSize != 0;
-			gameboy.mbc->hasBattery = false;
-			break;
-		case 3:
-			assert(ramSize != 0);
-			gameboy.mbc = std::make_unique<MBC1>(data, ramSize);
-			gameboy.mbc->hasRam = true;
-			gameboy.mbc->hasBattery = true;
-			break;
-		case 8:
-			assert(ramSize != 0);
-			gameboy.mbc = std::make_unique<NoMBC>(data, ramSize);
-			gameboy.mbc->hasRam = true;
-			gameboy.mbc->hasBattery = false;
-			break;
-		case 9:
-			assert(ramSize != 0);
-			gameboy.mbc = std::make_unique<NoMBC>(data, ramSize);
-			gameboy.mbc->hasRam = true;
-			gameboy.mbc->hasBattery = true;
-			break;
+		case 0x0: assert(ramSize == 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, false); break;
+		case 0x1: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC1>(data, ramSize, false); break;
+		case 0x2: gameboy.mbc = std::make_unique<MBC1>(data, ramSize, false); break;
+		case 0x3: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC1>(data, ramSize, true); break;
+		case 0x5: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC2>(data, false); break;
+		case 0x6: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC2>(data, true); break;
+		case 0x8: assert(ramSize != 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, false); break;
+		case 0x9: assert(ramSize != 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, true); break;
+		/* TODO: mbc3 timer
+		case 0x0F: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, true, true); break;
+		case 0x10: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, true, true); break; */
+		case 0x11: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, false, false); break;
+		case 0x12: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, false, false); break;
+		case 0x13: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, true, false); break;
+
+		case 0x19: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, false, false); break;
+		case 0x1A: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, false, false); break;
+		case 0x1B: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, true, false); break;
+		case 0x1C: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, false, true); break;
+		case 0x1D: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, false, true); break;
+		case 0x1E: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, true, true); break;
+		default: throw std::runtime_error("unknown mbc");
 	}
 
 	gameboy.Reset();
