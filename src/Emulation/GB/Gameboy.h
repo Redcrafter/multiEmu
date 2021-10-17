@@ -20,6 +20,7 @@ enum class Interrupt {
 
 class Gameboy {
 	friend class GameboyColorCore;
+	friend class GbsMBC;
 	friend class LR35902;
 
   private:

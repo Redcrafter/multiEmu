@@ -35,6 +35,7 @@ class MBC {
 	bool hasBattery;
 
   public:
+	MBC() {};
 	MBC(const std::vector<uint8_t>& rom, uint32_t ramSize, bool hasBattery) : rom(rom), hasBattery(hasBattery) {
 		ram.resize(ramSize);
 		// should be something like 0x1000 - 1 = 0xFFF

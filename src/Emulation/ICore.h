@@ -1,6 +1,10 @@
 #pragma once
 #include <string>
 
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include <imgui.h>
+#include <imgui_internal.h>
+
 #include "../RenderImage.h"
 #include "../md5.h"
 #include "../saver.h"
@@ -27,6 +31,28 @@ class ICore {
 
 	virtual void DrawMenuBar(bool& menuOpen) = 0;
 	virtual void DrawWindows() = 0;
+
+	virtual void DrawMainWindow() {
+		auto windowSize = ImGui::GetWindowSize();
+		auto texture = GetMainTexture();
+
+		auto width = texture->GetWidth();
+		auto height = texture->GetHeight();
+
+		auto ratio = height / (width * GetPixelRatio());
+
+		auto size = ImGui::GetWindowSize();
+		if(size.x * ratio < size.y) {
+			size.y = size.x * ratio;
+		} else {
+			size.x = size.y * (1 / ratio);
+		}
+
+		ImGui::SetCursorPos((windowSize - size) * 0.5);
+
+		texture->BufferImage();
+		ImGui::Image(reinterpret_cast<void*>(texture->GetTextureId()), size);
+	}
 
 	virtual void SaveState(saver& saver) = 0;
 	virtual void LoadState(saver& saver) = 0;

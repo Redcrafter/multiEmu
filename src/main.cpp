@@ -241,7 +241,7 @@ static void OpenFile(const std::string& path) {
 		LoadCore<Nes::Core>(path);
 	} else if(ext == ".ch8") {
 		LoadCore<Chip8::Core>(path);
-	} else if(ext == ".gb" || ext == ".gbc") {
+	} else if(ext == ".gb" || ext == ".gbc" || ext == ".gbs") {
 		LoadCore<Gameboy::GameboyColorCore>(path);
 	} else {
 		emulatorPicker.Open(path);
@@ -461,7 +461,7 @@ static void drawGui() {
 					{ "Rom Files", { "nes", "nsf", "ch8" } },
 					{ "NES", { "nes", "nsf" } },
 					{ "CHIP-8", { "ch8" } },
-					{ "Gameboy", { "gb", "gbc" } }
+					{ "Gameboy", { "gb", "gbc", "gbs" } }
 					}, nullptr, outPath, window);
 
 				if(res == NFD::Result::Okay) {
@@ -619,26 +619,8 @@ static void drawGui() {
 	}
 	lastDock = settings.UseDockingWindow;
 
-	auto windowSize = ImGui::GetWindowSize();
 	if(emulationCore) {
-		auto texture = emulationCore->GetMainTexture();
-
-		auto width = texture->GetWidth();
-		auto height = texture->GetHeight();
-
-		auto ratio = height / (width * emulationCore->GetPixelRatio());
-
-		auto size = ImGui::GetWindowSize();
-		if(size.x * ratio < size.y) {
-			size.y = size.x * ratio;
-		} else {
-			size.x = size.y * (1 / ratio);
-		}
-
-		ImGui::SetCursorPos((windowSize - size) * 0.5);
-
-		texture->BufferImage();
-		ImGui::Image(reinterpret_cast<void*>(texture->GetTextureId()), size);
+		emulationCore->DrawMainWindow();
 	}
 	logger.DrawScreen();
 	ImGui::End();
@@ -756,6 +738,11 @@ int main() {
 
 		if(running && emulationCore != nullptr) {
 			emulationCore->Update();
+			if(speedUp) {
+				for (size_t i = 1; i < 5; i++) {
+					emulationCore->Update();
+				}
+			}
 			Audio::Resample();
 		}
 		drawGui();

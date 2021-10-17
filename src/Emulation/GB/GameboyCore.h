@@ -11,6 +11,9 @@ class GameboyColorCore final : public ICore {
 	md5 romHash;
 	Gameboy gameboy;
 
+	int currentTrack = -1;
+	int selectedTrack = -1;
+
   public:
 	GameboyColorCore();
 	~GameboyColorCore() override = default;
@@ -27,6 +30,7 @@ class GameboyColorCore final : public ICore {
 
 	void DrawMenuBar(bool& menuOpen) override {}
 	void DrawWindows() override {}
+	void DrawMainWindow() override;
 
 	void SaveState(saver& saver) override { gameboy.SaveState(saver); }
 	void LoadState(saver& saver) override { gameboy.LoadState(saver); }
