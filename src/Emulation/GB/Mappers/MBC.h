@@ -51,8 +51,8 @@ class MBC {
 	virtual void Write4(uint16_t addr, uint8_t val) = 0;
 	virtual void WriteA(uint16_t addr, uint8_t val) = 0;
 
-	/*virtual void SaveState(saver& saver) = 0;
-	virtual void LoadState(saver& saver) = 0;*/
+	virtual void SaveState(saver& saver) = 0;
+	virtual void LoadState(saver& saver) = 0;
 };
 
 }

@@ -105,7 +105,7 @@ struct SquareBase : Envelope, Length {
 
 	void clock() {
 		if(freqTimer == 0) {
-			freqTimer = (2048 - frequency) * 4;
+			freqTimer = 2048 - frequency;
 			wavePos = (wavePos + 1) & 7;
 		}
 
@@ -175,10 +175,15 @@ struct Wave : Length {
 
 	void clock() {
 		if(freqTimer == 0) {
-			freqTimer = (2048 - frequency) * 2;
+			freqTimer = 2048 - frequency;
 			wavePos = (wavePos + 1) & 31;
 		}
+		freqTimer--;
 
+		if(freqTimer == 0) {
+			freqTimer = 2048 - frequency;
+			wavePos = (wavePos + 1) & 31;
+		}
 		freqTimer--;
 	}
 
@@ -214,7 +219,7 @@ struct Noise : Envelope, Length {
 
 	void clock() {
 		if(freqTimer == 0) {
-			freqTimer = (divider == 0 ? 8 : divider << 4) << shiftClock;
+			freqTimer = (divider == 0 ? 2 : divider << 2) << shiftClock;
 
 			auto mask = counterStep ? 0x4040 : 0x4000;
 			auto newHigh = (lfsr ^ (lfsr >> 1)) & 1;
@@ -234,8 +239,6 @@ struct Noise : Envelope, Length {
 
 class APU {
   private:
-	bool enabled;
-
 	Square1 ch1;
 	Square2 ch2;
 	Wave ch3;
@@ -247,6 +250,8 @@ class APU {
 
 	uint8_t nr50;
 	uint8_t nr51;
+
+	bool enabled;
 
   public:
 	uint8_t read(uint16_t address) const {
@@ -286,7 +291,7 @@ class APU {
 					   enabled << 7;
 			case 0xFF30: case 0xFF31: case 0xFF32: case 0xFF33: case 0xFF34: case 0xFF35: case 0xFF36: case 0xFF37:
 			case 0xFF38: case 0xFF39: case 0xFF3A: case 0xFF3B: case 0xFF3C: case 0xFF3D: case 0xFF3E: case 0xFF3F:
-				return ch3.waveRam[address - 0xFF30];
+				return ch3.channelEnabled ? ch3.waveRam[ch3.wavePos / 2] : ch3.waveRam[address - 0xFF30];
 		}
 
 		return 0;
@@ -301,8 +306,9 @@ class APU {
 		switch(address) {
 #pragma region Sound Channel 1
 			case 0xFF10: // Sweep register
+				// if(ch1.sweepDir && !(data & 8)) { }
 				ch1.sweepShift = data & 7;
-				ch1.sweepDir = data & 8;
+				ch1.sweepDir = (data & 8) != 0;
 				ch1.sweepPeriod = (data >> 4) & 7;
 				break;
 			case 0xFF11: ch1.writeLength(data); break;
@@ -318,7 +324,7 @@ class APU {
 				if(data & 0x80 && ch1.dacEnabled) {
 					ch1.channelEnabled = true;
 
-					ch1.envPeriodTimer = ch1.sweepPeriod;
+					ch1.envPeriodTimer = ch1.envelopePeriod;
 					ch1.envVolume = ch1.envelopeInitialVol;
 
 					ch1.shadowFrequency = ch1.frequency;
@@ -408,6 +414,7 @@ class APU {
 
 					if(ch4.lengthCounter == 0) {
 						ch4.lengthCounter = 64;
+						ch4.lengthEnabled = false;
 					}
 
 					ch4.lfsr = 0x7FFF;
@@ -416,8 +423,6 @@ class APU {
 				}
 
 				ch4.apuBug<63>(data, fsStep);
-
-				ch4.lengthEnabled = (data >> 6) & 1;
 				break;
 #pragma endregion
 			// Sound Control:
@@ -439,12 +444,10 @@ class APU {
 	}
 
 	void clock() {
-		for(size_t i = 0; i < 4; i++) {
-			ch1.clock();
-			ch2.clock();
-			ch3.clock();
-			ch4.clock();
-		}
+		ch1.clock();
+		ch2.clock();
+		ch3.clock();
+		ch4.clock();
 
 		// should be 0x1FFF but gets ticked 4 times
 		if(cycles == 0x7FF) {
@@ -513,11 +516,24 @@ class APU {
 		fsStep = 0;
 		sampleCounter = 0;
 
-		write(0xFF10, 0x80);
-		write(0xFF11, 0xBF);
-		write(0xFF12, 0xF3);
-		write(0xFF13, 0xFF);
-		write(0xFF14, 0xBF);
+		// write(0xFF10, 0x80);
+		ch1.sweepShift = 0;
+		ch1.sweepDir = 0;
+		ch1.sweepPeriod = 0;
+
+		// write(0xFF11, 0xBF);
+		ch1.lengthCounter = 1;
+		ch1.soundPattern = 2;
+
+		// write(0xFF12, 0xF3);
+		ch1.envelopePeriod = 3;
+		ch1.envelopeDir = false;
+		ch1.envelopeInitialVol = 0xF;
+
+		// write(0xFF13, 0xFF);
+		ch1.frequency = 0;
+		// write(0xFF14, 0xBF);
+		ch1.lengthEnabled = false;
 
 		write(0xFF16, 0x3F);
 		write(0xFF17, 0x00);
@@ -538,37 +554,19 @@ class APU {
 		write(0xFF24, 0x77);
 		write(0xFF25, 0xF3);
 		write(0xFF26, 0xF1);
+		ch1.channelEnabled = true;
 
 		for(size_t i = 0; i < 16; i++) {
 			ch3.waveRam[i] = 0;
 		}
-
-		assert(read(0xFF10) == 0x80);
-		assert(read(0xFF11) == 0xBF);
-		assert(read(0xFF12) == 0xF3);
-		assert(read(0xFF13) == 0xFF);
-		assert(read(0xFF14) == 0xBF);
-
-		assert(read(0xFF16) == 0x3F);
-		assert(read(0xFF17) == 0x00);
-		assert(read(0xFF18) == 0xFF);
-		assert(read(0xFF19) == 0xBF);
-
-		assert(read(0xFF1A) == 0x7F);
-		assert(read(0xFF1B) == 0xFF);
-		assert(read(0xFF1C) == 0x9F);
-		assert(read(0xFF1D) == 0xFF);
-		assert(read(0xFF1E) == 0xBF);
-
-		assert(read(0xFF20) == 0xFF);
-		assert(read(0xFF21) == 0x00);
-		assert(read(0xFF22) == 0x00);
-		assert(read(0xFF23) == 0xBF);
-
-		assert(read(0xFF24) == 0x77);
-		assert(read(0xFF25) == 0xF3);
-		assert(read(0xFF26) == 0xF1);
 	}
+
+	/*void SaveState(saver& saver) {
+		saver << *this;
+	}
+	void LoadState(saver& saver) {
+		saver >> *this;
+	}*/
 };
 
 } // namespace Gameboy

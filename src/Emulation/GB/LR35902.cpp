@@ -71,10 +71,20 @@ void LR35902::Reset(bool useBoot) {
 		PC = 0;
 	} else {
 		// skip boot rom and jump directly to 0x100
-		AF = 0x0100;
-		BC = 0xFF13;
-		DE = 0x00C1;
-		HL = 0x8403;
+		if(bus.gbc) {
+			AF = 0x1180;
+			BC = 0x0000;
+			DE = 0xFF56;
+			HL = 0x000D;
+		} else {
+			A = 0x01;
+			F.reg = 0;
+			F.Z = 1;
+			F.H = F.C = bus.CpuRead(0x014D) != 0;
+			BC = 0x0013;
+			DE = 0x00D8;
+			HL = 0x014D;
+		}
 		SP = 0xFFFE;
 		PC = 0x100;
 		IME = true;
@@ -82,6 +92,9 @@ void LR35902::Reset(bool useBoot) {
 
 	cycles = 1;
 	HALT = false;
+	STOP = false;
+	IMEtoggle = false;
+	haltBug = false;
 }
 
 bool LR35902::checkCond(uint8_t opcode) const {
@@ -163,6 +176,12 @@ uint16_t LR35902::Imm16() {
 }
 
 void LR35902::Clock() {
+	if(STOP) {
+		if(bus.CpuRead(0xFF00) != 0xFF) {
+			STOP = false;
+		} else return;
+	}
+
 	if(!HALT) {
 		cycles--;
 
@@ -171,11 +190,12 @@ void LR35902::Clock() {
 		}
 	}
 
-	if(bus.InterruptEnable & bus.InterruptFlag) {
+	auto interrupt = bus.InterruptEnable & bus.InterruptFlag;
+	if(interrupt) {
 		HALT = false;
 
 		if(IME) {
-			auto id = FirstBit(bus.InterruptEnable & bus.InterruptFlag);
+			auto id = FirstBit(interrupt);
 
 			IME = false;
 
@@ -190,11 +210,20 @@ void LR35902::Clock() {
 		}
 	}
 
+	if(IMEtoggle) {
+		IME = !IME;
+		IMEtoggle = false;
+	}
+
 	if(HALT) {
 		return;
 	}
 
 	auto opcode = bus.CpuRead(PC++);
+	if(haltBug) {
+		PC--;
+		haltBug = false;
+	}
 
 #ifdef printDebug
 	if(opcode != 0xCB) {
@@ -230,12 +259,48 @@ void LR35902::Clock() {
 #pragma region control/misc
 		case 0x00: break; // NOP
 		case 0x10: // stop // same as halt??
+			if(bus.CpuRead(0xFF00) != 0xFF) {
+				if(!interrupt) {
+					PC++;
+					HALT = true;
+				}
+			} else {
+				if(bus.speed & 1) {
+					if(interrupt) {
+						if(IME) {
+							// bugged
+						} else {
+							bus.DIV = 0;
+							bus.speed ^= 0x80;
+						}
+					} else {
+						PC++;
+						HALT = true;
+						bus.DIV = 0;
+						bus.speed ^= 0x80;
+					}
+				} else {
+					if(!interrupt) PC++;
+					STOP = true;
+					bus.DIV = 0;
+				}
+			}
+			break;
 		case 0x76: // halt
 			HALT = true;
+			if(interrupt) {
+				HALT = false;
+				if(IME) {
+					PC--;
+				} else {
+					haltBug = true;
+				}
+			}
+			// TODO: justHalted = true;
 			break;
 		case 0xCB: Prefix(); break; // PREFIX CB
 		case 0xF3: IME = false; break; // DI
-		case 0xFB: IME = true; break; // EI
+		case 0xFB: if(!IME) IMEtoggle = true; break; // EI
 #pragma endregion
 
 #pragma region control/branch
@@ -277,6 +342,7 @@ void LR35902::Clock() {
 			bus.CpuWrite(--SP, PC);
 
 			PC = (opcode & 0b00111000);
+			cycles = 4;
 			break;
 		case 0xC4: case 0xCC: case 0xD4: case 0xDC: { // CALL cc,a16
 			uint16_t temp = Imm16();
@@ -318,6 +384,7 @@ void LR35902::Clock() {
 			PC = bus.CpuRead(SP++);
 			PC |= bus.CpuRead(SP++) << 8;
 			IME = true;
+			cycles = 4;
 			break;
 #pragma endregion
 
@@ -483,7 +550,7 @@ void LR35902::Clock() {
 			auto c = F.C;
 
 			F.H = (A & 0xF) < (temp & 0xF) + c;
-			F.C = A - (temp + c) > 0xFF;
+			F.C = unsigned(A - temp - c) > 0xFF;
 			A -= temp + c;
 
 			F.Z = A == 0;
@@ -562,7 +629,7 @@ void LR35902::Clock() {
 			cycles = 2;
 
 			F.H = (A & 0xF) < (temp & 0xF) + c;
-			F.C = A - (temp + c) > 0xFF;
+			F.C = unsigned(A - temp - c) > 0xFF;
 			A -= temp + c;
 
 			F.Z = A == 0;
@@ -575,6 +642,7 @@ void LR35902::Clock() {
 			F.N = false;
 			F.H = true;
 			F.C = false;
+			cycles = 2;
 			break;
 		case 0xEE: // XOR d8
 			A ^= bus.CpuRead(PC++);
@@ -582,6 +650,7 @@ void LR35902::Clock() {
 			F.N = false;
 			F.H = false;
 			F.C = false;
+			cycles = 2;
 			break;
 		case 0xF6: // OR d8
 			A |= bus.CpuRead(PC++);
@@ -634,6 +703,7 @@ void LR35902::Clock() {
 			F.N = false;
 
 			SP += temp;
+			cycles = 4;
 			break;
 		}
 		case 0xF8: { // LD HL,SP+r8
@@ -682,7 +752,7 @@ void LR35902::Clock() {
 			F.C = temp & 1;
 			break;
 		}
-		default: throw std::runtime_error("Illegal opcode");
+		// default: throw std::runtime_error("Illegal opcode");
 	}
 }
 
@@ -783,6 +853,28 @@ void LR35902::Prefix() {
 			WriteRightReg(opcode, fetched | (1 << ((opcode >> 3) & 7)));
 			break;
 	}
+}
+
+void LR35902::SaveState(saver& saver) {
+	saver << reg;
+	saver << PC;
+	saver << SP;
+	saver << IMEtoggle;
+	saver << IME;
+	saver << HALT;
+	saver << haltBug;
+	saver << cycles;
+}
+
+void LR35902::LoadState(saver& saver) {
+	saver >> reg;
+	saver >> PC;
+	saver >> SP;
+	saver >> IMEtoggle;
+	saver >> IME;
+	saver >> HALT;
+	saver >> haltBug;
+	saver >> cycles;
 }
 
 }

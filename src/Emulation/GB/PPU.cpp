@@ -1,34 +1,9 @@
 #include "PPU.h"
 
+#include "../../math.h"
 #include "Gameboy.h"
 
 namespace Gameboy {
-
-static uint8_t reverse(uint8_t b) {
-	b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-	b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-	b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-	return b;
-}
-
-static uint16_t interleave(uint8_t low, uint8_t high) {
-	uint16_t x = low;
-	uint16_t y = high;
-
-	// x = (x | (x << 8)) & 0x00FF00FF;
-	x = (x | (x << 4)) & 0x0F0F0F0F;
-	x = (x | (x << 2)) & 0x33333333;
-	x = (x | (x << 1)) & 0x55555555;
-
-	// y = (y | (y << 8)) & 0x00FF00FF;
-	y = (y | (y << 4)) & 0x0F0F0F0F;
-	y = (y | (y << 2)) & 0x33333333;
-	y = (y | (y << 1)) & 0x55555555;
-
-	return x | (y << 1);
-}
-
-#define getTileAddr() Control.tileData ? (tile << 4) | (y << 1) : 0x1000 + int8_t(tile) * 16 + (y << 1)
 
 /*const Color palette[] = {
 	{ 0x00, 0x3f, 0x00 },
@@ -58,7 +33,7 @@ struct Sprite {
 	};
 };
 
-void PPU::Clock() {
+void PPU::Clock(Gameboy& bus, RenderImage& texture) {
 	LX += 4;
 	if(LX == 456) {
 		LX = 0;
@@ -72,23 +47,59 @@ void PPU::Clock() {
 
 			frameComplete = true;
 		}
-	}
 
-	if(LY < 144) {
 		// mode 2: 0-79
-		if(LX == 0) {
+		if(LY < 144) {
 			STAT.modeFlag = 2;
 			if(STAT.oamInterrupt) bus.Interrupt(Interrupt::LCDStat);
 		}
+	}
 
+	if(LY < 144) {
 		// mode 3: 80-251
 		if(LX == 80) {
 			STAT.modeFlag = 3;
 
 			if(Control.lcdEnable) {
-				DrawBg();
-				DrawWindow();
-				DrawSprites();
+				if(bus.gbc) {
+					DrawBg(true);
+					DrawWindow(true);
+					DrawSprites(true);
+
+					for(size_t i = 0; i < 160; i++) {
+						auto el = drawBuffer[i];
+						auto id = ((el.palette & 7) * 4 + el.id) * 2;
+
+						Color c;
+						uint16_t col;
+						if(el.palette & 0x80) { // sprite
+							col = gbcOBP[id] | gbcOBP[id + 1] << 8;
+						} else { // bg/window
+							col = gbcBGP[id] | gbcBGP[id + 1] << 8;
+						}
+
+						Color color { (col << 3) & 0xF8, (col >> 2) & 0xF8, (col >> 7) & 0xF8 };
+						texture.SetPixel(i, LY, color);
+					}
+				} else {
+					if(Control.bgWindowEnable) {
+						DrawBg(false);
+						DrawWindow(false);
+					} else {
+						std::fill(drawBuffer.begin(), drawBuffer.end(), Uhhh { 0, 0 });
+					}
+					DrawSprites(false);
+
+					for(size_t i = 0; i < 160; i++) {
+						auto el = drawBuffer[i];
+						auto color = (el.palette >> (el.id << 1)) & 3;
+						texture.SetPixel(i, LY, palette[color]);
+					}
+				}
+			} else {
+				for(size_t i = 0; i < 160; i++) {
+					texture.SetPixel(i, LY, { 0xFF, 0xFF, 0xFF });
+				}
 			}
 		}
 
@@ -105,14 +116,7 @@ void PPU::Clock() {
 	STAT.lycFlag = LY == LYC;
 }
 
-void PPU::DrawBg() {
-	if(!Control.bgWindowEnable) {
-		for(int i = 0; i < 160; ++i) {
-			texture.SetPixel(i, LY, Color { 255, 255, 255 });
-		}
-		return;
-	}
-
+void PPU::DrawBg(bool gbc) {
 	// VRAM offset for the tile map
 	auto mapOffs = Control.tileMap ? 0x1C00 : 0x1800;
 
@@ -127,17 +131,33 @@ void PPU::DrawBg() {
 	// Where in the tileline to start
 	auto x = SCX & 7;
 
+	auto prioOverwrite = gbc && !Control.bgWindowEnable;
+
 	for(int i = 0; i < 160;) {
 		auto tile = VRAM[0][mapOffs + lineoffs];
+		auto attr = VRAM[1][mapOffs + lineoffs];
 
-		uint16_t addr = getTileAddr();
-		auto merged = interleave(VRAM[0][addr], VRAM[0][addr + 1]);
+		uint8_t pal = gbc ? attr & 7 : BGP;
+		auto vramBank = (attr & 8) != 0;
+		bool prio = attr & 0x80 && gbc && Control.bgWindowEnable;
 
-		while(x < 8) {
-			auto color = (merged >> ((7 - x) * 2)) & 3;
-			color = (BGP >> (color << 1)) & 3;
-			texture.SetPixel(i, LY, palette[color]);
+		uint16_t addr = (Control.tileData ? tile : 0x100 + int8_t(tile)) << 4;
+		if(attr & 0x40) { // vertical flip
+			addr |= (7 - y) << 1;
+		} else {
+			addr |= y << 1;
+		}
+		auto low = VRAM[vramBank][addr];
+		auto high = VRAM[vramBank][addr + 1];
+		if(attr & 0x20) { // horizontal flip
+			low = math::reverse(low);
+			high = math::reverse(high);
+		}
+		uint16_t merged = math::interleave(low, high) << (2 * x);
 
+		while(x < 8 && i < 160) {
+			drawBuffer[i] = { (uint8_t)(merged >> 14), pal, 0, prio };
+			merged <<= 2;
 			x++;
 			i++;
 		}
@@ -146,8 +166,8 @@ void PPU::DrawBg() {
 	}
 }
 
-void PPU::DrawWindow() {
-	if(!Control.windowEnable || !Control.bgWindowEnable) return;
+void PPU::DrawWindow(bool gbc) {
+	if(!Control.windowEnable) return;
 
 	auto x = WX - 7;
 	auto y = (LY - WY) & 7;
@@ -160,16 +180,29 @@ void PPU::DrawWindow() {
 		int lineoffs = 0;
 		for(size_t i = x; i < 160;) {
 			auto tile = VRAM[0][mapOffs + lineoffs];
+			auto attr = VRAM[1][mapOffs + lineoffs];
 
-			uint16_t addr = getTileAddr();
-			auto merged = interleave(VRAM[0][addr], VRAM[0][addr + 1]);
+			uint8_t pal = gbc ? attr & 7 : BGP;
+			auto vramBank = (attr & 8) != 0;
+			bool prio = attr & 0x80 && gbc && Control.bgWindowEnable;
 
-			for(size_t j = 0; j < 8; j++) {
-				auto id = merged >> 14;
-				auto color = (BGP >> (id << 1)) & 3;
+			uint16_t addr = (Control.tileData ? tile : 0x100 + int8_t(tile)) << 4;
+			if(attr & 0x40) { // vertical flip
+				addr |= (7 - y) << 1;
+			} else {
+				addr |= y << 1;
+			}
+			auto low = VRAM[vramBank][addr];
+			auto high = VRAM[vramBank][addr + 1];
+			if(attr & 0x20) { // horizontal flip
+				low = math::reverse(low);
+				high = math::reverse(high);
+			}
+			uint16_t merged = math::interleave(low, high);
+
+			for(size_t x = 0; x < 8 && i < 160; x++) {
+				drawBuffer[i] = { (uint8_t)(merged >> 14), pal, 0, prio };
 				merged <<= 2;
-				texture.SetPixel(i, LY, palette[color]);
-
 				i++;
 			}
 
@@ -178,42 +211,37 @@ void PPU::DrawWindow() {
 	}
 }
 
-void PPU::DrawSprites() {
+void PPU::DrawSprites(bool gbc) {
 	if(!Control.spriteEnable) return;
 
 	auto spriteSize = Control.spriteSize ? 16 : 8;
 
 	int spriteCount = 0;
-	std::array<Sprite, 10> spriteBuffer;
-	for(size_t i = 0; i < 40 && spriteCount < 10; i++) {
+	for(int i = 0; i < 40 && spriteCount < 10; i++) {
 		auto s = ((Sprite*)OAM)[i];
 
 		// relative y position
 		auto y = LY - (s.Y - 16);
+		auto x = s.X - 8;
 
-		// is sprite on current line?
 		if(y < 0 || y >= spriteSize) continue;
 
-		// stable insertion sort
-		int insertPos = spriteCount;
-		while(insertPos > 0) {
-			if(spriteBuffer[insertPos - 1].X > s.X) break;
-
-			spriteBuffer[insertPos] = spriteBuffer[insertPos - 1];
-			insertPos--;
-		}
-		spriteBuffer[insertPos] = s;
-
 		spriteCount++;
-	}
-
-	for(int i = 0; i < spriteCount; i++) {
-		auto s = spriteBuffer[i];
-		// relative y position
-		auto y = LY - (s.Y - 16);
+		if(s.X == 0 || s.X >= 160) continue;
 
 		// used pallet
-		auto pal = s.gbPalletNumber ? OBP1 : OBP0;
+		uint8_t prio;
+		uint8_t pal;
+		int tileBank;
+		if(gbc) {
+			pal = s.cgbPalletNumber | 0x80;
+			tileBank = s.vramBank;
+			prio = 40 - i + 1;
+		} else {
+			pal = s.gbPalletNumber ? OBP1 : OBP0;
+			tileBank = 0;
+			prio = 160 - s.X + 1;
+		}
 
 		// address of used tile. aligned to even space when 8x16
 		int addr = (s.Number & ~(int)Control.spriteSize) << 4;
@@ -223,22 +251,32 @@ void PPU::DrawSprites() {
 			addr |= y << 1;
 		}
 
-		uint8_t low = VRAM[0][addr];
-		uint8_t high = VRAM[0][addr | 1];
+		uint8_t low = VRAM[tileBank][addr];
+		uint8_t high = VRAM[tileBank][addr | 1];
 
-		// reversed by default so we can use & 3
 		if(s.horizontalFlip) {
-			low = reverse(low);
-			high = reverse(high);
+			low = math::reverse(low);
+			high = math::reverse(high);
 		}
 		// interlave low and high
-		auto merged = interleave(low, high);
+		auto merged = math::interleave(low, high);
+		auto e = std::min((int)s.X, 160);
 
-		for(int j = -8; j < 0; j++) {
-			auto id = merged >> 14;
-			auto val = (pal >> (id << 1)) & 3;
+		if(x < 0) {
+			merged <<= 2 * -x;
+			x = 0;
+		}
+
+		while(x < e) {
+			uint8_t id = merged >> 14;
+
+			auto bg = drawBuffer[x];
+			if(id != 0 && (bg.id == 0 || (!bg.bgPpriority && !s.priority && prio > bg.priority))) {
+				drawBuffer[x] = { id, pal, prio };
+			}
+
 			merged <<= 2;
-			if(val != 0) texture.SetPixel(j + s.X, LY, palette[val]);
+			x++;
 		}
 	}
 }

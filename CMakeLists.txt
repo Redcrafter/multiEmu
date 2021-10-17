@@ -1,4 +1,8 @@
 cmake_minimum_required (VERSION 2.6)
+
+cmake_policy(SET CMP0048 NEW)
+cmake_policy(SET CMP0072 NEW)
+
 project (Emulator C CXX)
 
 include(cmake/CompilerWarnings.cmake)

@@ -76,7 +76,7 @@ void Core::WriteMemory(int domain, size_t address, uint8_t val) {
 			emulator.ppu.vram[address] = val;
 			break;
 		case Oam:
-			emulator.ppu.pOAM[address] = val;
+			reinterpret_cast<uint8_t*>(emulator.ppu.oam)[address] = val;
 			break;
 		case PrgRom:
 		case ChrRom: break;
@@ -88,7 +88,7 @@ uint8_t Core::ReadMemory(int domain, size_t address) {
 		case CpuBus: return emulator.CpuRead(address, true);
 		case PpuBus: return emulator.ppu.ppuRead(address, true);
 		case CIRam: return emulator.ppu.vram[address];
-		case Oam: return emulator.ppu.pOAM[address];
+		case Oam: return reinterpret_cast<uint8_t*>(emulator.ppu.oam)[address];
 		case PrgRom: return emulator.cartridge->prg[address];
 		case ChrRom: return emulator.cartridge->chr[address];
 	}

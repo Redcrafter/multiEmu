@@ -82,7 +82,7 @@ void GameboyColorCore::LoadRom(const std::string& path) {
 		throw std::runtime_error("Not a gameboy game");
 	}
 
-	/*uint8_t cgbFlag = data[0x143];
+	uint8_t cgbFlag = data[0x143];
 	if(cgbFlag == 0x80) {
         // Game supports CGB functions, but works on old gameboys also.
         gameboy.gbc = true;
@@ -91,8 +91,7 @@ void GameboyColorCore::LoadRom(const std::string& path) {
         gameboy.gbc = true;
     } else {
         gameboy.gbc = false;
-    }*/
-	gameboy.gbc = false;
+    }
 
 	auto sgbFlag = data[0x0146];
 	if(sgbFlag == 0x03) {

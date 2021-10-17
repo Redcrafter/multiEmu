@@ -1,9 +1,11 @@
 #include "ppu2C02.h"
-#include "Bus.h"
 
-#include <iostream>
 #include <cassert>
 #include <cstring>
+#include <iostream>
+
+#include "../../math.h"
+#include "Bus.h"
 
 namespace Nes {
 
@@ -75,37 +77,6 @@ static const Color colors[] = {
 	{0, 0, 0},
 	{0, 0, 0}
 };
-
-static uint8_t FlipByte(uint8_t b) {
-	b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-	b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-	b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-	return b;
-}
-
-// msvc hast no flag for BMI2
-#ifdef __BMI2__
-#include <immintrin.h>
-static uint32_t interleave(uint16_t a, uint16_t b) {
-	return _pdep_u32(a, 0x55555555) | _pdep_u32(b, 0xaaaaaaaa);
-}
-#else
-uint32_t interleave_uint32_with_zeros(uint16_t input) {
-	uint32_t word = input;
-	word = (word ^ (word << 16)) & 0x0000ffff0000ffff;
-	word = (word ^ (word << 8)) & 0x00ff00ff00ff00ff;
-	word = (word ^ (word << 4)) & 0x0f0f0f0f0f0f0f0f;
-	word = (word ^ (word << 2)) & 0x3333333333333333;
-	word = (word ^ (word << 1)) & 0x5555555555555555;
-	return word;
-}
-
-static uint32_t interleave(uint16_t a, uint16_t b) {
-	return interleave_uint32_with_zeros(a) | (interleave_uint32_with_zeros(b) << 1);
-}
-#endif
-
-ppu2C02::ppu2C02() { }
 
 void ppu2C02::Reset() {
 	Control.reg = 0;
@@ -227,7 +198,7 @@ void ppu2C02::Clock() {
 					bgNextTile = ppuRead((Control.patternBackground << 12) + (bgNextTileId << 4) + vramAddr.fineY);
 					break;
 				case 6:
-					bgNextTile = interleave(bgNextTile, ppuRead((Control.patternBackground << 12) + (bgNextTileId << 4) + vramAddr.fineY + 8)); 
+					bgNextTile = math::interleave(bgNextTile, (uint16_t)ppuRead((Control.patternBackground << 12) + (bgNextTileId << 4) + vramAddr.fineY + 8));
 					break;
 				case 7:
 					if(Mask.renderBackground || Mask.renderSprites) {
@@ -269,7 +240,7 @@ void ppu2C02::Clock() {
 				}
 
 				if(scanlineY >= 0) {
-					memset(oam2, 0xFF, sizeof(oam2));
+					memset((char*)oam2, 0xFF, sizeof(oam2));
 					spriteCount = 0;
 					spriteZeroPossible = false;
 
@@ -339,7 +310,7 @@ void ppu2C02::Clock() {
 			uint16_t addr;
 
 			if(!Control.spriteSize) {
-				// 8x8 
+				// 8x8
 				addr = (Control.patternSprite << 12) | (sprite.id << 4);
 			} else {
 				// 8x16
@@ -367,7 +338,7 @@ void ppu2C02::Clock() {
 					bits = ppuRead(addr);
 
 					if(sprite.Attributes.FlipHorizontal) {
-						bits = FlipByte(bits);
+						bits = math::reverse(bits);
 					}
 
 					spriteShifterLo[i] = bits;
@@ -376,7 +347,7 @@ void ppu2C02::Clock() {
 					bits = ppuRead(addr + 8);
 
 					if(sprite.Attributes.FlipHorizontal) {
-						bits = FlipByte(bits);
+						bits = math::reverse(bits);
 					}
 
 					spriteShifterHi[i] = bits;
@@ -460,8 +431,8 @@ void ppu2C02::Clock() {
 		}
 
 		if(spriteZeroPossible && spriteZeroBeingRendered &&
-			Mask.renderBackground && Mask.renderSprites &&
-			(((Mask.backgroundLeft && Mask.spriteLeft) || scanlineX >= 9) && scanlineX < 256)) {
+		   Mask.renderBackground && Mask.renderSprites &&
+		   (((Mask.backgroundLeft && Mask.spriteLeft) || scanlineX >= 9) && scanlineX < 256)) {
 			// ScanlineX >= 2
 			Status.sprite0Hit = true;
 		}
@@ -502,7 +473,7 @@ uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {
 				last2002Read = 0;
 
 				Status.VerticalBlank = false; // Clear vblank
-				writeState = 0;               // Clear write latch
+				writeState = 0;				  // Clear write latch
 				if(nmi == 1 || nmi == 2) {
 					nmi = 0; // Reading 2002 at same time as nmi is set supresses it
 				}
@@ -511,9 +482,9 @@ uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {
 		case 0x2004:
 			reset1 = reset2 = reset3 = ioBusCountDown;
 			if((oamAddr & 3) == 2) {
-				ioBus = pOAM[oamAddr] & 0xE3;
+				ioBus = reinterpret_cast<uint8_t*>(oam)[oamAddr] & 0xE3;
 			} else {
-				ioBus = pOAM[oamAddr];
+				ioBus = reinterpret_cast<uint8_t*>(oam)[oamAddr];
 			}
 			break;
 		case 0x2007:
@@ -539,7 +510,7 @@ uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {
 void ppu2C02::cpuWrite(uint16_t addr, uint8_t data) {
 	ioBus = data;
 	reset1 = reset2 = reset3 = ioBusCountDown;
-	
+
 	switch(addr) {
 		case 0x2000: {
 			bool old = Control.enableNMI;
@@ -559,7 +530,7 @@ void ppu2C02::cpuWrite(uint16_t addr, uint8_t data) {
 			oamAddr = data;
 			break;
 		case 0x2004: // Ignore during rendering
-			pOAM[oamAddr] = data;
+			reinterpret_cast<uint8_t*>(oam)[oamAddr] = data;
 			oamAddr++;
 			break;
 		case 0x2005:
@@ -587,7 +558,7 @@ void ppu2C02::cpuWrite(uint16_t addr, uint8_t data) {
 
 			vramAddr.reg += Control.vramIncrement ? 32 : 1;
 			break;
-		// case 0x4014: // Handled by bus
+			// case 0x4014: // Handled by bus
 	}
 }
 
@@ -621,7 +592,7 @@ void ppu2C02::LoadBackgroundShifters() {
 
 uint8_t& ppu2C02::getRef(uint16_t addr) {
 	addr &= 0x3FFF;
-	
+
 	if(addr <= 0x1FFF) {
 		return chrRAM[addr]; // in case cartridge doesn't have rom
 	}

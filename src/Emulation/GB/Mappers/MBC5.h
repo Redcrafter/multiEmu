@@ -5,11 +5,11 @@ namespace Gameboy {
 
 class MBC5 final : public MBC {
   private:
-	bool ramEnable = false;
-	bool hasRumble;
-
 	uint32_t romBank = 0x4000;
 	uint32_t ramBank = 0;
+
+	bool ramEnable = false;
+	bool hasRumble;
 
   public:
 	MBC5(const std::vector<uint8_t>& rom, uint32_t ramSize, bool hasBattery, bool hasRumble) : MBC(rom, ramSize, hasBattery), hasRumble(hasRumble) {}
@@ -18,7 +18,7 @@ class MBC5 final : public MBC {
 	uint8_t Read0(uint16_t addr) const override { return rom[addr & 0x3FFF]; }
 	uint8_t Read4(uint16_t addr) const override { return rom[romBank | (addr & 0x3FFF)]; };
 	uint8_t ReadA(uint16_t addr) const override {
-        return ramEnable ? ram[ramBank | (addr & 0x1FFF)] : 0xFF;
+		return ramEnable ? ram[ramBank | (addr & 0x1FFF)] : 0xFF;
 	};
 
 	void Write0(uint16_t addr, uint8_t val) override {
@@ -29,9 +29,9 @@ class MBC5 final : public MBC {
 			// 2000-2FFF - 8 least significant bits of ROM bank number
 			romBank = ((romBank & 0x400000) | (0x4000 * val)) & romMask;
 		} else {
-            // 3000-3FFF - 9th bit of ROM bank number
+			// 3000-3FFF - 9th bit of ROM bank number
 			romBank = ((romBank & 0x3FFFFF) | ((val & 1) * 0x400000)) & romMask;
-        }
+		}
 	};
 	void Write4(uint16_t addr, uint8_t val) override {
 		if(addr < 0x6000) {
@@ -43,6 +43,19 @@ class MBC5 final : public MBC {
 	};
 	void WriteA(uint16_t addr, uint8_t val) override {
 		if(ramEnable) ram[ramBank | (addr & 0x1FFF)] = val;
+	};
+
+	void SaveState(saver& saver) override {
+		saver.write(ram.data(), ram.size());
+		saver << romBank;
+		saver << ramBank;
+		saver << ramEnable;
+	};
+	void LoadState(saver& saver) override {
+		saver.read(ram.data(), ram.size());
+		saver >> romBank;
+		saver >> ramBank;
+		saver >> ramEnable;
 	};
 };
 

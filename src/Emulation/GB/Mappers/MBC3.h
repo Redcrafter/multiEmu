@@ -5,11 +5,11 @@ namespace Gameboy {
 
 class MBC3 final : public MBC {
   private:
+	uint32_t romBank1 = 0x4000;
+	uint8_t aSelect = 0;
+
 	bool ramEnable = false;
 	bool hasTimer;
-
-	uint8_t aSelect = 0;
-	uint32_t romBank1 = 0x4000;
 
   public:
 	MBC3(const std::vector<uint8_t>& rom, uint32_t ramSize, bool hasBattery, bool hasTimer) : MBC(rom, ramSize, hasBattery), hasTimer(hasTimer) {}
@@ -51,6 +51,19 @@ class MBC3 final : public MBC {
 		if(aSelect < 4 && ramEnable) {
 			ram[((aSelect << 13) | (addr & 0x1FFF)) & ramMask] = val;
 		}
+	};
+
+	void SaveState(saver& saver) override {
+		saver.write(ram.data(), ram.size());
+		saver << romBank1;
+		saver << aSelect;
+		saver << ramEnable;
+	};
+	void LoadState(saver& saver) override {
+		saver.read(ram.data(), ram.size());
+		saver >> romBank1;
+		saver >> aSelect;
+		saver >> ramEnable;
 	};
 };
 

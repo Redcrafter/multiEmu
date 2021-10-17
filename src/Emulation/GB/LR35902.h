@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 
+#include "../../saver.h"
+
 namespace Gameboy {
 
 class Gameboy;
@@ -42,6 +44,8 @@ class LR35902 {
 	friend class GameboyColorCore;
 
   private:
+	Gameboy& bus;
+
 	union {
 		struct {
 			uint8_t B;
@@ -81,18 +85,24 @@ class LR35902 {
 	uint16_t SP;
 
 	// interrupt enable
+	bool IMEtoggle;
 	bool IME;
 	bool HALT;
+	bool haltBug;
+	bool STOP;
 
-	Gameboy& bus;
 	uint8_t cycles;
 
   public:
-	LR35902(Gameboy& bus) : bus(bus) {}
+	LR35902(Gameboy& bus)
+		: bus(bus) {}
 
 	void Reset(bool useBoot = true);
 
 	void Clock();
+
+	void SaveState(saver& saver);
+	void LoadState(saver& saver);
 
   private:
 	bool checkCond(uint8_t opcode) const;

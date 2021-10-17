@@ -64,7 +64,7 @@ void Bus::Clock() {
 				if(systemClockCounter % 2 == 0) {
 					dmaData = CpuRead(dmaPage << 8 | dmaAddr);
 				} else {
-					ppu.pOAM[(ppu.oamAddr + dmaAddr) & 0xFF] = dmaData;
+					reinterpret_cast<uint8_t*>(ppu.oam)[(ppu.oamAddr + dmaAddr) & 0xFF] = dmaData;
 					dmaAddr++;
 
 					if(dmaAddr == 0) {

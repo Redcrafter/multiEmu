@@ -5,16 +5,16 @@ namespace Gameboy {
 
 class MBC1 final : public MBC {
   private:
+  	uint32_t romBank0 = 0;
+	uint32_t romBank1 = 0x4000;
+	uint32_t ramBank = 0;
+
 	bool ramEnable = false;
 	uint8_t reg1 = 1;
 	uint8_t extendedBank = 0;
 	bool mode = false;
 
 	bool isMulti;
-
-	uint32_t romBank0 = 0;
-	uint32_t romBank1 = 0x4000;
-	uint32_t ramBank = 0;
 
   public:
 	MBC1(const std::vector<uint8_t>& rom, uint32_t ramSize, bool hasBattery) : MBC(rom, ramSize, hasBattery) {
@@ -60,6 +60,27 @@ class MBC1 final : public MBC {
 	};
 	void WriteA(uint16_t addr, uint8_t val) override {
 		if(ramEnable) ram[ramBank | (addr & 0x1FFF)] = val;
+	};
+
+	void SaveState(saver& saver) override {
+		saver.write(ram.data(), ram.size());
+		saver << romBank0;
+		saver << romBank1;
+		saver << ramBank;
+		saver << ramEnable;
+		saver << reg1;
+		saver << extendedBank;
+		saver << mode;
+	};
+	void LoadState(saver& saver) override {
+		saver.read(ram.data(), ram.size());
+		saver >> romBank0;
+		saver >> romBank1;
+		saver >> ramBank;
+		saver >> ramEnable;
+		saver >> reg1;
+		saver >> extendedBank;
+		saver >> mode;
 	};
 
   private:

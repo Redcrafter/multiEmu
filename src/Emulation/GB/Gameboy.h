@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "../../saver.h"
 #include "APU.h"
 #include "LR35902.h"
 #include "Mappers/MBC.h"
@@ -25,32 +26,46 @@ class Gameboy {
 	LR35902 cpu;
 	PPU ppu;
 	APU apu;
+	std::unique_ptr<MBC> mbc;
 
-	uint8_t ramBank;
+	uint16_t DIV;
+
 	uint8_t ram[8][0x1000];
 
 	uint8_t hram[127];
+	uint8_t ramBank;
 
 	uint8_t InterruptEnable;
 	uint8_t InterruptFlag;
 
-	bool JoyPadSelect;
 	uint8_t SB;
 	uint8_t SC;
-	uint16_t DIV;
 	uint8_t TIMA;
 	uint8_t TMA;
 	uint8_t TAC;
+	bool lastTimer;
+	uint8_t timaState;
 
+	uint8_t FF72, FF73, FF74, FF75;
+	uint8_t HDMA1, HDMA2, HDMA3, HDMA4;
+
+	uint8_t speed;
+	uint8_t RP;
+
+	uint8_t BGPI, OBPI;
+
+	uint8_t vramBank;
+
+	// uint8_t DMA;
+
+	bool JoyPadSelect;
 	bool inBios;
 
   public:
 	bool gbc = false;
-	std::unique_ptr<MBC> mbc;
+	RenderImage& texture;
 
-	Gameboy(RenderImage& texture) : cpu(*this), ppu(*this, texture) {
-		Reset();
-	}
+	Gameboy(RenderImage& texture) : cpu(*this), texture(texture) {}
 
 	void Reset();
 
@@ -62,6 +77,12 @@ class Gameboy {
 
 	uint8_t CpuRead(uint16_t addr) const;
 	void CpuWrite(uint16_t addr, uint8_t val);
+
+	void SaveState(saver& saver);
+	void LoadState(saver& saver);
+
+  private:
+	void clockTimer();
 };
 
 }

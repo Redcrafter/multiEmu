@@ -17,6 +17,13 @@ class NoMBC final : public MBC {
 	void WriteA(uint16_t addr, uint8_t val) override {
 		if(!ram.empty()) ram[addr & ramMask] = val;
 	};
+
+	void SaveState(saver& saver) override {
+		saver.write(ram.data(), ram.size());
+	};
+	void LoadState(saver& saver) override {
+		saver.read(ram.data(), ram.size());
+	};
 };
 
 }
