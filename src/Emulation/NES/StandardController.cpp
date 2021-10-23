@@ -8,7 +8,7 @@ static uint8_t GetController(int number) {
 	uint8_t val = 0;
 
 	for(int i = 0; i < 8; ++i) {
-		val |= Input::GetKey(offset + i) << i;
+		val |= Input::NES.GetKey(offset + i) << i;
 	}
 	return val;
 }

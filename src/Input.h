@@ -15,10 +15,15 @@ union Key {
 	} Info;
 	uint64_t Reg;
 
+	Key() = default;
+	Key(uint64_t Reg) : Reg(Reg) {}
+	Key(int key, int mods) : Info({ key, mods }) {}
+
 	bool operator==(Key other) {
 		return Reg == other.Reg;
 	}
 };
+static_assert(sizeof(Key) == 8);
 
 struct InputItem {
 	std::string Name;
@@ -27,20 +32,19 @@ struct InputItem {
 };
 
 struct InputMapper {
-	std::string name;
 	std::map<int, Key> keyMap;
 	std::vector<InputItem> items;
 
 	int selected = -1;
-	bool changed = false;
 
 	InputMapper() = default;
+	InputMapper(const std::vector<InputItem>& elements);
 
-	InputMapper(const std::string& name, const std::vector<InputItem>& elements);
+	void ShowEditWindow();
 
-	bool ShowEditWindow();
-	bool TryGetKey(int Id, Key& key);
-	bool TryGetId(Key key, int& Id);
+	bool GetKey(int id);
+	bool GetKeyDown(int id);
+	bool GetKeyUp(int id);
 };
 
 void OnKey(int key, int scancode, int action, int mods);
@@ -48,9 +52,12 @@ void OnKey(int key, int scancode, int action, int mods);
 void Load(Json& j);
 void Save(Json& j);
 
-bool ShowEditWindow();
+void DrawStuff();
+void NewFrame();
 
-void SetMapper(const InputMapper& mapper);
-bool GetKey(int mappedId);
+extern InputMapper hotkeys;
+extern InputMapper Chip8;
+extern InputMapper GB;
+extern InputMapper NES;
 
 }

@@ -10,26 +10,7 @@
 
 namespace Chip8 {
 
-Core::Core() : texture(64, 32), disassembler(emulator) {
-	Input::SetMapper(Input::InputMapper("Chip-8", {
-        {"0", 0,  { { GLFW_KEY_1, 0 } } },
-        {"1", 1,  { { GLFW_KEY_2, 0 } } },
-        {"2", 2,  { { GLFW_KEY_3, 0 } } },
-        {"3", 3,  { { GLFW_KEY_4, 0 } } },
-        {"4", 4,  { { GLFW_KEY_Q, 0 } } },
-        {"5", 5,  { { GLFW_KEY_W, 0 } } },
-        {"6", 6,  { { GLFW_KEY_E, 0 } } },
-        {"7", 7,  { { GLFW_KEY_R, 0 } } },
-        {"8", 8,  { { GLFW_KEY_A, 0 } } },
-        {"9", 9,  { { GLFW_KEY_S, 0 } } },
-        {"A", 10, { { GLFW_KEY_D, 0 } } },
-        {"B", 11, { { GLFW_KEY_F, 0 } } },
-        {"C", 12, { { GLFW_KEY_Y, 0 } } },
-        {"D", 13, { { GLFW_KEY_X, 0 } } },
-        {"E", 14, { { GLFW_KEY_C, 0 } } },
-        {"F", 15, { { GLFW_KEY_V, 0 } } },
-	}));
-}
+Core::Core() : texture(64, 32), disassembler(emulator) { }
 
 std::vector<MemoryDomain> Core::GetMemoryDomains() {
 	return {
@@ -67,8 +48,24 @@ void Core::DrawMenuBar(bool& menuOpen) {
 	}
 }
 
-void Core::SaveState(saver& saver) { saver << emulator; }
-void Core::LoadState(saver& saver) { saver >> emulator; }
+void Core::SaveState(saver& saver) {
+	saver << emulator.V;
+	saver << emulator.memory;
+	saver << emulator.I << emulator.PC;
+	saver << emulator.delay_timer << emulator.sound_timer;
+	saver << emulator.SP;
+	saver << emulator.stack;
+	saver << emulator.gfx;
+}
+void Core::LoadState(saver& saver) {
+	saver >> emulator.V;
+	saver >> emulator.memory;
+	saver >> emulator.I >> emulator.PC;
+	saver >> emulator.delay_timer >> emulator.sound_timer;
+	saver >> emulator.SP;
+	saver >> emulator.stack;
+	saver >> emulator.gfx;
+}
 
 void Core::Update() {
 	// target clock rate 540hz/60 = 9

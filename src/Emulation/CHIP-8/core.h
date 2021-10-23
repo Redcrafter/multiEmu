@@ -1,4 +1,7 @@
+#pragma once
 #include "../ICore.h"
+
+#include <fstream>
 
 #include "chip8.h"
 #include "disassembler.h"

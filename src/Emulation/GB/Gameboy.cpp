@@ -153,16 +153,16 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 			case 0xFF00: {
 				uint8_t val = 0;
 				if(JoyPadSelect == 1) {
-					val |= (!Input::GetKey(0)) << 0; // right
-					val |= (!Input::GetKey(1)) << 1; // left
-					val |= (!Input::GetKey(2)) << 2; // up
-					val |= (!Input::GetKey(3)) << 3; // down
+					val |= (!Input::GB.GetKey(0)) << 0; // right
+					val |= (!Input::GB.GetKey(1)) << 1; // left
+					val |= (!Input::GB.GetKey(2)) << 2; // up
+					val |= (!Input::GB.GetKey(3)) << 3; // down
 					val |= 0x20;
 				} else if(JoyPadSelect == 2) {
-					val |= (!Input::GetKey(4)) << 0; // A
-					val |= (!Input::GetKey(5)) << 1; // B
-					val |= (!Input::GetKey(6)) << 2; // Select
-					val |= (!Input::GetKey(7)) << 3; // Start
+					val |= (!Input::GB.GetKey(4)) << 0; // A
+					val |= (!Input::GB.GetKey(5)) << 1; // B
+					val |= (!Input::GB.GetKey(6)) << 2; // Select
+					val |= (!Input::GB.GetKey(7)) << 3; // Start
 					val |= 0x10;
 				}
 				return val | 0xC0;

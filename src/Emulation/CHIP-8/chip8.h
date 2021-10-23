@@ -1,7 +1,5 @@
 #pragma once
-
 #include <array>
-#include <fstream>
 #include <string>
 
 namespace Chip8 {

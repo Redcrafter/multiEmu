@@ -39,7 +39,7 @@ void Chip8::LoadRom(const std::string& path) {
 	}
 
 	stream.seekg(0, std::ios::beg);
-	stream.read((char*)(&memory[0x200]), len);
+	stream.read((char*)&memory[0x200], len);
 }
 
 void Chip8::Reset() {
@@ -172,12 +172,12 @@ void Chip8::Clock() {
 		case 0xE000:
 			switch(opcode & 0xFF) {
 				case 0x9E:
-					if(Input::GetKey(vx)) {
+					if(Input::Chip8.GetKey(vx)) {
 						PC += 2;
 					}
 					break;
 				case 0xA1:
-					if(!Input::GetKey(vx)) {
+					if(!Input::Chip8.GetKey(vx)) {
 						PC += 2;
 					}
 					break;
@@ -193,7 +193,7 @@ void Chip8::Clock() {
 				case 0x0A: {
 					bool hasInput = false;
 					for(int i = 0; i < 16; i++) {
-						if(Input::GetKey(i)) {
+						if(Input::Chip8.GetKey(i)) {
 							hasInput = true;
 							vx = i;
 							break;

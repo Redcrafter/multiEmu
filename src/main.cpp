@@ -22,8 +22,8 @@
 
 #include "audio.h"
 #include "fs.h"
-#include "json.h"
 #include "logger.h"
+#include "settings.h"
 
 #include "Emulation/CHIP-8/core.h"
 #include "Emulation/GB/GameboyCore.h"
@@ -45,19 +45,6 @@ enum class Action {
 	Maximise
 };
 
-Input::InputMapper hotkeys { "hotkeys", {
-	{ "Speedup",		 (int)Action::Speedup,		   { { GLFW_KEY_Q, 0 } } },
-	{ "Step",			 (int)Action::Step,			   { { GLFW_KEY_F, 0 } } },
-	{ "ResumeRun",		 (int)Action::ResumeRun,	   { { GLFW_KEY_G, 0 } } },
-	{ "Reset",			 (int)Action::Reset,	 	   { { GLFW_KEY_R, 0 } } },
-	{ "HardReset",		 (int)Action::HardReset,	   { { 0, 0 } } },
-	{ "SaveState",		 (int)Action::SaveState,	   { { GLFW_KEY_K, 0 } } },
-	{ "LoadState",		 (int)Action::LoadState,       { { GLFW_KEY_L, 0 } } },
-	{ "SelectNextState", (int)Action::SelectNextState, { { GLFW_KEY_KP_ADD, 0 } } },
-	{ "SelectLastState", (int)Action::SelectLastState, { { GLFW_KEY_KP_SUBTRACT, 0 } } },
-	{ "Maximise",		 (int)Action::Maximise, 	   { { GLFW_KEY_F11, 0 } } } 
-} };
-
 GLFWwindow* window;
 
 std::unique_ptr<ICore> emulationCore;
@@ -77,79 +64,10 @@ bool step = false;
 bool isFullscreen = false;
 bool menuBarOpen = false;
 
-struct {
-	bool EnableVsync = true;
-	bool AutoHideMenu = true;
-	int windowScale = 2;
-
-	std::deque<std::string> RecentFiles;
-
-	void Load() {
-		Json j;
-
-		if(fs::exists("./settings.json")) {
-			try {
-				std::ifstream file("./settings.json");
-				if(!file.good()) {
-					return;
-				}
-				file >> j;
-			} catch(std::exception& e) {
-				logger.LogScreen("Failed to load settings %s", e.what());
-			}
-
-			j["enableVsync"].tryGet(EnableVsync);
-			j["autoHideMenu"].tryGet(AutoHideMenu);
-			j["windowScale"].tryGet(windowScale);
-
-			std::vector<std::string> files;
-			j["recent"].tryGet(files);
-			RecentFiles = std::deque<std::string>(files.begin(), files.end());
-
-			Input::Load(j);
-		}
-	}
-
-	void Save() {
-		Json j = {
-			{ "enableVsync", EnableVsync },
-			{ "autoHideMenu", AutoHideMenu },
-			{ "windowScale", windowScale },
-			{ "recent", RecentFiles },
-		};
-		Input::Save(j);
-
-		std::ofstream file("./settings.json");
-		if(file.good()) file << j;
-	}
-
-	void AddRecent(std::string path) {
-		for(size_t i = 0; i < RecentFiles.size(); ++i) {
-			if(RecentFiles[i] == path) {
-				RecentFiles.erase(RecentFiles.begin() + i);
-				break;
-			}
-		}
-
-		if(RecentFiles.size() >= 10) {
-			RecentFiles.pop_back();
-		}
-
-		RecentFiles.push_front(std::move(path));
-
-		Save();
-	}
-
-	void ClearRecent() {
-		RecentFiles.clear();
-		Save();
-	}
-} settings;
-
 static ImVec2 CalcWindowSize() {
-	ImVec2 size = (emulationCore ? emulationCore->GetSize() : ImVec2 { 292, 240 }) * settings.windowScale;
+	ImVec2 size = (emulationCore ? emulationCore->GetSize() : ImVec2 { 292, 240 }) * Settings::windowScale;
 
-	if(!settings.AutoHideMenu) {
+	if(!Settings::AutoHideMenu) {
 		auto w = ImGui::FindWindowByName("##MainMenuBar");
 		size.y += w->MenuBarHeight();
 	}
@@ -166,7 +84,7 @@ static void LoadCore(const std::string& path) {
 	try {
 		emulationCore->LoadRom(path);
 
-		settings.AddRecent(path);
+		Settings::AddRecent(path);
 
 		memEdit.SetCore(emulationCore.get());
 
@@ -295,74 +213,53 @@ static void HelpMarker(const char* desc) {
 
 static void onKey(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	Input::OnKey(key, scancode, action, mods);
-
-	if(action != GLFW_PRESS) {
-		return;
-	}
-
-	if(key == GLFW_KEY_F12) {
+	if(action == GLFW_PRESS && key == GLFW_KEY_F12) {
 		metricsWindow = !metricsWindow;
 	}
+}
 
-	Input::Key k { { key, mods } };
+static void handleGuiInput() {
+	auto& hotkeys = Input::hotkeys;
 
-	int mapped;
-	if(!hotkeys.TryGetId(k, mapped)) {
-		return;
+	if(hotkeys.GetKeyDown((int)Action::Speedup)) speedUp = !speedUp;
+
+	if(hotkeys.GetKeyDown((int)Action::Step)) {
+		step = true;
+		running = false;
 	}
 
-	switch((Action)mapped) {
-		case Action::Speedup:
-			speedUp = !speedUp;
-			break;
-		case Action::Step:
-			step = true;
-			running = false;
-			break;
-		case Action::ResumeRun:
-			running = true;
-			break;
-		case Action::Reset:
-			if(emulationCore) {
-				emulationCore->Reset();
-			}
-			break;
-		case Action::HardReset:
-			if(emulationCore) {
-				emulationCore->HardReset();
-			}
-			break;
-		case Action::SaveState:
-			SaveState(selectedSaveState);
-			break;
-		case Action::LoadState:
-			LoadState(selectedSaveState);
-			break;
-		case Action::SelectNextState:
-			selectedSaveState = (selectedSaveState + 1) % 10;
-			logger.Log("Selected state %i\n", selectedSaveState);
-			break;
-		case Action::SelectLastState:
-			selectedSaveState -= 1;
-			if(selectedSaveState < 0) {
-				selectedSaveState += 10;
-			}
-			logger.Log("Selected state %i\n", selectedSaveState);
-			break;
-		case Action::Maximise:
-			if(!isFullscreen) {
-				isFullscreen = true;
+	if(hotkeys.GetKeyDown((int)Action::ResumeRun)) running = true;
+	if(hotkeys.GetKeyDown((int)Action::Reset) && emulationCore) emulationCore->Reset();
+	if(hotkeys.GetKeyDown((int)Action::HardReset) && emulationCore) emulationCore->HardReset();
+	if(hotkeys.GetKeyDown((int)Action::SaveState)) SaveState(selectedSaveState);
+	if(hotkeys.GetKeyDown((int)Action::LoadState)) LoadState(selectedSaveState);
 
-				const auto monitor = glfwGetPrimaryMonitor();
-				const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-				glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-			} else {
-				isFullscreen = false;
+	if(hotkeys.GetKeyDown((int)Action::SelectNextState)) {
+		selectedSaveState = (selectedSaveState + 1) % 10;
+		logger.Log("Selected state %i\n", selectedSaveState);
+	}
 
-				auto s = CalcWindowSize();
-				glfwSetWindowMonitor(window, nullptr, 50, 50, s.x, s.y, 60);
-			}
-			break;
+	if(hotkeys.GetKeyDown((int)Action::SelectLastState)) {
+		selectedSaveState -= 1;
+		if(selectedSaveState < 0) {
+			selectedSaveState += 10;
+		}
+		logger.Log("Selected state %i\n", selectedSaveState);
+	}
+
+	if(hotkeys.GetKeyDown((int)Action::Maximise)) {
+		if(!isFullscreen) {
+			isFullscreen = true;
+
+			const auto monitor = glfwGetPrimaryMonitor();
+			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+			glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+		} else {
+			isFullscreen = false;
+
+			auto s = CalcWindowSize();
+			glfwSetWindowMonitor(window, nullptr, 50, 50, s.x, s.y, 60);
+		}
 	}
 }
 
@@ -389,45 +286,32 @@ static void drawSettings() {
 	if(ImGui::Begin("Settings", &settingsWindow)) {
 		if(ImGui::BeginTabBar("tabBar")) {
 			if(ImGui::BeginTabItem("General")) {
-				if(ImGui::Checkbox("Vsync", &settings.EnableVsync)) {
-					glfwSwapInterval(settings.EnableVsync);
-					settings.Save();
+				if(ImGui::Checkbox("Vsync", &Settings::EnableVsync)) {
+					glfwSwapInterval(Settings::EnableVsync);
+					Settings::Save();
 				}
 				HelpMarker("Toggle Vsync.\nReduces cpu usage on fast cpu's but can cause stuttering");
 
-				if(ImGui::Checkbox("Autohide Menubar", &settings.AutoHideMenu)) {
-					settings.Save();
+				if(ImGui::Checkbox("Autohide Menubar", &Settings::AutoHideMenu)) {
+					Settings::Save();
 				}
 
-				int val = settings.windowScale - 1;
+				int val = Settings::windowScale - 1;
 				static const char* drawModeNames[] = { "x1", "x2", "x3", "x4" };
 				if(ImGui::Combo("DrawMode", &val, drawModeNames, 4)) {
-					settings.windowScale = val + 1;
+					Settings::windowScale = val + 1;
 					auto s = CalcWindowSize();
 					glfwSetWindowSize(window, s.x, s.y);
-					settings.Save();
+					Settings::Save();
 				}
 				ImGui::EndTabItem();
 			}
 
-			if(ImGui::BeginTabItem("Hotkeys")) {
-				ImGui::BeginChild("hotkeys");
-
-				hotkeys.ShowEditWindow();
-
-				ImGui::EndChild();
+			if(ImGui::BeginTabItem("Input")) {
+				Input::DrawStuff();
 				ImGui::EndTabItem();
 			}
 
-			if(ImGui::BeginTabItem("Controllers")) {
-				ImGui::BeginChild("inputs");
-				if(Input::ShowEditWindow()) {
-					settings.Save();
-				}
-				ImGui::EndChild();
-
-				ImGui::EndTabItem();
-			}
 			ImGui::EndTabBar();
 		}
 	}
@@ -435,7 +319,7 @@ static void drawSettings() {
 }
 
 static void drawGui() {
-	if((menuBarOpen || glfwGetWindowAttrib(window, GLFW_HOVERED) || !settings.AutoHideMenu) && ImGui::BeginMainMenuBar()) {
+	if((menuBarOpen || glfwGetWindowAttrib(window, GLFW_HOVERED) || !Settings::AutoHideMenu) && ImGui::BeginMainMenuBar()) {
 		menuBarOpen = false;
 		const auto enabled = emulationCore != nullptr;
 
@@ -456,8 +340,8 @@ static void drawGui() {
 				}
 			}
 			if(ImGui::BeginMenu("Recent ROMs")) {
-				if(!settings.RecentFiles.empty()) {
-					for(const auto& str : settings.RecentFiles) {
+				if(!Settings::RecentFiles.empty()) {
+					for(const auto& str : Settings::RecentFiles) {
 						if(ImGui::MenuItem(str.c_str())) {
 							OpenFile(str);
 						}
@@ -467,8 +351,9 @@ static void drawGui() {
 				}
 
 				ImGui::Separator();
-				if(ImGui::MenuItem("Clear", nullptr, false, !settings.RecentFiles.empty())) {
-					settings.ClearRecent();
+				if(ImGui::MenuItem("Clear", nullptr, false, !Settings::RecentFiles.empty())) {
+					Settings::RecentFiles.clear();
+					Settings::Save();
 				}
 
 				ImGui::EndMenu();
@@ -586,8 +471,7 @@ static void drawGui() {
 }
 
 int main(int argc, char* argv[]) {
-	settings.Load();
-
+	Settings::Load();
 	Audio::Init();
 
 	#pragma region glfw Init
@@ -607,15 +491,15 @@ int main(int argc, char* argv[]) {
 
 	// TODO: glfwWindowHint(GLFW_DECORATED, false);
 
-	auto s = ImVec2(256, 256) * settings.windowScale;
+	auto s = ImVec2(256, 256) * Settings::windowScale;
 	// Open a window and create its OpenGL context
-	window = glfwCreateWindow(s.x, s.y, "Multi Emulator", nullptr, nullptr);
+	window = glfwCreateWindow(s.x, s.y, "multiEmu", nullptr, nullptr);
 	if(window == nullptr) {
 		glfwTerminate();
 		return -1;
 	}
 	glfwMakeContextCurrent(window);
-	glfwSwapInterval(settings.EnableVsync);
+	glfwSwapInterval(Settings::EnableVsync);
 
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
@@ -654,7 +538,7 @@ int main(int argc, char* argv[]) {
 		auto dt = time - lastTime;
 
 		// if vsync is enabled glfw will wait in glfwPollEvents
-		if(!settings.EnableVsync) {
+		if(!Settings::EnableVsync) {
 			// otherwise we have to manually time the render loop
 			if(dt >= 2 / 60.0) {
 				// dropped frame
@@ -692,6 +576,7 @@ int main(int argc, char* argv[]) {
 			}
 			Audio::Resample();
 		}
+		handleGuiInput();
 		drawGui();
 
 		ImGui::Render();
@@ -704,12 +589,14 @@ int main(int argc, char* argv[]) {
 			glfwMakeContextCurrent(backup_current_context);
 		}
 
+		Input::NewFrame();
+
 		glfwSwapBuffers(window);
-		glfwPollEvents();
+		glfwWaitEventsTimeout(0.007);
 	} while(glfwWindowShouldClose(window) == 0);
 	#pragma endregion
 
-	settings.Save();
+	Settings::Save();
 	Audio::Dispose();
 
 	ImGui_ImplOpenGL3_Shutdown();

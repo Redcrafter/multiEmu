@@ -29,18 +29,7 @@ enum Domain {
 	Rom
 };
 
-Core::Core() : texture(160, 144), gameboy(texture), _ppuWindow(gameboy.ppu) {
-	Input::SetMapper(Input::InputMapper("GB", {
-		{ "Right",  0, { { GLFW_KEY_RIGHT, 0 } } },
-		{ "Left",   1, { { GLFW_KEY_LEFT,  0 } } },
-		{ "Up",     2, { { GLFW_KEY_UP,    0 } } },
-		{ "Down",   3, { { GLFW_KEY_DOWN,  0 } } },
-		{ "A",      4, { { GLFW_KEY_A,     0 } } },
-		{ "B",      5, { { GLFW_KEY_B,     0 } } },
-		{ "Select", 6, { { GLFW_KEY_ENTER, 0 } } },
-		{ "Start",  7, { { GLFW_KEY_S,     0 } } },
-	}));
-}
+Core::Core() : texture(160, 144), gameboy(texture), _ppuWindow(gameboy.ppu) { }
 
 std::vector<MemoryDomain> Core::GetMemoryDomains() {
 	return {
