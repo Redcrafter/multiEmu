@@ -43,16 +43,17 @@ struct NsfFormat {
 };
 
 class NsfMapper : public Mapper {
-public:
+  public:
 	NsfFormat nsf;
-private:
+
+  private:
 	// Whether the NSF is bankswitched
 	bool BankSwitched;
 	// the bankswitch values to be used before the INIT routine is called
 	uint8_t InitBankSwitches[8];
 	// An image of the entire PRG space where the unmapped files are located
 	uint8_t FakePRG[32768];
-	
+
 	// PRG bankswitching
 	int prg_banks_4k[8];
 	// whether vectors are currently patched. they should not be patched when running init/play routines because data from the ends of banks might get used
@@ -68,53 +69,53 @@ private:
 		//@NMIVector
 		//Suspend vector patching
 		//3800:LDA $3FF3
-		0xAD,0xF3,0x3F,
+		0xAD, 0xF3, 0x3F,
 
 		//Initialize stack pointer
 		//3803:LDX #$FF
-		0xA2,0xFF,
+		0xA2, 0xFF,
 		//3805:TXS
 		0x9A,
 
 		//Check (and clear) InitPending flag
 		//3806:LDA $3FF0
-		0xAD,0xF0,0x3F,
+		0xAD, 0xF0, 0x3F,
 		//3809:BEQ $8014
-		0xF0,0x09,
+		0xF0, 0x09,
 
 		//Read the next song (resetting the player) and PAL flag into A and X and then call the INIT routine
-		//380B:LDA $3FF1 
-		0xAD,0xF1,0x3F,
+		//380B:LDA $3FF1
+		0xAD, 0xF1, 0x3F,
 		//380E:LDX $3FF2
-		0xAE,0xF2,0x3F,
+		0xAE, 0xF2, 0x3F,
 		//3811:JSR INIT
-		0x20,0x00,0x00,
+		0x20, 0x00, 0x00,
 
 		//Fall through to:
 		//@Play - call PLAY routine with X and Y cleared (this is not supposed to be required, but fceux did it)
-		//3814:LDA #$00 
-		0xA9,0x00,
+		//3814:LDA #$00
+		0xA9, 0x00,
 		//3816:TAX
 		0xAA,
 		//3817:TAY
 		0xA8,
 		//3818:JSR PLAY
-		0x20,0x00,0x00,
+		0x20, 0x00, 0x00,
 
 		//Resume vector patching and infinite loop waiting for next NMI
 		//381B:LDA $3FF4
-		0xAD,0xF4,0x3F,
+		0xAD, 0xF4, 0x3F,
 		//381E:BCC $XX1E
-		0x90,0xFE,
+		0x90, 0xFE,
 
 		//@ResetVector - just set up an infinite loop waiting for the first NMI
 		//3820:CLC
 		0x18,
-		//3821:BCC $XX24 
-		0x90,0xFE,
+		//3821:BCC $XX24
+		0x90, 0xFE,
 	};
 
-public:
+  public:
 	NsfMapper(const std::string& path);
 	// NsfMapper(const NsfFormat header);
 	~NsfMapper() override = default;

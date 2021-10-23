@@ -23,7 +23,7 @@ static bool checkLogo(const uint8_t* rom) {
 }
 
 class MBC {
-	friend class GameboyColorCore;
+	friend class Core;
 
   protected:
 	std::vector<uint8_t> rom;

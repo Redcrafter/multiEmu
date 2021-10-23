@@ -156,10 +156,16 @@ void Logger::DrawScreen() {
 	if(logItems.empty()) {
 		return;
 	}
-	auto w = ImGui::GetCurrentWindow();
+
 	auto padding = ImGui::GetStyle().FramePadding;
 	auto textHeight = ImGui::GetTextLineHeight() * logItems.size();
-	w->DrawList->AddText(ImVec2(w->Pos.x + padding.x, w->Pos.y + w->Size.y - textHeight - padding.y), ImGui::GetColorU32(ImGuiCol_Text), temp.c_str());
+
+	auto viewport = ImGui::GetMainViewport();
+    auto pos = viewport->Pos;
+    auto size = viewport->Size;
+    auto drawList = ImGui::GetForegroundDrawList(viewport);
+
+	drawList->AddText(ImVec2(pos.x + padding.x, pos.y + size.y - textHeight - padding.y), ImGui::GetColorU32(ImGuiCol_Text), temp.c_str());
 
 	// const float fontSize = ImGui::GetFontSize();
 	// auto textSize = ImGui::GetFont()->CalcTextSizeA(fontSize, FLT_MAX, 0, temp.c_str());

@@ -10,6 +10,16 @@
 
 namespace Gameboy {
 
+enum class Mode {
+	DMG0,
+	DMG,
+	MGB,
+	SGB,
+	SGB2,
+	CGB,
+	AGB
+};
+
 enum class Interrupt {
 	VBlank = 0,
 	LCDStat = 1,
@@ -19,7 +29,7 @@ enum class Interrupt {
 };
 
 class Gameboy {
-	friend class GameboyColorCore;
+	friend class Core;
 	friend class GbsMBC;
 	friend class LR35902;
 
@@ -59,18 +69,20 @@ class Gameboy {
 
 	// uint8_t DMA;
 
-	bool JoyPadSelect;
+	uint8_t JoyPadSelect;
 	bool inBios;
 
   public:
+	uint8_t pendingCycles;
+  	float cyclesPassed;
+
 	bool gbc = false;
-	RenderImage& texture;
 
-	Gameboy(RenderImage& texture) : cpu(*this), texture(texture) {}
+	Gameboy(RenderImage& texture) : cpu(*this), ppu(*this, texture) {}
 
-	void Reset();
-
+	void Reset(Mode mode);
 	void Clock();
+	void Advance();
 
 	void Interrupt(Interrupt interrupt) {
 		InterruptFlag |= 1 << (int)interrupt;

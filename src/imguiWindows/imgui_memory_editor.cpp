@@ -1,5 +1,9 @@
 #include "imgui_memory_editor.h"
 
+#include <fstream>
+
+#include "../nativefiledialog/nfd.h"
+
 #ifdef _MSC_VER
 #define _PRISizeT "I"
 #define ImSnprintf(buffer, bufferSize, frmt, ...) _snprintf_s(buffer, bufferSize, bufferSize, frmt, __VA_ARGS__)
@@ -87,6 +91,8 @@ void MemoryEditor::DrawWindow() {
 			ImGui::OpenPopup("context");
 		}
 
+		const auto memorySize = GetDomainSize();
+
 		if(ImGui::BeginMenuBar()) {
 			if(ImGui::BeginMenu("Memory Domain")) {
 				for(auto& domain : domains) {
@@ -97,10 +103,19 @@ void MemoryEditor::DrawWindow() {
 				ImGui::EndMenu();
 			}
 
+			if(ImGui::MenuItem("Export")) {
+				std::string path;
+				NFD::SaveDialog({ }, "./", path, (GLFWwindow*)ImGui::GetMainViewport()->PlatformHandle);
+
+				std::ofstream file{path, std::ios::binary};
+				for (size_t i = 0; i < memorySize; i++) {
+					file.put(ReadFn(i));
+				}
+			}
+
 			ImGui::EndMenuBar();
 		}
 
-		const auto memorySize = GetDomainSize();
 		DrawContents(memorySize);
 		if(ContentsWidthChanged) {
 			CalcSizes(s, memorySize, 0);

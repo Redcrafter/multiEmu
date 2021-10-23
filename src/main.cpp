@@ -52,7 +52,7 @@ Input::InputMapper hotkeys { "hotkeys", {
 	{ "Reset",			 (int)Action::Reset,	 	   { { GLFW_KEY_R, 0 } } },
 	{ "HardReset",		 (int)Action::HardReset,	   { { 0, 0 } } },
 	{ "SaveState",		 (int)Action::SaveState,	   { { GLFW_KEY_K, 0 } } },
-	{ "LoadState",		 (int)Action::LoadState,	   { { GLFW_KEY_L, 0 } } },
+	{ "LoadState",		 (int)Action::LoadState,       { { GLFW_KEY_L, 0 } } },
 	{ "SelectNextState", (int)Action::SelectNextState, { { GLFW_KEY_KP_ADD, 0 } } },
 	{ "SelectLastState", (int)Action::SelectLastState, { { GLFW_KEY_KP_SUBTRACT, 0 } } },
 	{ "Maximise",		 (int)Action::Maximise, 	   { { GLFW_KEY_F11, 0 } } } 
@@ -75,11 +75,11 @@ bool running = false;
 bool step = false;
 
 bool isFullscreen = false;
+bool menuBarOpen = false;
 
 struct {
 	bool EnableVsync = true;
 	bool AutoHideMenu = true;
-	bool UseDockingWindow = false;
 	int windowScale = 2;
 
 	std::deque<std::string> RecentFiles;
@@ -100,7 +100,6 @@ struct {
 
 			j["enableVsync"].tryGet(EnableVsync);
 			j["autoHideMenu"].tryGet(AutoHideMenu);
-			j["useDockingWindow"].tryGet(UseDockingWindow);
 			j["windowScale"].tryGet(windowScale);
 
 			std::vector<std::string> files;
@@ -117,7 +116,6 @@ struct {
 			{ "autoHideMenu", AutoHideMenu },
 			{ "windowScale", windowScale },
 			{ "recent", RecentFiles },
-			{ "useDockingWindow", UseDockingWindow }
 		};
 		Input::Save(j);
 
@@ -149,16 +147,8 @@ struct {
 } settings;
 
 static ImVec2 CalcWindowSize() {
-	ImVec2 size;
+	ImVec2 size = (emulationCore ? emulationCore->GetSize() : ImVec2 { 292, 240 }) * settings.windowScale;
 
-	if(emulationCore) {
-		auto texture = emulationCore->GetMainTexture();
-		size = ImVec2(texture->GetWidth() * emulationCore->GetPixelRatio(), texture->GetHeight());
-	} else {
-		size = ImVec2(292, 240);
-	}
-
-	size *= settings.windowScale;
 	if(!settings.AutoHideMenu) {
 		auto w = ImGui::FindWindowByName("##MainMenuBar");
 		size.y += w->MenuBarHeight();
@@ -225,7 +215,7 @@ struct {
 				open = false;
 			}
 			if(ImGui::Button("Gameboy Color")) {
-				LoadCore<Gameboy::GameboyColorCore>(file);
+				LoadCore<Gameboy::Core>(file);
 				open = false;
 			}
 		}
@@ -242,7 +232,7 @@ static void OpenFile(const std::string& path) {
 	} else if(ext == ".ch8") {
 		LoadCore<Chip8::Core>(path);
 	} else if(ext == ".gb" || ext == ".gbc" || ext == ".gbs") {
-		LoadCore<Gameboy::GameboyColorCore>(path);
+		LoadCore<Gameboy::Core>(path);
 	} else {
 		emulatorPicker.Open(path);
 	}
@@ -252,8 +242,12 @@ static void SaveState(int number) {
 	if(emulationCore == nullptr) {
 		return;
 	}
-	saveStates[number] = std::make_unique<saver>();
-	auto& state = saveStates[number];
+	auto state = std::move(saveStates[number]);
+	if(state) {
+		state->clear();
+	} else {
+		state = std::make_unique<saver>();
+	}
 	emulationCore->SaveState(*state);
 
 	try {
@@ -268,6 +262,7 @@ static void SaveState(int number) {
 	} catch(std::exception& e) {
 		logger.LogScreen("Error saving: %s", e.what());
 	}
+	saveStates[number] = std::move(state);
 }
 
 static void LoadState(int number) {
@@ -277,8 +272,9 @@ static void LoadState(int number) {
 
 	const auto& state = saveStates[number];
 	if(state != nullptr) {
-		state->readPos = 0;
+		state->beginRead();
 		emulationCore->LoadState(*state);
+		state->endRead();
 
 		logger.LogScreen("Loaded state %i", number);
 	} else {
@@ -403,10 +399,6 @@ static void drawSettings() {
 					settings.Save();
 				}
 
-				if(ImGui::Checkbox("Use dockspace", &settings.UseDockingWindow)) {
-					settings.Save();
-				}
-
 				int val = settings.windowScale - 1;
 				static const char* drawModeNames[] = { "x1", "x2", "x3", "x4" };
 				if(ImGui::Combo("DrawMode", &val, drawModeNames, 4)) {
@@ -443,17 +435,12 @@ static void drawSettings() {
 }
 
 static void drawGui() {
-	// fix for menubar closing when menu is too big and creates new context
-	static bool menuOpen = false;
-	static bool lastDock = settings.UseDockingWindow;
+	if((menuBarOpen || glfwGetWindowAttrib(window, GLFW_HOVERED) || !settings.AutoHideMenu) && ImGui::BeginMainMenuBar()) {
+		menuBarOpen = false;
+		const auto enabled = emulationCore != nullptr;
 
-	bool enabled = emulationCore != nullptr;
-
-	bool showMenuBar = menuOpen || glfwGetWindowAttrib(window, GLFW_HOVERED);
-	menuOpen = false;
-	if((showMenuBar || !settings.AutoHideMenu) && ImGui::BeginMainMenuBar()) {
 		if(ImGui::BeginMenu("File")) {
-			menuOpen = true;
+			menuBarOpen = true;
 
 			if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
 				std::string outPath;
@@ -534,7 +521,7 @@ static void drawGui() {
 		}
 
 		if(ImGui::BeginMenu("Emulation")) {
-			menuOpen = true;
+			menuBarOpen = true;
 
 			bool paused = !running;
 			ImGui::Checkbox("Pause", &paused);
@@ -557,7 +544,7 @@ static void drawGui() {
 		}
 
 		if(ImGui::BeginMenu("Tools")) {
-			menuOpen = true;
+			menuBarOpen = true;
 
 			if(ImGui::MenuItem("Settings")) {
 				settingsWindow = true;
@@ -574,60 +561,20 @@ static void drawGui() {
 		}
 
 		if(emulationCore) {
-			emulationCore->DrawMenuBar(menuOpen);
+			emulationCore->DrawMenuBar(menuBarOpen);
 		}
 
 		ImGui::EndMainMenuBar();
 	}
 
-	if(settings.UseDockingWindow) {
-		auto dockspace_id = ImGui::DockSpaceOverViewport();
-
-		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse;
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0);
-
-		if(!lastDock) {
-			ImGui::SetNextWindowDockID(dockspace_id, ImGuiCond_Always);
-		}
-
-		ImGui::Begin("NES", nullptr, window_flags);
-		ImGui::PopStyleVar(2);
-	} else {
-		ImGuiWindowFlags window_flags =
-			ImGuiWindowFlags_NoTitleBar |
-			ImGuiWindowFlags_NoResize |
-			ImGuiWindowFlags_NoMove |
-			ImGuiWindowFlags_NoScrollbar |
-			ImGuiWindowFlags_NoScrollWithMouse |
-			ImGuiWindowFlags_NoCollapse |
-			ImGuiWindowFlags_NoBackground |
-			ImGuiWindowFlags_NoSavedSettings |
-			ImGuiWindowFlags_NoBringToFrontOnFocus |
-			ImGuiWindowFlags_NoNavFocus |
-			ImGuiWindowFlags_NoDocking;
-
-		ImGuiViewport* viewport = ImGui::GetMainViewport();
-		ImGui::SetNextWindowPos(viewport->WorkPos);
-		ImGui::SetNextWindowSize(viewport->WorkSize);
-		ImGui::SetNextWindowViewport(viewport->ID);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-		ImGui::Begin("NES", nullptr, window_flags);
-		ImGui::PopStyleVar(3);
-	}
-	lastDock = settings.UseDockingWindow;
+	auto dockspaceId = ImGui::DockSpaceOverViewport();
+	ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_FirstUseEver);
 
 	if(emulationCore) {
-		emulationCore->DrawMainWindow();
+		emulationCore->Draw();
 	}
 	logger.DrawScreen();
-	ImGui::End();
 
-	if(emulationCore) {
-		emulationCore->DrawWindows();
-	}
 	memEdit.DrawWindow();
 	logger.DrawWindow();
 
@@ -638,7 +585,7 @@ static void drawGui() {
 	emulatorPicker.Draw();
 }
 
-int main() {
+int main(int argc, char* argv[]) {
 	settings.Load();
 
 	Audio::Init();
@@ -650,11 +597,11 @@ int main() {
 		return -1;
 	}
 
-	glfwWindowHint(GLFW_SAMPLES, 4);                               // 4x antialiasing
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);                 // We want OpenGL 3.3
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);                 //
+	glfwWindowHint(GLFW_SAMPLES, 4);			   // 4x antialiasing
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // We want OpenGL 3.3
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3); //
 	#ifdef __APPLE__
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);           // To make MacOS happy; should not be needed
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
 	#endif
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
 
@@ -739,7 +686,7 @@ int main() {
 		if(running && emulationCore != nullptr) {
 			emulationCore->Update();
 			if(speedUp) {
-				for (size_t i = 1; i < 5; i++) {
+				for(size_t i = 1; i < 5; i++) {
 					emulationCore->Update();
 				}
 			}
@@ -778,6 +725,6 @@ int main() {
 #ifdef _WIN32
 #include <windows.h>
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-	main();
+	return main(__argc, __argv);
 }
 #endif

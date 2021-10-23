@@ -40,7 +40,7 @@ class GbsMBC : public MBC {
 	GbsHeader header;
 
 	GbsMBC(Gameboy& gb, const std::string& path);
-	~GbsMBC();
+	~GbsMBC() {}
 
 	void LoadTrack(int track = -1);
 
@@ -110,17 +110,14 @@ GbsMBC::GbsMBC(Gameboy& gb, const std::string& path) : gb(gb) {
 	rom[pos++] = header.playAddress;
 	rom[pos++] = header.playAddress >> 8;
 	rom[pos++] = 0x18; // JR pc ± $XX
-	rom[pos++] = -10;   // To HALT
+	rom[pos++] = -10;  // To HALT
 }
-
-GbsMBC::~GbsMBC() {}
 
 void GbsMBC::LoadTrack(int track) {
 	if(track == -1) {
 		track = header.firstSong;
 	}
-
-	gb.Reset();
+	gb.Reset(gb.gbc ? Mode::CGB : Mode::DMG);
 
 	gb.CpuWrite(0xFF40, 0x80);
 	gb.CpuWrite(0xFF07, header.TAC);

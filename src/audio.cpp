@@ -1,5 +1,6 @@
 #include "audio.h"
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <memory>
@@ -90,6 +91,7 @@ bool Audio::Init() {
 			parameters.firstChannel = 0;
 
 			RtAudio::StreamOptions options;
+			options.streamName = "MultiEmu";
 			// options.flags = RTAUDIO_MINIMIZE_LATENCY; // breaks mac TODO: test non fixed sample request
 
 			uint32_t bufferFrames = sampleRate / 60;

@@ -6,6 +6,7 @@
 namespace Gameboy {
 
 class Gameboy;
+enum class Mode;
 
 // fucked up shit to prevent endian issue
 class Reg16 {
@@ -39,9 +40,17 @@ class Reg16 {
 };
 static_assert(sizeof(Reg16) == 2);
 
+enum class CpuState {
+	Normal,
+	Halt,
+	HaltBug,
+	Stop,
+};
+
 // very similar to z80
 class LR35902 {
-	friend class GameboyColorCore;
+	friend class Gameboy;
+	friend class Core;
 
   private:
 	Gameboy& bus;
@@ -87,24 +96,24 @@ class LR35902 {
 	// interrupt enable
 	bool IMEtoggle;
 	bool IME;
-	bool HALT;
-	bool haltBug;
-	bool STOP;
-
-	uint8_t cycles;
+	CpuState state;
 
   public:
-	LR35902(Gameboy& bus)
-		: bus(bus) {}
+	LR35902(Gameboy& bus) : bus(bus) {}
 
-	void Reset(bool useBoot = true);
+	void Reset(Mode mode);
 
-	void Clock();
+	void Step();
 
 	void SaveState(saver& saver);
 	void LoadState(saver& saver);
 
   private:
+	uint8_t read(uint16_t addr);
+	void write(uint16_t addr, uint8_t value);
+	void cycleStall();
+	void cycleOamBug(uint16_t value);
+
 	bool checkCond(uint8_t opcode) const;
 
 	uint8_t RightReg(uint8_t opcode);

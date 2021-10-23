@@ -37,8 +37,8 @@ class RenderImage {
 	RenderImage(const RenderImage&) = delete;
 	RenderImage& operator=(const RenderImage&) = delete;
 
-	int GetWidth() { return Width; }
-	int GetHeight() { return Height; }
+	int GetWidth() const { return Width; }
+	int GetHeight() const { return Height; }
 
 	void Clear(Color col) {
 		std::fill(imgData.begin(), imgData.end(), col);
@@ -47,7 +47,7 @@ class RenderImage {
 		assert(x >= 0 && x < Width && y >= 0 && y < Height);
 		imgData[x + y * Width] = col;
 	}
-	Color GetPixel(int x, int y) {
+	Color GetPixel(int x, int y) const {
 		assert(x >= 0 && x < Width && y >= 0 && y < Height);
 		return imgData[x + y * Width];
 	}
@@ -78,7 +78,7 @@ class RenderImage {
 #endif
 
 	GLuint GetTextureId() const { return textureID; };
-	void BufferImage() {
+	void BufferImage() const {
 		glBindTexture(GL_TEXTURE_2D, textureID);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Width, Height, GL_RGB, GL_UNSIGNED_BYTE, imgData.data());
 	}

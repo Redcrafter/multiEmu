@@ -29,7 +29,7 @@ enum Domain {
 	Rom
 };
 
-GameboyColorCore::GameboyColorCore() : texture(160, 144), gameboy(texture) {
+Core::Core() : texture(160, 144), gameboy(texture), _ppuWindow(gameboy.ppu) {
 	Input::SetMapper(Input::InputMapper("GB", {
 		{ "Right",  0, { { GLFW_KEY_RIGHT, 0 } } },
 		{ "Left",   1, { { GLFW_KEY_LEFT,  0 } } },
@@ -42,7 +42,7 @@ GameboyColorCore::GameboyColorCore() : texture(160, 144), gameboy(texture) {
 	}));
 }
 
-std::vector<MemoryDomain> GameboyColorCore::GetMemoryDomains() {
+std::vector<MemoryDomain> Core::GetMemoryDomains() {
 	return {
 		{ CpuRam, "RAM", sizeof(gameboy.ram) },
 		{ Hram, "HRAM", sizeof(gameboy.hram) },
@@ -53,7 +53,7 @@ std::vector<MemoryDomain> GameboyColorCore::GetMemoryDomains() {
 	};
 }
 
-void GameboyColorCore::WriteMemory(int domain, size_t address, uint8_t val) {
+void Core::WriteMemory(int domain, size_t address, uint8_t val) {
 	switch(domain) {
 		case CpuRam: ((uint8_t*)&gameboy.ram)[address] = val; break;
 		case Hram: gameboy.hram[address] = val; break;
@@ -64,7 +64,7 @@ void GameboyColorCore::WriteMemory(int domain, size_t address, uint8_t val) {
 	}
 }
 
-uint8_t GameboyColorCore::ReadMemory(int domain, size_t address) {
+uint8_t Core::ReadMemory(int domain, size_t address) {
 	switch(domain) {
 		case CpuRam: return ((uint8_t*)&gameboy.ram)[address];
 		case Hram: return gameboy.hram[address];
@@ -77,7 +77,7 @@ uint8_t GameboyColorCore::ReadMemory(int domain, size_t address) {
 	throw std::logic_error("Unreachable");
 }
 
-void GameboyColorCore::LoadRom(const std::string& path) {
+void Core::LoadRom(const std::string& path) {
 	auto ext = fs::path(path).extension().string();
 	std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
 
@@ -88,20 +88,14 @@ void GameboyColorCore::LoadRom(const std::string& path) {
 			throw std::runtime_error("Not a gameboy game");
 		}
 
+		mode = Mode::DMG;
 		uint8_t cgbFlag = data[0x143];
-		if(cgbFlag == 0x80) {
-			// Game supports CGB functions, but works on old gameboys also.
-			gameboy.gbc = true;
-		} else if(cgbFlag == 0xC0) {
-			// Game works on CGB only (physically the same as 80h).
-			gameboy.gbc = true;
-		} else {
-			gameboy.gbc = false;
+		if(cgbFlag == 0x80 || cgbFlag == 0xC0) {
+			mode = Mode::CGB;
 		}
-
 		auto sgbFlag = data[0x0146];
 		if(sgbFlag == 0x03) {
-			// Game supports SGB functions
+			mode = Mode::SGB;
 		}
 		uint8_t cartType = data[0x0147];
 		uint32_t romSize = data[0x0148];
@@ -135,9 +129,7 @@ void GameboyColorCore::LoadRom(const std::string& path) {
 
 		uint16_t globalChecksum = data[0x014E] << 8 | data[0x014F];
 		uint32_t check = 0;
-		for(uint8_t i : data) {
-			check += i;
-		}
+		for(const uint8_t i : data) check += i;
 		check -= globalChecksum & 0xFF;
 		check -= globalChecksum >> 8;
 		if(globalChecksum != (check & 0xFFFF)) {
@@ -147,21 +139,19 @@ void GameboyColorCore::LoadRom(const std::string& path) {
 		romHash = md5((char*)data.data(), data.size());
 
 		switch(cartType) {
-			case 0x0: assert(ramSize == 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, false); break;
-			case 0x1: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC1>(data, ramSize, false); break;
-			case 0x2: gameboy.mbc = std::make_unique<MBC1>(data, ramSize, false); break;
-			case 0x3: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC1>(data, ramSize, true); break;
-			case 0x5: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC2>(data, false); break;
-			case 0x6: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC2>(data, true); break;
-			case 0x8: assert(ramSize != 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, false); break;
-			case 0x9: assert(ramSize != 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, true); break;
-			/* TODO: mbc3 timer
+			case 0x0:  assert(ramSize == 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, false); break;
+			case 0x1:  assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC1>(data, ramSize, false); break;
+			case 0x2: 						 gameboy.mbc = std::make_unique<MBC1>(data, ramSize, false); break;
+			case 0x3:  assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC1>(data, ramSize, true); break;
+			case 0x5:  assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC2>(data, false); break;
+			case 0x6:  assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC2>(data, true); break;
+			case 0x8:  assert(ramSize != 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, false); break;
+			case 0x9:  assert(ramSize != 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, true); break;
 			case 0x0F: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, true, true); break;
-			case 0x10: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, true, true); break; */
+			case 0x10: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, true, true); break;
 			case 0x11: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, false, false); break;
 			case 0x12: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, false, false); break;
 			case 0x13: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, true, false); break;
-
 			case 0x19: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, false, false); break;
 			case 0x1A: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, false, false); break;
 			case 0x1B: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, true, false); break;
@@ -170,30 +160,37 @@ void GameboyColorCore::LoadRom(const std::string& path) {
 			case 0x1E: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, true, true); break;
 			default: throw std::runtime_error("unknown mbc " + std::to_string(cartType));
 		}
-
-		gameboy.Reset();
+		
+		gameboy.Reset(mode);
 	} else if(ext == ".gbs") {
-		gameboy.gbc = false;
 		gameboy.mbc = std::make_unique<GbsMBC>(gameboy, path);
 		((GbsMBC*)gameboy.mbc.get())->LoadTrack();
 	}
 }
 
-void GameboyColorCore::Reset() {
-	gameboy.Reset();
+void Core::Reset() {
+	gameboy.Reset(mode);
 }
 
-void GameboyColorCore::Update() {
-	while(!gameboy.ppu.frameComplete) {
+void Core::Update() {
+	const auto cycles = 4194304 / 60.0;
+
+	while(gameboy.cyclesPassed < cycles) {
 		gameboy.Clock();
 	}
-	gameboy.ppu.frameComplete = false;
+	gameboy.cyclesPassed -= cycles;
+
+	if(mode == Mode::DMG && gameboy.cpu.state == CpuState::Stop) {
+		texture.Clear({ 0xFF, 0xFF, 0xFF });
+	}
 }
 
-void GameboyColorCore::DrawMainWindow() {
+void Core::Draw() {
 	auto mbc = gameboy.mbc.get();
 
 	if(auto gbs = dynamic_cast<GbsMBC*>(mbc)) {
+		ImGui::Begin("Screen");
+
 		if(currentTrack == -1) {
 			currentTrack = selectedTrack = gbs->header.firstSong;
 		}
@@ -211,8 +208,25 @@ void GameboyColorCore::DrawMainWindow() {
 			currentTrack = selectedTrack;
 			gbs->LoadTrack(selectedTrack);
 		}
+
+		ImGui::End();
 	} else {
-		ICore::DrawMainWindow();
+		DrawTextureWindow(texture);
+	}
+
+	_ppuWindow.DrawWindow();
+}
+
+void Core::DrawMenuBar(bool& menuOpen) {
+	if(ImGui::BeginMenu("GB")) {
+		menuOpen = true;
+
+		if(ImGui::MenuItem("PPU Viewer")) {
+			_ppuWindow.Open();
+		}
+
+		ImGui::EndMenu();
 	}
 }
+
 }

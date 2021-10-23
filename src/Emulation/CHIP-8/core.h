@@ -21,28 +21,17 @@ class Core : public ICore {
 	Core();
 	~Core() override = default;
 
-	std::string GetName() override {
-		return "Chip-8";
-	}
-
-	RenderImage* GetMainTexture() override {
-		return &texture;
-	}
-	float GetPixelRatio() override {
-		return 1;
-	}
-
-	md5 GetRomHash() override {
-		return currentFileHash;
-	}
+	std::string GetName() override { return "Chip-8"; }
+	ImVec2 GetSize() override { return { 64, 32 }; } 
+	md5 GetRomHash() override { return currentFileHash; }
 
 	std::vector<MemoryDomain> GetMemoryDomains() override;
 	void WriteMemory(int domain, size_t address, uint8_t val) override;
 	uint8_t ReadMemory(int domain, size_t address) override;
 
 	void DrawMenuBar(bool& menuOpen) override;
-
-	void DrawWindows() override {
+	void Draw() override {
+		DrawTextureWindow(texture);
 		disassembler.DrawWindow();
 	}
 

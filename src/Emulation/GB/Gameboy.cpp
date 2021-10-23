@@ -10,54 +10,83 @@ namespace Gameboy {
 #define GB_TIMA_RELOADING 1
 #define GB_TIMA_RELOADED 2
 
-void Gameboy::Reset() {
+void Gameboy::Reset(Mode mode) {
 	// bool useBoot = false;
-
-	ramBank = 7;
 
 	std::memset(ram, 0, sizeof(ram));
 	std::memset(hram, 0, sizeof(hram));
 
 	inBios = false;
 
-	cpu.Reset(false);
+	cpu.Reset(mode);
 
-	JoyPadSelect = false; // FF00 - FF0F
-	SB = 0;				  // FF01
-	// SC = 0;			  // FF02
-	DIV = 0xABD4;		  // FF04
-	TIMA = 0;			  // FF05
-	TMA = 0;			  // FF06
-	TAC = 0;			  // FF07
-	InterruptFlag = 1;	  // FF0F
-	apu.reset();		  // FF10 - FF3F
-	ppu.Reset();		  // FF40 - FF4B
-	InterruptEnable = 0;  // FFFF
+	JoyPadSelect = 0;	 // FF00
+	SB = 0;				 // FF01
+	SC = 0;				 // FF02
+	TIMA = 0;			 // FF05
+	TMA = 0;			 // FF06
+	TAC = 0;			 // FF07
+	InterruptFlag = 1;	 // FF0F
+	apu.reset();	     // FF10 - FF3F
+	ppu.Reset();		 // FF40 - FF4B
+	speed = 0;			 // FF4D
+	vramBank = 0;		 // FF4F
+	HDMA1 = 0xFF;		 // FF51
+	HDMA2 = 0xFF;		 // FF52
+	HDMA3 = 0xFF;		 // FF53
+	HDMA4 = 0xFF;		 // FF54
+	RP = 0xFF;			 // FF56
+	BGPI = 0xFF;		 // FF68
+	OBPI = 0xFF;		 // FF6A
+	ramBank = 7;		 // FF70
+	FF72 = 0xFF;		 // FF72
+	FF73 = 0xFF;		 // FF73
+	FF74 = 0xFF;		 // FF74
+	FF75 = 0xFF;		 // FF75
+	InterruptEnable = 0; // FFFF
 
 	lastTimer = false;
 	timaState = GB_TIMA_RUNNING;
+	pendingCycles = 0;
+	cyclesPassed = 0;
+	
+	auto cgbFlag = CpuRead(0x0143);
+	
+	gbc = apu.gbc = false;
+	switch(mode) {
+		case Mode::DMG0:
+			DIV = 0x1800; // FF04
+			break;
+		case Mode::DMG:
+		case Mode::MGB:
+			DIV = 0xABD4; // FF04
+			break;
+		case Mode::SGB:
+		case Mode::SGB2:
+			CpuWrite(0xFF26, 0xF0);
+			break;
+		case Mode::CGB:
+		case Mode::AGB:
+			SC = 3;		  // FF02
+			DIV = 0xA344; // FF04
 
-	if(gbc) {
-		SC = 3; // FF02
-		FF72 = 0;
-		FF73 = 0;
-		FF74 = 0;
-		FF75 = 0;
-		speed = 0x81;
-		vramBank = 0;
+			FF72 = 0;
+			FF73 = 0;
+			FF74 = 0;
+			FF75 = 0;
 
-		RP = 0xC1;
-		BGPI = 0;
-		OBPI = 0;
-	} else {
-		SC = 0; // FF02
-		FF72 = 0xFF;
-		FF73 = 0xFF;
-		FF74 = 0xFF;
-		FF75 = 0xFF;
-		speed = 0;
-		BGPI = 0xFF;
-		OBPI = 0xFF;
+			speed = 0x7E;
+
+			RP = 0xC1;
+			BGPI = 0;
+			OBPI = 0;
+
+			if(cgbFlag == 0x80 || cgbFlag == 0xC0) {
+				gbc = apu.gbc = true;
+			} else { // DMG mode
+
+			}
+			break;
 	}
 }
 
@@ -102,7 +131,7 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 		case 0xC000: // C000-CFFF    4KB Work RAM Bank 0 (WRAM)
 			return ram[0][addr & 0xFFF];
 		case 0xD000: // D000-DFFF    4KB Work RAM Bank 1 (WRAM)  (switchable bank 1-7 in CGB Mode)
-			return ram[ramBank][addr & 0xFFF];
+			return ram[std::max(ramBank & 7, 1)][addr & 0xFFF];
 		case 0xE000: // E000-EFFF    Same as C000-CFFF (ECHO)    (typically not used)
 			return ram[0][addr & 0xFFF];
 			// case 0xF000: // Fall through
@@ -110,7 +139,7 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 
 	if(addr <= 0xFDFF) {
 		// F000-FDFF    Same as D000-DDFF (ECHO)    (typically not used)
-		return ram[ramBank][addr & 0xFFF];
+		return ram[std::max(ramBank & 7, 1)][addr & 0xFFF];
 	} else if(addr <= 0xFE9F) {
 		// Sprite Attribute Table (OAM)
 		return (ppu.STAT.modeFlag == 0 || ppu.STAT.modeFlag == 1 || !ppu.Control.lcdEnable) ? ppu.OAM[addr & 0xFF] : 0xFF;
@@ -123,16 +152,18 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 		switch(addr) {
 			case 0xFF00: {
 				uint8_t val = 0;
-				if(JoyPadSelect == 0) {
+				if(JoyPadSelect == 1) {
 					val |= (!Input::GetKey(0)) << 0; // right
 					val |= (!Input::GetKey(1)) << 1; // left
 					val |= (!Input::GetKey(2)) << 2; // up
 					val |= (!Input::GetKey(3)) << 3; // down
-				} else {
+					val |= 0x20;
+				} else if(JoyPadSelect == 2) {
 					val |= (!Input::GetKey(4)) << 0; // A
 					val |= (!Input::GetKey(5)) << 1; // B
 					val |= (!Input::GetKey(6)) << 2; // Select
 					val |= (!Input::GetKey(7)) << 3; // Start
+					val |= 0x10;
 				}
 				return val | 0xC0;
 			}
@@ -153,7 +184,7 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 			case 0xFF38: case 0xFF39: case 0xFF3A: case 0xFF3B: case 0xFF3C: case 0xFF3D: case 0xFF3E: case 0xFF3F:
 				return apu.read(addr);
 			case 0xFF40: return ppu.Control.reg;
-			case 0xFF41: return ppu.STAT.reg | 0x80;
+			case 0xFF41: return ppu.STAT.reg;
 			case 0xFF42: return ppu.SCY;
 			case 0xFF43: return ppu.SCX;
 			case 0xFF44: return ppu.LY;
@@ -165,20 +196,21 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 			case 0xFF4A: return ppu.WY;
 			case 0xFF4B: return ppu.WX;
 
-			case 0xFF4D: return gbc ? speed | 0x7E : 0xFF;
+			case 0xFF4D: return gbc ? speed : 0xFF;
 			case 0xFF4F: return gbc ? vramBank | 0xFE : 0xFF;
-			case 0xFF56: return gbc ? RP | 0x3E : 0xFF;
+			case 0xFF56: return RP;
 			case 0xFF68: return BGPI | 0x40;
 			case 0xFF69: return gbc ? ppu.gbcBGP[BGPI & 0x3F] : 0xFF;
 			case 0xFF6A: return OBPI | 0x40;
 			case 0xFF6B: return gbc ? ppu.gbcOBP[OBPI & 0x3F] : 0xFF;
 			case 0xFF6C: return gbc ? ppu.OPRI | 0xFE : 0xFF;
-			case 0xFF70: return gbc ? ramBank | 0xF8 : 0xFF;
+			case 0xFF70: return ramBank | 0xF8;
 			case 0xFF72: return FF72;
 			case 0xFF73: return FF73;
 			case 0xFF74: return FF74;
 			case 0xFF75: return FF75 | 0x8F;
-			// case 0xFF76: // TODO: PCM amplitudes 1 & 2
+			case 0xFF76: return apu.FF76();
+			case 0xFF77: return apu.FF77();
 			// case 0xFF77: // TODO: PCM amplitudes 3 & 4
 			default: return 0xFF;
 		}
@@ -220,7 +252,7 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 			ram[0][addr & 0xFFF] = val;
 			break;
 		case 0xD000: // D000-DFFF    4KB Work RAM Bank 1 (WRAM)  (switchable bank 1-7 in CGB Mode)
-			ram[ramBank][addr & 0xFFF] = val;
+			ram[std::max(ramBank & 7, 1)][addr & 0xFFF] = val;
 			break;
 		case 0xE000: // E000-EFFF    Same as C000-CFFF (ECHO)    (typically not used)
 			ram[0][addr & 0xFFF] = val;
@@ -228,7 +260,7 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 		case 0xF000:
 			if(addr <= 0xFDFF) {
 				// F000-FDFF    Same as D000-DDFF (ECHO)    (typically not used)
-				ram[ramBank][addr & 0xFFF] = val;
+				ram[std::max(ramBank & 7, 1)][addr & 0xFFF] = val;
 			} else if(addr <= 0xFE9F) {
 				// FE00-FE9F Sprite Attribute Table (OAM)
 				if(ppu.STAT.modeFlag == 0 || ppu.STAT.modeFlag == 1 || !ppu.Control.lcdEnable) {
@@ -240,9 +272,11 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 				switch(addr) {
 					case 0xFF00:
 						if(!(val & 0x10)) {
-							JoyPadSelect = 0;
-						} else if(!(val & 0x20)) {
 							JoyPadSelect = 1;
+						} else if(!(val & 0x20)) {
+							JoyPadSelect = 2;
+						} else {
+							JoyPadSelect = 0;
 						}
 						break;
 					case 0xFF01: // SB
@@ -269,8 +303,15 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 					case 0xFF38: case 0xFF39: case 0xFF3A: case 0xFF3B: case 0xFF3C: case 0xFF3D: case 0xFF3E: case 0xFF3F:
 						apu.write(addr, val);
 						break;
-					case 0xFF40: ppu.Control.reg = val; break;
-					case 0xFF41: ppu.STAT.reg = val & 0xF0; break;
+					case 0xFF40: 
+						ppu.Control.reg = val; 
+						if(!ppu.Control.lcdEnable) {
+							ppu.STAT.modeFlag = 0;
+							ppu.LY = 0;
+							ppu.LX = 4;
+						}
+						break;
+					case 0xFF41: ppu.STAT.reg = (val & 0x78) | (ppu.STAT.reg & 0x87); break;
 					case 0xFF42: ppu.SCY = val; break;
 					case 0xFF43: ppu.SCX = val; break;
 					case 0xFF44: ppu.LY = val; break;
@@ -278,7 +319,7 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 					case 0xFF46: // DMA
 						// TODO: do actual dma instead of this
 						for(int i = 0; i < 0xA0; i++) {
-							ppu.OAM[i] = CpuRead((val << 8) | i);
+							ppu.OAM[i] = CpuRead(val << 8 | i);
 						}
 						break;
 					case 0xFF47: ppu.BGP = val; break;
@@ -286,14 +327,14 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 					case 0xFF49: ppu.OBP1 = val; break;
 					case 0xFF4A: ppu.WY = val; break;
 					case 0xFF4B: ppu.WX = val; break;
-					case 0xFF4D: if(gbc) speed = speed & 0x80 | val & 1; break;
+					case 0xFF4D: if(gbc) speed = speed & 0x80 | val & 0x7F; break;
 					case 0xFF4F: if(gbc) vramBank = val & 1; break;
 					case 0xFF50: inBios = !val; break;
 					case 0xFF51: if(gbc) HDMA1 = val; break;
 					case 0xFF52: if(gbc) HDMA2 = val; break;
 					case 0xFF53: if(gbc) HDMA3 = val; break;
 					case 0xFF54: if(gbc) HDMA4 = val; break;
-					case 0xFF55: 
+					case 0xFF55:
 						if(gbc) {
 							auto cpu = ((HDMA1 << 8) | HDMA2) & 0xFFF0;
 							auto vram = ((HDMA3 << 4) | (HDMA4 >> 4));
@@ -321,7 +362,7 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 						}
 						break;
 					case 0xFF6C: if(gbc) ppu.OPRI = val & 1; break;
-					case 0xFF70: if(gbc) ramBank = std::max(val & 7, 1); break;
+					case 0xFF70: if(gbc) ramBank = val & 7; break;
 					case 0xFF72: if(gbc) FF72 = val; break;
 					case 0xFF73: if(gbc) FF73 = val; break;
 					case 0xFF74: if(gbc) FF74 = val; break;
@@ -339,23 +380,45 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 }
 
 void Gameboy::Clock() {
-	cpu.Clock();
-	clockTimer();
-	if(speed & 0x80) {
-		cpu.Clock();
-		clockTimer();
-	}
+	cpu.Step();
+}
 
-	ppu.Clock(*this, texture);
-	apu.clock();
+void Gameboy::Advance() {
+	if(pendingCycles == 0) return;
+	
+	assert(pendingCycles % 4 == 0);
+	
+	if(speed & 0x80) {
+		auto count = pendingCycles / 8;
+
+		for(int i = 0; i < count; ++i) {
+			clockTimer();
+			clockTimer();
+
+			ppu.Clock();
+			apu.clock();
+		}
+
+		cyclesPassed += count * 4;
+		pendingCycles -= count * 8;
+	} else {
+		auto count = pendingCycles / 4;
+
+		for(int i = 0; i < count; ++i) {
+			clockTimer();
+			ppu.Clock();
+			apu.clock();
+		}
+
+		cyclesPassed += pendingCycles;
+		pendingCycles = 0;
+	}
 }
 
 void Gameboy::SaveState(saver& saver) {
 	cpu.SaveState(saver);
-	// ppu.SaveState(saver);
-	// apu.SaveState(saver);
-	saver << ppu;
-	saver << apu;
+	ppu.SaveState(saver);
+	apu.SaveState(saver);
 	mbc->SaveState(saver);
 
 	saver << DIV;
@@ -371,16 +434,20 @@ void Gameboy::SaveState(saver& saver) {
 	saver << TAC;
 	saver << lastTimer;
 	saver << timaState;
+	saver << FF72 << FF73 << FF74 << FF75;
+	saver << HDMA1 << HDMA2 << HDMA3 << HDMA4;
+	saver << speed;
+	saver << RP;
+	saver << BGPI << OBPI;
+	saver << vramBank;
 	saver << JoyPadSelect;
 	saver << inBios;
 }
 
 void Gameboy::LoadState(saver& saver) {
 	cpu.LoadState(saver);
-	// ppu.LoadState(saver);
-	// apu.LoadState(saver);
-	saver >> ppu;
-	saver >> apu;
+	ppu.LoadState(saver);
+	apu.LoadState(saver);
 	mbc->LoadState(saver);
 
 	saver >> DIV;
@@ -396,11 +463,19 @@ void Gameboy::LoadState(saver& saver) {
 	saver >> TAC;
 	saver >> lastTimer;
 	saver >> timaState;
+	saver >> FF72 >> FF73 >> FF74 >> FF75;
+	saver >> HDMA1 >> HDMA2 >> HDMA3 >> HDMA4;
+	saver >> speed;
+	saver >> RP;
+	saver >> BGPI >> OBPI;
+	saver >> vramBank;
 	saver >> JoyPadSelect;
 	saver >> inBios;
 }
 
 void Gameboy::clockTimer() {
+	if(cpu.state == CpuState::Stop) return;
+
 	const uint16_t rates[] = { 1 << 9, 1 << 3, 1 << 5, 1 << 7 };
 	DIV += 4;
 
@@ -408,8 +483,8 @@ void Gameboy::clockTimer() {
 		timaState = GB_TIMA_RUNNING;
 	} else if(timaState == GB_TIMA_RELOADING) {
 		timaState = GB_TIMA_RELOADED;
-		TIMA = TMA;
 		Interrupt(Interrupt::Timer);
+		TIMA = TMA;
 	}
 
 	auto timer = (TAC & 4) && DIV & rates[TAC & 3];

@@ -25,30 +25,16 @@ public:
 	Core();
 	~Core() override = default;
 
-	std::string GetName() override {
-		return "NES";
-	}
-
-	RenderImage* GetMainTexture() override {
-		return &texture;
-	}
-	float GetPixelRatio() override {
-		return 8.0 / 7.0;
-	}
-
-	md5 GetRomHash() override {
-		if(emulator.cartridge) {
-			return emulator.cartridge->hash;
-		}
-		return md5();
-	}
+	std::string GetName() override { return "NES"; }
+	ImVec2 GetSize() override { return { 256 * (8.0 / 7.0), 240 }; } 
+	md5 GetRomHash() override { return emulator.cartridge ? emulator.cartridge->hash : md5(); }
 
 	std::vector<MemoryDomain> GetMemoryDomains() override;
 	void WriteMemory(int domain, size_t address, uint8_t val) override;
 	uint8_t ReadMemory(int domain, size_t address) override;
 
+	void Draw() override;
 	void DrawMenuBar(bool& menuOpen) override;
-	void DrawWindows() override;
 
 	void SaveState(saver& saver) override;
 	void LoadState(saver& saver) override;

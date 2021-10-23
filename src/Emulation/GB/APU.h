@@ -1,5 +1,4 @@
 #pragma once
-#include <cassert>
 #include <cstdint>
 
 #include "../../audio.h"
@@ -14,11 +13,10 @@ const uint8_t WAVE_DUTY_TABLE[4][8] = {
 };
 
 struct Length {
-	bool dacEnabled;
-
-	bool channelEnabled;
-
 	uint16_t lengthCounter;
+
+	bool dacEnabled;
+	bool channelEnabled;
 	bool lengthEnabled;
 
 	void clockLength() {
@@ -48,11 +46,24 @@ struct Length {
 
 		lengthEnabled = (data >> 6) & 1;
 	}
+
+	void SaveLength(saver& saver) {
+		saver << lengthCounter;
+		saver << dacEnabled;
+		saver << channelEnabled;
+		saver << lengthEnabled;
+	}
+	void LoadLength(saver& saver) {
+		saver >> lengthCounter;
+		saver >> dacEnabled;
+		saver >> channelEnabled;
+		saver >> lengthEnabled;
+	}
 };
 
 struct Envelope {
-	uint8_t envelopePeriod;
 	bool envelopeDir;
+	uint8_t envelopePeriod;
 	uint8_t envelopeInitialVol;
 
 	uint8_t envPeriodTimer;
@@ -81,14 +92,27 @@ struct Envelope {
 			}
 		}
 	}
+
+	void SaveEnvelope(saver& saver) {
+		saver << envelopeDir;
+		saver << envelopePeriod;
+		saver << envelopeInitialVol;
+		saver << envPeriodTimer;
+		saver << envVolume;
+	}
+	void LoadEnvelope(saver& saver) {
+		saver >> envelopeDir;
+		saver >> envelopePeriod;
+		saver >> envelopeInitialVol;
+		saver >> envPeriodTimer;
+		saver >> envVolume;
+	}
 };
 
 struct SquareBase : Envelope, Length {
 	uint16_t frequency;
-
-	uint8_t soundPattern;
-
 	uint16_t freqTimer;
+	uint8_t soundPattern;
 	uint8_t wavePos;
 
 	void writeLength(uint8_t data) {
@@ -118,16 +142,34 @@ struct SquareBase : Envelope, Length {
 		}
 		return 0;
 	}
+
+	void SaveSquare(saver& saver) {
+		SaveEnvelope(saver);
+		SaveLength(saver);
+		saver << frequency;
+		saver << freqTimer;
+		saver << soundPattern;
+		saver << wavePos;
+	}
+	void LoadSquare(saver& saver) {
+		LoadEnvelope(saver);
+		LoadLength(saver);
+		saver >> frequency;
+		saver >> freqTimer;
+		saver >> soundPattern;
+		saver >> wavePos;
+	}
 };
 
 struct Square1 : SquareBase {
-	uint8_t sweepShift;
-	bool sweepDir;
-	uint8_t sweepPeriod;
-
-	bool sweepEnable;
-	uint8_t sweepTimer;
 	uint16_t shadowFrequency;
+
+	uint8_t sweepShift;
+	uint8_t sweepPeriod;
+	uint8_t sweepTimer;
+
+	bool sweepDir;
+	bool sweepEnable;
 
 	uint16_t calculateFrequency() {
 		auto newFrequency = shadowFrequency >> sweepShift;
@@ -152,7 +194,7 @@ struct Square1 : SquareBase {
 			if(sweepEnable && sweepPeriod > 0) {
 				auto newFrequency = calculateFrequency();
 
-				if(newFrequency <= 2047 && sweepShift > 0) {
+				if(newFrequency < 2048 && sweepShift > 0) {
 					frequency = newFrequency;
 					shadowFrequency = newFrequency;
 
@@ -162,15 +204,33 @@ struct Square1 : SquareBase {
 			}
 		}
 	}
+
+	void Save(saver& saver) {
+		SaveSquare(saver);
+		saver << shadowFrequency;
+		saver << sweepShift;
+		saver << sweepPeriod;
+		saver << sweepTimer;
+		saver << sweepDir;
+		saver << sweepEnable;
+	}
+	void Load(saver& saver) {
+		LoadSquare(saver);
+		saver >> shadowFrequency;
+		saver >> sweepShift;
+		saver >> sweepPeriod;
+		saver >> sweepTimer;
+		saver >> sweepDir;
+		saver >> sweepEnable;
+	}
 };
 struct Square2 : SquareBase {};
 
 struct Wave : Length {
-	uint8_t outputLevel;
-	uint16_t frequency;
 	uint8_t waveRam[16];
-
+	uint16_t frequency;
 	uint16_t freqTimer;
+	uint8_t outputLevel;
 	uint8_t wavePos;
 
 	void clock() {
@@ -202,14 +262,30 @@ struct Wave : Length {
 		}
 		return 0;
 	}
+
+	void Save(saver& saver) {
+		SaveLength(saver);
+		saver << waveRam;
+		saver << frequency;
+		saver << freqTimer;
+		saver << outputLevel;
+		saver << wavePos;
+	}
+	void Load(saver& saver) {
+		LoadLength(saver);
+		saver >> waveRam;
+		saver >> frequency;
+		saver >> freqTimer;
+		saver >> outputLevel;
+		saver >> wavePos;
+	}
 };
 struct Noise : Envelope, Length {
-	uint8_t divider;
-	bool counterStep;
-	uint8_t shiftClock;
-
 	uint16_t freqTimer;
 	uint16_t lfsr;
+	uint8_t divider;
+	uint8_t shiftClock;
+	bool counterStep;
 
 	void writePoly(uint8_t data) {
 		divider = data & 7;
@@ -235,6 +311,25 @@ struct Noise : Envelope, Length {
 		}
 		return 0;
 	}
+
+	void Save(saver& saver) {
+		SaveEnvelope(saver);
+		SaveLength(saver);
+		saver << freqTimer;
+		saver << lfsr;
+		saver << divider;
+		saver << shiftClock;
+		saver << counterStep;
+	}
+	void Load(saver& saver) {
+		LoadEnvelope(saver);
+		LoadLength(saver);
+		saver >> freqTimer;
+		saver >> lfsr;
+		saver >> divider;
+		saver >> shiftClock;
+		saver >> counterStep;
+	}
 };
 
 class APU {
@@ -247,13 +342,13 @@ class APU {
 	uint16_t cycles;
 	uint16_t fsStep;
 	uint16_t sampleCounter;
-
 	uint8_t nr50;
 	uint8_t nr51;
-
 	bool enabled;
 
   public:
+	bool gbc;
+
 	uint8_t read(uint16_t address) const {
 		// printf("%04X read\n", address);
 
@@ -297,6 +392,22 @@ class APU {
 		return 0;
 	}
 
+	uint8_t FF76() const {
+		if(!gbc) return 0xFF;
+
+		uint8_t val = 0;
+		if(ch1.dacEnabled && ch1.channelEnabled) {
+			val |= (WAVE_DUTY_TABLE[ch1.soundPattern][ch1.wavePos] * ch1.envVolume) & 0xF;
+		}
+		if(ch2.dacEnabled && ch2.channelEnabled) {
+			val |= (WAVE_DUTY_TABLE[ch2.soundPattern][ch2.wavePos] * ch2.envVolume) << 4;
+		}
+		return val;
+	}
+	uint8_t FF77() const {
+		return 0xFF;
+	}
+
 	void write(uint16_t address, uint8_t data) {
 		// printf("%04X write %02X\n", address, data);
 
@@ -306,7 +417,6 @@ class APU {
 		switch(address) {
 #pragma region Sound Channel 1
 			case 0xFF10: // Sweep register
-				// if(ch1.sweepDir && !(data & 8)) { }
 				ch1.sweepShift = data & 7;
 				ch1.sweepDir = (data & 8) != 0;
 				ch1.sweepPeriod = (data >> 4) & 7;
@@ -331,6 +441,7 @@ class APU {
 
 					ch1.sweepTimer = ch1.sweepPeriod > 0 ? ch1.sweepPeriod : 8;
 					ch1.sweepEnable = ch1.sweepPeriod > 0 || ch1.sweepShift > 0;
+
 					if(ch1.sweepShift > 0) ch1.calculateFrequency();
 
 					if(ch1.lengthCounter == 0) {
@@ -395,7 +506,7 @@ class APU {
 				break;
 			// FF30-FF3F Wave Pattern RAM
 			case 0xFF30: case 0xFF31: case 0xFF32: case 0xFF33: case 0xFF34: case 0xFF35: case 0xFF36: case 0xFF37:
-			case 0xFF38: case 0xFF39: case 0xFF3A: case 0xFF3B: case 0xFF3C: case 0xFF3D: case 0xFF3E: case 0xFF3F: 
+			case 0xFF38: case 0xFF39: case 0xFF3A: case 0xFF3B: case 0xFF3C: case 0xFF3D: case 0xFF3E: case 0xFF3F:
 				// TODO weird behaviour while playing>
 				ch3.waveRam[address - 0xFF30] = data;
 				break;
@@ -428,14 +539,15 @@ class APU {
 			// Sound Control:
 			case 0xFF24: nr50 = data; break;
 			case 0xFF25: nr51 = data; break;
-			case 0xFF26:
+			case 0xFF26: // NR52
 				if(!(data & 0x80) && enabled) {
-					for(size_t i = 0xFF10; i < 0xFF26; i++) write(i, 0);
-				} else if(data & 0x80 && !enabled) {
 					fsStep = 0;
 					ch1.wavePos = 0;
 					ch2.wavePos = 0;
 					ch3.wavePos = 0;
+					
+					for(size_t i = 0xFF10; i < 0xFF26; i++) write(i, 0);
+				} else if(data & 0x80 && !enabled) {
 				}
 
 				enabled = (data & 0x80) != 0;
@@ -444,6 +556,8 @@ class APU {
 	}
 
 	void clock() {
+		if(!enabled) return;
+
 		ch1.clock();
 		ch2.clock();
 		ch3.clock();
@@ -561,12 +675,32 @@ class APU {
 		}
 	}
 
-	/*void SaveState(saver& saver) {
-		saver << *this;
+	void SaveState(saver& saver) {
+		ch1.Save(saver);
+		ch2.SaveSquare(saver);
+		ch3.Save(saver);
+		ch4.Save(saver);
+
+		saver << cycles;
+		saver << fsStep;
+		saver << sampleCounter;
+		saver << nr50;
+		saver << nr51;
+		saver << enabled;
 	}
 	void LoadState(saver& saver) {
-		saver >> *this;
-	}*/
+		ch1.Load(saver);
+		ch2.LoadSquare(saver);
+		ch3.Load(saver);
+		ch4.Load(saver);
+
+		saver >> cycles;
+		saver >> fsStep;
+		saver >> sampleCounter;
+		saver >> nr50;
+		saver >> nr51;
+		saver >> enabled;
+	}
 };
 
 } // namespace Gameboy

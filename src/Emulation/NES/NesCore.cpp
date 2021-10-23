@@ -95,6 +95,28 @@ uint8_t Core::ReadMemory(int domain, size_t address) {
 	return 0;
 }
 
+void Core::Draw() {
+	auto mapper = emulator.cartridge.get();
+
+	if(auto nsf = dynamic_cast<NsfMapper*>(mapper)) {
+		ImGui::Begin("Screen");
+
+		ImGui::Text("title: %.32s\n", nsf->nsf.songName);
+		ImGui::Text("artist: %.32s\n", nsf->nsf.artist);
+		ImGui::Text("copyright: %.32s\n", nsf->nsf.copyright);
+
+		ImGui::End();
+	} else {
+		DrawTextureWindow(this->texture, 8.0 / 7.0);
+	}
+
+	cpuWindow.DrawWindow();
+	tables.DrawWindow();
+	// tasEdit.DrawWindow(0);
+	apuWindow.DrawWindow();
+	disassembler.DrawWindow();
+}
+
 void Core::DrawMenuBar(bool& menuOpen) {
 	if(ImGui::BeginMenu("NES")) {
 		menuOpen = true;
@@ -117,14 +139,6 @@ void Core::DrawMenuBar(bool& menuOpen) {
 
 		ImGui::EndMenu();
 	}
-}
-
-void Core::DrawWindows() {
-	cpuWindow.DrawWindow();
-	tables.DrawWindow();
-	// tasEdit.DrawWindow(0);
-	apuWindow.DrawWindow();
-	disassembler.DrawWindow();
 }
 
 void Core::SaveState(saver& saver) {
@@ -168,21 +182,13 @@ void Core::LoadRom(const std::string& path) {
 		emulator.ppu.Control.enableNMI = true;
 
 		emulator.apu.vrc6 = mapper->nsf.extraSoundChip.vrc6;
-		if(mapper->nsf.extraSoundChip.vrc7) {
-			logger.Log("vrc7 not supported\n");
-		}
-		if(mapper->nsf.extraSoundChip.fds) {
-			logger.Log("FDS not supported\n");
-		}
-		if(mapper->nsf.extraSoundChip.mmc5) {
-			logger.Log("MMC5 not supported\n");
-		}
-		if(mapper->nsf.extraSoundChip.namco163) {
-			logger.Log("Namoc 163 not supported\n");
-		}
-		if(mapper->nsf.extraSoundChip.sunsoft5B) {
-			logger.Log("Sunsoft 5B not supported\n");
-		}
+		if(mapper->nsf.extraSoundChip.vrc7) logger.LogScreen("vrc7 not supported\n");
+		if(mapper->nsf.extraSoundChip.fds) logger.LogScreen("FDS not supported\n");
+		if(mapper->nsf.extraSoundChip.mmc5) logger.LogScreen("MMC5 not supported\n");
+		if(mapper->nsf.extraSoundChip.namco163) logger.LogScreen("Namoc 163 not supported\n");
+		if(mapper->nsf.extraSoundChip.sunsoft5B) logger.LogScreen("Sunsoft 5B not supported\n");
+
+		apuWindow.Open();
 
 		currentFile = path;
 	} else if(ext == ".fm2") {
