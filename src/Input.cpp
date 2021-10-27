@@ -1,5 +1,6 @@
 #include "Input.h"
 
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -8,9 +9,17 @@
 
 namespace Input {
 
-std::unordered_set<uint64_t> keyDown;
-std::unordered_set<uint64_t> keyHold;
-std::unordered_set<uint64_t> keyUp;
+std::vector<uint64_t> keyDown;
+std::vector<uint64_t> keyHold;
+std::vector<uint64_t> keyUp;
+
+template<typename T>
+bool find(const std::vector<T>&vec, T val) {
+	for(auto& item: vec) {
+		if(item == val) return true;
+	}
+	return false;
+}
 
 InputMapper hotkeys {{
 	{ "Speedup",		 0, { GLFW_KEY_Q,           0 } },
@@ -75,10 +84,8 @@ InputMapper NES = {{
 InputMapper::InputMapper(const std::vector<InputItem>& elements) {
 	items = elements;
 
-	for(auto&& item : items) {
-		if(item.Default.Reg != 0) {
-			keyMap[item.Id] = item.Default;
-		}
+	for(auto& [Name, Id, Default] : items) {
+		keyMap[Id] = Default;
 	}
 }
 
@@ -158,21 +165,18 @@ void InputMapper::ShowEditWindow() {
 }
 
 bool InputMapper::GetKey(int id) {
-	if(keyMap.count(id))
-		return keyHold.count(keyMap[id].Reg) != 0;
-	return false;
+	assert(keyMap.count(id));
+	return find(keyHold, keyMap[id].Reg);
 }
 
 bool InputMapper::GetKeyDown(int id) {
-	if(keyMap.count(id))
-		return keyDown.count(keyMap[id].Reg) != 0;
-	return false;
+	assert(keyMap.count(id));
+	return find(keyDown, keyMap[id].Reg);
 }
 
 bool InputMapper::GetKeyUp(int id) {
-	if(keyMap.count(id))
-		return keyUp.count(keyMap[id].Reg) != 0;
-	return false;
+	assert(keyMap.count(id));
+	return find(keyUp, keyMap[id].Reg);
 }
 
 void OnKey(int key, int scancode, int action, int mods) {
@@ -184,11 +188,11 @@ void OnKey(int key, int scancode, int action, int mods) {
 
 	// TODO: somehow get keys from other viewports?
 	if(action == GLFW_PRESS) {
-		keyDown.insert(k.Reg);
-		keyHold.insert(k.Reg);
+		keyDown.push_back(k.Reg);
+		keyHold.push_back(k.Reg);
 	} else if(action == GLFW_RELEASE) {
-		keyUp.insert(k.Reg);
-		keyHold.erase(k.Reg);
+		keyUp.push_back(k.Reg);
+		keyHold.erase(std::remove(keyHold.begin(), keyHold.end(), k.Reg), keyHold.end());	
 	}
 }
 
@@ -215,7 +219,7 @@ void Save(Json& j) {
 
 	auto saveStuff = [](InputMapper& mapper) {
 		std::map<std::string, int> keys;
-		for(auto&& j : mapper.keyMap) {
+		for(auto& j : mapper.keyMap) {
 			keys[std::to_string(j.first)] = j.second.Reg;
 		}
 		return keys;
@@ -224,9 +228,9 @@ void Save(Json& j) {
 	temp["hotkeys"] = saveStuff(hotkeys);
 	temp["Chip-8"] = saveStuff(Chip8);
 	temp["GB"] = saveStuff(GB);
-	temp["hotkeys"] = saveStuff(NES);
+	temp["Nes"] = saveStuff(NES);
 
-	j["Nes"] = temp;
+	j["keymap"] = temp;
 }
 
 void DrawStuff() {

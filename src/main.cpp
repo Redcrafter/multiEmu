@@ -290,7 +290,6 @@ static void drawSettings() {
 					glfwSwapInterval(Settings::EnableVsync);
 					Settings::Save();
 				}
-				HelpMarker("Toggle Vsync.\nReduces cpu usage on fast cpu's but can cause stuttering");
 
 				if(ImGui::Checkbox("Autohide Menubar", &Settings::AutoHideMenu)) {
 					Settings::Save();
