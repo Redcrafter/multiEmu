@@ -22,7 +22,7 @@ class Core final : public ICore {
 	Core();
 	~Core() override = default;
 
-	std::string GetName() override { return "GBC"; }
+	std::string GetName() override { return "Gameboy"; }
 	ImVec2 GetSize() override { return { 160, 144 }; } 
 	md5 GetRomHash() override { return romHash; }
 

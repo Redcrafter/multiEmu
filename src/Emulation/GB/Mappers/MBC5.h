@@ -24,7 +24,7 @@ class MBC5 final : public MBC {
 	void Write0(uint16_t addr, uint8_t val) override {
 		if(addr < 0x2000) {
 			// 0000-1FFF - RAM Enable
-			ramEnable = !ram.empty() && (val & 0xF) == 0xA;
+			ramEnable = (ramMask != -1) && (val & 0xF) == 0xA;
 		} else if(addr < 0x3000) {
 			// 2000-2FFF - 8 least significant bits of ROM bank number
 			romBank = ((romBank & 0x400000) | (0x4000 * val)) & romMask;
@@ -46,13 +46,13 @@ class MBC5 final : public MBC {
 	};
 
 	void SaveState(saver& saver) override {
-		saver.write(ram.data(), ram.size());
+		saver.write(ram, ramMask + 1);
 		saver << romBank;
 		saver << ramBank;
 		saver << ramEnable;
 	};
 	void LoadState(saver& saver) override {
-		saver.read(ram.data(), ram.size());
+		saver.read(ram, ramMask + 1);
 		saver >> romBank;
 		saver >> ramBank;
 		saver >> ramEnable;

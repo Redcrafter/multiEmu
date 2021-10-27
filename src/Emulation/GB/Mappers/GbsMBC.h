@@ -40,7 +40,7 @@ class GbsMBC : public MBC {
 	GbsHeader header;
 
 	GbsMBC(Gameboy& gb, const std::string& path);
-	~GbsMBC() {}
+	~GbsMBC() override = default;
 
 	void LoadTrack(int track = -1);
 
@@ -58,7 +58,7 @@ class GbsMBC : public MBC {
 	void LoadState(saver& saver) override {}
 };
 
-GbsMBC::GbsMBC(Gameboy& gb, const std::string& path) : gb(gb) {
+inline GbsMBC::GbsMBC(Gameboy& gb, const std::string& path) : MBC({}, 0x2000, false) , gb(gb) {
 	std::ifstream stream(path, std::ios::binary);
 
 	read(stream, header);
@@ -69,12 +69,10 @@ GbsMBC::GbsMBC(Gameboy& gb, const std::string& path) : gb(gb) {
 	}
 	assert(header.loadAddress >= 0x400);
 
-	auto data = std::vector<uint8_t>(std::istreambuf_iterator<char>(stream), {});
-
+	auto data = std::vector<uint8_t>(std::istreambuf_iterator(stream), {});
 	auto romSize = math::roundPow2((data.size() + header.loadAddress + 0x3FFF) & ~0x3FFF);
 
 	rom.resize(romSize);
-	ram.resize(0x2000);
 	romMask = romSize - 1;
 
 	std::copy(data.begin(), data.end(), rom.begin() + header.loadAddress);
@@ -113,7 +111,7 @@ GbsMBC::GbsMBC(Gameboy& gb, const std::string& path) : gb(gb) {
 	rom[pos++] = -10;  // To HALT
 }
 
-void GbsMBC::LoadTrack(int track) {
+inline void GbsMBC::LoadTrack(int track) {
 	if(track == -1) {
 		track = header.firstSong;
 	}

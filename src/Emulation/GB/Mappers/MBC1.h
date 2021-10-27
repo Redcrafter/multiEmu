@@ -19,7 +19,7 @@ class MBC1 final : public MBC {
   public:
 	MBC1(const std::vector<uint8_t>& rom, uint32_t ramSize, bool hasBattery) : MBC(rom, ramSize, hasBattery) {
 		bool largeRom = rom.size() >= 0x100000;
-		bool largeRam = ram.size() > 0x2000;
+		bool largeRam = ramSize > 0x2000;
 		isMulti = largeRom && checkLogo(&rom[0x40104]);
 
 		assert((!largeRom && !largeRam) || (largeRom ^ largeRam));
@@ -35,7 +35,7 @@ class MBC1 final : public MBC {
 	void Write0(uint16_t addr, uint8_t val) override {
 		if(addr < 0x2000) {
 			// 0000-1FFF - RAM Enable
-			ramEnable = !ram.empty() && (val & 0xF) == 0xA;
+			ramEnable = (ramMask != -1u) && (val & 0xF) == 0xA;
 		} else {
 			// 2000-3FFF - ROM Bank Number
 			reg1 = std::max(val & 0x1F, 1);
@@ -63,7 +63,7 @@ class MBC1 final : public MBC {
 	};
 
 	void SaveState(saver& saver) override {
-		saver.write(ram.data(), ram.size());
+		saver.write(ram, ramMask + 1);
 		saver << romBank0;
 		saver << romBank1;
 		saver << ramBank;
@@ -73,7 +73,7 @@ class MBC1 final : public MBC {
 		saver << mode;
 	};
 	void LoadState(saver& saver) override {
-		saver.read(ram.data(), ram.size());
+		saver.read(ram, ramMask + 1);
 		saver >> romBank0;
 		saver >> romBank1;
 		saver >> ramBank;

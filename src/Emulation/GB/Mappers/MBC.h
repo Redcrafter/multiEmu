@@ -1,9 +1,10 @@
 #pragma once
-#include <cassert>
 #include <cstdint>
 #include <vector>
 
 #include "../../../saver.h"
+#include "../../../MemoryMapped.h"
+#include "../../../md5.h"
 
 namespace Gameboy {
 
@@ -25,19 +26,29 @@ static bool checkLogo(const uint8_t* rom) {
 class MBC {
 	friend class Core;
 
+	std::vector<uint8_t> _ram;
+	std::unique_ptr<MemoryMapped> _mapped;
   protected:
 	std::vector<uint8_t> rom;
-	std::vector<uint8_t> ram;
+	uint8_t* ram;
 
 	uint32_t romMask;
 	uint32_t ramMask;
 
-	bool hasBattery;
-
   public:
-	MBC() {};
-	MBC(const std::vector<uint8_t>& rom, uint32_t ramSize, bool hasBattery) : rom(rom), hasBattery(hasBattery) {
-		ram.resize(ramSize);
+	MBC(const std::vector<uint8_t>& rom, uint32_t ramSize, bool hasBattery) : rom(rom) {
+		if(ramSize != 0) {
+			if(hasBattery) {
+				const md5 hash { reinterpret_cast<const char*>(&rom[0]), rom.size() };
+				auto path = "./saves/Gameboy/" + hash.ToString() + ".saveRam";
+				_mapped = std::make_unique<MemoryMapped>(path, ramSize);
+				ram = _mapped->begin();
+			} else {
+				_ram.resize(ramSize);
+				ram = &_ram[0];
+			}
+		}
+
 		// should be something like 0x1000 - 1 = 0xFFF
 		romMask = rom.size() - 1;
 		ramMask = ramSize - 1;

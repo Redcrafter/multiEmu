@@ -10,19 +10,19 @@ class NoMBC final : public MBC {
 
 	uint8_t Read0(uint16_t addr) const override { return rom[addr & 0x3FFF]; }
 	uint8_t Read4(uint16_t addr) const override { return rom[addr & romMask]; }
-	uint8_t ReadA(uint16_t addr) const override { return !ram.empty() ? ram[addr & ramMask] : 0xFF; }
+	uint8_t ReadA(uint16_t addr) const override { return (ramMask != -1u) ? ram[addr & ramMask] : 0xFF; }
 
 	void Write0(uint16_t addr, uint8_t val) override {};
 	void Write4(uint16_t addr, uint8_t val) override {};
 	void WriteA(uint16_t addr, uint8_t val) override {
-		if(!ram.empty()) ram[addr & ramMask] = val;
+		if(ramMask != -1u) ram[addr & ramMask] = val;
 	};
 
 	void SaveState(saver& saver) override {
-		saver.write(ram.data(), ram.size());
+		saver.write(ram, ramMask + 1);
 	};
 	void LoadState(saver& saver) override {
-		saver.read(ram.data(), ram.size());
+		saver.read(ram, ramMask + 1);
 	};
 };
 

@@ -49,7 +49,7 @@ class MBC3 final : public MBC {
 	void Write0(uint16_t addr, uint8_t val) override {
 		if(addr < 0x2000) {
 			// 0000-1FFF - RAM Enable
-			ramEnable = !ram.empty() && (val & 0xF) == 0xA;
+			ramEnable = (ramMask != -1u) && (val & 0xF) == 0xA;
 		} else {
 			// 2000-3FFF - ROM Bank Number
 			romBank1 = (0x4000 * std::max(val & 0x8F, 1)) & romMask;
@@ -133,13 +133,13 @@ class MBC3 final : public MBC {
 	}
 
 	void SaveState(saver& saver) override {
-		saver.write(ram.data(), ram.size());
+		saver.write(ram, ramMask + 1);
 		saver << romBank1;
 		saver << aSelect;
 		saver << ramEnable;
 	}
 	void LoadState(saver& saver) override {
-		saver.read(ram.data(), ram.size());
+		saver.read(ram, ramMask + 1);
 		saver >> romBank1;
 		saver >> aSelect;
 		saver >> ramEnable;

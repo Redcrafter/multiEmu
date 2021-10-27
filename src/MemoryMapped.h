@@ -18,10 +18,10 @@ class MemoryMapped {
 	MemoryMapped(const MemoryMapped&) = delete;
 	~MemoryMapped();
 
-	size_t Size() { return size; }
+	size_t Size() const { return size; }
 
-	// uint8_t operator[](size_t pos);
 	uint8_t& operator[](size_t pos);
+	const uint8_t& operator[](size_t pos) const;
 
 	uint8_t* begin() { return map; }
 	uint8_t* end() { return map + size; }
