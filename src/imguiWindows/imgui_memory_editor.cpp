@@ -281,7 +281,7 @@ void MemoryEditor::DrawContents(size_t mem_size) {
 				UserData user_data;
 				user_data.CursorPos = -1;
 				ImSprintf(user_data.CurrentBufOverwrite, format_byte, ReadFn(addr));
-				ImGuiInputTextFlags flags = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_NoHorizontalScroll | ImGuiInputTextFlags_AlwaysInsertMode | ImGuiInputTextFlags_CallbackAlways;
+				ImGuiInputTextFlags flags = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll | ImGuiInputTextFlags_NoHorizontalScroll | ImGuiInputTextFlags_AlwaysOverwrite | ImGuiInputTextFlags_CallbackAlways;
 				if(ImGui::InputText("##data", DataInputBuf, 32, flags, UserData::Callback, &user_data))
 					data_write = data_next = true;
 				else if(!DataEditingTakeFocus && !ImGui::IsItemActive())

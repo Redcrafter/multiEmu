@@ -2,9 +2,9 @@
 
 #include <map>
 
-#include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui_internal.h"
+#include <imgui.h>
+#include <imgui_internal.h>
 
 #include "../../../logger.h"
 #include "../../../nativefiledialog/nfd.h"
@@ -239,9 +239,9 @@ public:
 		assertBreak(this->prg.size() == 0x4000 || this->prg.size() == 0.8000);
 		mask = prg.size() - 1;
 
-		locations.push_back(read(0xFFFA) | read(0xFFFB) << 8);
-		locations.push_back(read(0xFFFC) | read(0xFFFD) << 8);
-		locations.push_back(read(0xFFFE) | read(0xFFFF) << 8);
+		locations.push_back(read(0xFFFA) | read(0xFFFB) << 8); // nmi vector
+		locations.push_back(read(0xFFFC) | read(0xFFFD) << 8); // reset vector
+		locations.push_back(read(0xFFFE) | read(0xFFFF) << 8); // irq/break vector
 	}
 
 private:

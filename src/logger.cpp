@@ -1,4 +1,5 @@
 #include "logger.h"
+
 #include <imgui_internal.h>
 
 Logger logger {};

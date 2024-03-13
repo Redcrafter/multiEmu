@@ -134,14 +134,7 @@ void Core::LoadRom(const std::string& path) {
 	std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
 
 	if(ext == ".nes") {
-		std::shared_ptr<Mapper> cart;
-
-		try {
-			cart = LoadCart(path);
-		} catch(std::exception& e) {
-			logger.Log("Failed to load rom: %s\n", e.what());
-			return;
-		}
+		std::shared_ptr<Mapper> cart = LoadCart(path);
 
 		// TODO: hard reset
 		emulator.apu.vrc6 = false;

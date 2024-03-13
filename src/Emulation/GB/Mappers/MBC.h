@@ -36,10 +36,12 @@ class MBC {
 	uint32_t ramMask;
 
   public:
+	md5 hash;
+
 	MBC(const std::vector<uint8_t>& rom, uint32_t ramSize, bool hasBattery) : rom(rom) {
+		hash = md5{ reinterpret_cast<const char*>(&rom[0]), rom.size() };
 		if(ramSize != 0) {
 			if(hasBattery) {
-				const md5 hash { reinterpret_cast<const char*>(&rom[0]), rom.size() };
 				auto path = "./saves/Gameboy/" + hash.ToString() + ".saveRam";
 				_mapped = std::make_unique<MemoryMapped>(path, ramSize);
 				ram = _mapped->begin();

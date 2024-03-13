@@ -18,7 +18,6 @@ struct opcode {
 
 struct Element {
 	uint16_t address;
-	// opcode insturction;
 
 	uint8_t opcode;
 	uint8_t op1, op2;

@@ -49,9 +49,9 @@
 #include <memory>
 #include <string>
 
-#include <imgui.h>
-
 #include "../Emulation/ICore.h"
+
+#include <imgui.h>
 
 class MemoryEditor {
   protected:

@@ -9,8 +9,6 @@ class Core final : public ICore {
   private:
 	RenderImage texture;
 
-	md5 romHash;
-
 	int currentTrack = -1;
 	int selectedTrack = -1;
 	Mode mode;
@@ -24,7 +22,7 @@ class Core final : public ICore {
 
 	std::string GetName() override { return "Gameboy"; }
 	ImVec2 GetSize() override { return { 160, 144 }; } 
-	md5 GetRomHash() override { return romHash; }
+	md5 GetRomHash() override { return gameboy.mbc ? gameboy.mbc->hash : md5{}; }
 
 	std::vector<MemoryDomain> GetMemoryDomains() override;
 	void WriteMemory(int domain, size_t address, uint8_t val) override;

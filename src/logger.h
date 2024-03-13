@@ -1,9 +1,9 @@
 #pragma once
 #include <chrono>
-#include <exception>
 #include <string>
 #include <vector>
 
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 
 struct ScreenLogItem {

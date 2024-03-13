@@ -116,13 +116,12 @@ bool Audio::Init() {
 
 void Audio::Dispose() {
 	try {
-		dac->stopStream();
+		if(dac->isStreamOpen()) {
+			dac->stopStream();
+			dac->closeStream();
+		}
 	} catch(RtAudioError& e) {
 		logger.Log("Failed to stop audio stream: %s\n", e.what());
-	}
-
-	if(dac->isStreamOpen()) {
-		dac->closeStream();
 	}
 }
 
