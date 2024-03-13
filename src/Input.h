@@ -31,33 +31,32 @@ struct InputItem {
 	Key Default;
 };
 
-struct InputMapper {
+class Mapper {
+  private:
+	inline static std::vector<const char*> mapperNames;
+	inline static std::vector<Mapper*> mappers;
+
 	std::map<int, Key> keyMap;
 	std::vector<InputItem> items;
 
 	int selected = -1;
 
-	InputMapper() = default;
-	InputMapper(const std::vector<InputItem>& elements);
+  public:
+	Mapper(const char* name, const std::vector<InputItem>& elements);
 
 	void ShowEditWindow();
 
 	bool GetKey(int id);
 	bool GetKeyDown(int id);
 	bool GetKeyUp(int id);
+
+	static void OnKey(int key, int scancode, int action, int mods);
+
+	static void Load(Json& j);
+	static void Save(Json& j);
+
+	static void DrawStuff();
+	static void NewFrame();
 };
-
-void OnKey(int key, int scancode, int action, int mods);
-
-void Load(Json& j);
-void Save(Json& j);
-
-void DrawStuff();
-void NewFrame();
-
-extern InputMapper hotkeys;
-extern InputMapper Chip8;
-extern InputMapper GB;
-extern InputMapper NES;
 
 }

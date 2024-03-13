@@ -6,6 +6,25 @@
 
 #include "../../Input.h"
 
+static Input::Mapper inputMapper ("Chip-8", {
+	{"0", 0,  { GLFW_KEY_1, 0 } },
+	{"1", 1,  { GLFW_KEY_2, 0 } },
+	{"2", 2,  { GLFW_KEY_3, 0 } },
+	{"3", 3,  { GLFW_KEY_4, 0 } },
+	{"4", 4,  { GLFW_KEY_Q, 0 } },
+	{"5", 5,  { GLFW_KEY_W, 0 } },
+	{"6", 6,  { GLFW_KEY_E, 0 } },
+	{"7", 7,  { GLFW_KEY_R, 0 } },
+	{"8", 8,  { GLFW_KEY_A, 0 } },
+	{"9", 9,  { GLFW_KEY_S, 0 } },
+	{"A", 10, { GLFW_KEY_D, 0 } },
+	{"B", 11, { GLFW_KEY_F, 0 } },
+	{"C", 12, { GLFW_KEY_Y, 0 } },
+	{"D", 13, { GLFW_KEY_X, 0 } },
+	{"E", 14, { GLFW_KEY_C, 0 } },
+	{"F", 15, { GLFW_KEY_V, 0 } },
+});
+
 static const uint8_t chip8_fontset[] = {
 	0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
 	0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -172,12 +191,12 @@ void Chip8::Clock() {
 		case 0xE000:
 			switch(opcode & 0xFF) {
 				case 0x9E:
-					if(Input::Chip8.GetKey(vx)) {
+					if(inputMapper.GetKey(vx)) {
 						PC += 2;
 					}
 					break;
 				case 0xA1:
-					if(!Input::Chip8.GetKey(vx)) {
+					if(!inputMapper.GetKey(vx)) {
 						PC += 2;
 					}
 					break;
@@ -193,7 +212,7 @@ void Chip8::Clock() {
 				case 0x0A: {
 					bool hasInput = false;
 					for(int i = 0; i < 16; i++) {
-						if(Input::Chip8.GetKey(i)) {
+						if(inputMapper.GetKey(i)) {
 							hasInput = true;
 							vx = i;
 							break;

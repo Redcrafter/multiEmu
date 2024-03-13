@@ -211,16 +211,27 @@ static void HelpMarker(const char* desc) {
 	}
 }
 
+static Input::Mapper hotkeys ("hotkeys", {
+	{ "Speedup",		 0, { GLFW_KEY_Q,           0 } },
+	{ "Step",			 1, { GLFW_KEY_F,           0 } },
+	{ "ResumeRun",		 2, { GLFW_KEY_G,           0 } },
+	{ "Reset",			 3, { GLFW_KEY_R,           0 } },
+	{ "HardReset",		 4, { 0,                    0 } },
+	{ "SaveState",		 5, { GLFW_KEY_K,           0 } },
+	{ "LoadState",		 6, { GLFW_KEY_L,           0 } },
+	{ "SelectNextState", 7, { GLFW_KEY_KP_ADD,      0 } },
+	{ "SelectLastState", 8, { GLFW_KEY_KP_SUBTRACT, 0 } },
+	{ "Maximise",		 9, { GLFW_KEY_F11,         0 } } 
+});
+
 static void onKey(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	Input::OnKey(key, scancode, action, mods);
+	Input::Mapper::OnKey(key, scancode, action, mods);
 	if(action == GLFW_PRESS && key == GLFW_KEY_F12) {
 		metricsWindow = !metricsWindow;
 	}
 }
 
 static void handleGuiInput() {
-	auto& hotkeys = Input::hotkeys;
-
 	if(hotkeys.GetKeyDown((int)Action::Speedup)) speedUp = !speedUp;
 
 	if(hotkeys.GetKeyDown((int)Action::Step)) {
@@ -307,7 +318,7 @@ static void drawSettings() {
 			}
 
 			if(ImGui::BeginTabItem("Input")) {
-				Input::DrawStuff();
+				Input::Mapper::DrawStuff();
 				ImGui::EndTabItem();
 			}
 
@@ -588,7 +599,7 @@ int main(int argc, char* argv[]) {
 			glfwMakeContextCurrent(backup_current_context);
 		}
 
-		Input::NewFrame();
+		Input::Mapper::NewFrame();
 
 		glfwSwapBuffers(window);
 		glfwWaitEventsTimeout(0.007);

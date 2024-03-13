@@ -30,7 +30,7 @@ void Load() {
 		j["recent"].tryGet(files);
 		RecentFiles = std::deque<std::string>(files.begin(), files.end());
 
-		Input::Load(j);
+		Input::Mapper::Load(j);
 	}
 }
 
@@ -41,7 +41,7 @@ void Save() {
 		{ "windowScale", windowScale },
 		{ "recent", RecentFiles },
 	};
-	Input::Save(j);
+	Input::Mapper::Save(j);
 
 	std::ofstream file("./settings.json");
 	if(file.good()) file << j;

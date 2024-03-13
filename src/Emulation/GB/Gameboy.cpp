@@ -4,6 +4,17 @@
 
 #include "../../Input.h"
 
+static Input::Mapper inputMapper ("GB", {
+	{ "Right",  0, { GLFW_KEY_RIGHT, 0 } },
+	{ "Left",   1, { GLFW_KEY_LEFT,  0 } },
+	{ "Up",     2, { GLFW_KEY_UP,    0 } },
+	{ "Down",   3, { GLFW_KEY_DOWN,  0 } },
+	{ "A",      4, { GLFW_KEY_A,     0 } },
+	{ "B",      5, { GLFW_KEY_B,     0 } },
+	{ "Select", 6, { GLFW_KEY_ENTER, 0 } },
+	{ "Start",  7, { GLFW_KEY_S,     0 } },
+});
+
 namespace Gameboy {
 
 #define GB_TIMA_RUNNING 0
@@ -153,16 +164,16 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 			case 0xFF00: {
 				uint8_t val = 0;
 				if(JoyPadSelect == 1) {
-					val |= (!Input::GB.GetKey(0)) << 0; // right
-					val |= (!Input::GB.GetKey(1)) << 1; // left
-					val |= (!Input::GB.GetKey(2)) << 2; // up
-					val |= (!Input::GB.GetKey(3)) << 3; // down
+					val |= (!inputMapper.GetKey(0)) << 0; // right
+					val |= (!inputMapper.GetKey(1)) << 1; // left
+					val |= (!inputMapper.GetKey(2)) << 2; // up
+					val |= (!inputMapper.GetKey(3)) << 3; // down
 					val |= 0x20;
 				} else if(JoyPadSelect == 2) {
-					val |= (!Input::GB.GetKey(4)) << 0; // A
-					val |= (!Input::GB.GetKey(5)) << 1; // B
-					val |= (!Input::GB.GetKey(6)) << 2; // Select
-					val |= (!Input::GB.GetKey(7)) << 3; // Start
+					val |= (!inputMapper.GetKey(4)) << 0; // A
+					val |= (!inputMapper.GetKey(5)) << 1; // B
+					val |= (!inputMapper.GetKey(6)) << 2; // Select
+					val |= (!inputMapper.GetKey(7)) << 3; // Start
 					val |= 0x10;
 				}
 				return val | 0xC0;

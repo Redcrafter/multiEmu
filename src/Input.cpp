@@ -9,9 +9,9 @@
 
 namespace Input {
 
-std::vector<uint64_t> keyDown;
-std::vector<uint64_t> keyHold;
-std::vector<uint64_t> keyUp;
+static std::vector<uint64_t> keyDown;
+static std::vector<uint64_t> keyHold;
+static std::vector<uint64_t> keyUp;
 
 template<typename T>
 bool find(const std::vector<T>&vec, T val) {
@@ -21,75 +21,18 @@ bool find(const std::vector<T>&vec, T val) {
 	return false;
 }
 
-InputMapper hotkeys {{
-	{ "Speedup",		 0, { GLFW_KEY_Q,           0 } },
-	{ "Step",			 1, { GLFW_KEY_F,           0 } },
-	{ "ResumeRun",		 2, { GLFW_KEY_G,           0 } },
-	{ "Reset",			 3, { GLFW_KEY_R,           0 } },
-	{ "HardReset",		 4, { 0,                    0 } },
-	{ "SaveState",		 5, { GLFW_KEY_K,           0 } },
-	{ "LoadState",		 6, { GLFW_KEY_L,           0 } },
-	{ "SelectNextState", 7, { GLFW_KEY_KP_ADD,      0 } },
-	{ "SelectLastState", 8, { GLFW_KEY_KP_SUBTRACT, 0 } },
-	{ "Maximise",		 9, { GLFW_KEY_F11,         0 } } 
-}};
-InputMapper Chip8 = {{
-	{"0", 0,  { GLFW_KEY_1, 0 } },
-	{"1", 1,  { GLFW_KEY_2, 0 } },
-	{"2", 2,  { GLFW_KEY_3, 0 } },
-	{"3", 3,  { GLFW_KEY_4, 0 } },
-	{"4", 4,  { GLFW_KEY_Q, 0 } },
-	{"5", 5,  { GLFW_KEY_W, 0 } },
-	{"6", 6,  { GLFW_KEY_E, 0 } },
-	{"7", 7,  { GLFW_KEY_R, 0 } },
-	{"8", 8,  { GLFW_KEY_A, 0 } },
-	{"9", 9,  { GLFW_KEY_S, 0 } },
-	{"A", 10, { GLFW_KEY_D, 0 } },
-	{"B", 11, { GLFW_KEY_F, 0 } },
-	{"C", 12, { GLFW_KEY_Y, 0 } },
-	{"D", 13, { GLFW_KEY_X, 0 } },
-	{"E", 14, { GLFW_KEY_C, 0 } },
-	{"F", 15, { GLFW_KEY_V, 0 } },
-}};
-InputMapper GB = {{
-	{ "Right",  0, { GLFW_KEY_RIGHT, 0 } },
-	{ "Left",   1, { GLFW_KEY_LEFT,  0 } },
-	{ "Up",     2, { GLFW_KEY_UP,    0 } },
-	{ "Down",   3, { GLFW_KEY_DOWN,  0 } },
-	{ "A",      4, { GLFW_KEY_A,     0 } },
-	{ "B",      5, { GLFW_KEY_B,     0 } },
-	{ "Select", 6, { GLFW_KEY_ENTER, 0 } },
-	{ "Start",  7, { GLFW_KEY_S,     0 } },
-}};
-InputMapper NES = {{
-	{ "Controller1 A",      0,  { GLFW_KEY_A,     0 } },
-	{ "Controller1 B",      1,  { GLFW_KEY_B,     0 } },
-	{ "Controller1 Start",  2,  { GLFW_KEY_S,     0 } },
-	{ "Controller1 Select", 3,  { GLFW_KEY_ENTER, 0 } },
-	{ "Controller1 Up",     4,  { GLFW_KEY_UP,    0 } },
-	{ "Controller1 Down",   5,  { GLFW_KEY_DOWN,  0 } },
-	{ "Controller1 Left",   6,  { GLFW_KEY_LEFT,  0 } },
-	{ "Controller1 Right",  7,  { GLFW_KEY_RIGHT, 0 } },
-
-	{ "Controller2 A",      8,  { 0, 0 } },
-	{ "Controller2 B",      9,  { 0, 0 } },
-	{ "Controller2 Start",  10, { 0, 0 } },
-	{ "Controller2 Select", 11, { 0, 0 } },
-	{ "Controller2 Up",     12, { 0, 0 } },
-	{ "Controller2 Down",   13, { 0, 0 } },
-	{ "Controller2 Left",   14, { 0, 0 } },
-	{ "Controller2 Right",  15, { 0, 0 } },
-}};
-
-InputMapper::InputMapper(const std::vector<InputItem>& elements) {
+Mapper::Mapper(const char* name, const std::vector<InputItem>& elements) {
 	items = elements;
 
 	for(auto& [Name, Id, Default] : items) {
 		keyMap[Id] = Default;
 	}
+
+	mapperNames.push_back(name);
+	mappers.push_back(this);
 }
 
-void InputMapper::ShowEditWindow() {
+void Mapper::ShowEditWindow() {
 	if(selected != -1 && !keyDown.empty()) {
 		Key key = *keyDown.begin();
 		if(key.Info.key == GLFW_KEY_BACKSPACE) key.Reg = 0;
@@ -117,6 +60,9 @@ void InputMapper::ShowEditWindow() {
 			}
 
 			switch(key.Info.key) {
+				case 0:
+					text += "none";
+					break;
 				case GLFW_KEY_UP:
 					text += "up";
 					break;
@@ -131,6 +77,9 @@ void InputMapper::ShowEditWindow() {
 					break;
 				case GLFW_KEY_ENTER:
 					text += "enter";
+					break;
+				case GLFW_KEY_DELETE:
+					text += "del";
 					break;
 				case GLFW_KEY_F1:
 				case GLFW_KEY_F2:
@@ -164,22 +113,22 @@ void InputMapper::ShowEditWindow() {
 	}
 }
 
-bool InputMapper::GetKey(int id) {
+bool Mapper::GetKey(int id) {
 	assert(keyMap.count(id));
 	return find(keyHold, keyMap[id].Reg);
 }
 
-bool InputMapper::GetKeyDown(int id) {
+bool Mapper::GetKeyDown(int id) {
 	assert(keyMap.count(id));
 	return find(keyDown, keyMap[id].Reg);
 }
 
-bool InputMapper::GetKeyUp(int id) {
+bool Mapper::GetKeyUp(int id) {
 	assert(keyMap.count(id));
 	return find(keyUp, keyMap[id].Reg);
 }
 
-void OnKey(int key, int scancode, int action, int mods) {
+void Mapper::OnKey(int key, int scancode, int action, int mods) {
 	if(key >= GLFW_KEY_LAST) {
 		return;
 	}
@@ -196,66 +145,52 @@ void OnKey(int key, int scancode, int action, int mods) {
 	}
 }
 
-void Load(Json& j) {
+void Mapper::Load(Json& j) {
 	std::map<std::string, std::map<std::string, int>> temp;
 	j["keymap"].tryGet(temp);
 
-	auto parseStuff = [](InputMapper& mapper, std::map<std::string, int>& i) {
-		for(auto& [Name, Id, Default] : mapper.items) {
-			if(i.count(Name)) {
-				mapper.keyMap[Id] = i[Name];
+	for (size_t i = 0; i < mappers.size(); i++) {
+		auto mapper = mappers[i];
+		auto& items = temp[mapperNames[i]];
+
+		for(auto& [Name, Id, Default] : mapper->items) {
+			if(items.count(Name)) {
+				mapper->keyMap[Id] = items[Name];
 			}
 		}
-	};
-
-	parseStuff(hotkeys, temp["hotkeys"]);
-	parseStuff(Chip8, temp["Chip-8"]);
-	parseStuff(GB, temp["GB"]);
-	parseStuff(NES, temp["Nes"]);
+	}
 }
 
-void Save(Json& j) {
+void Mapper::Save(Json& j) {
 	std::map<std::string, std::map<std::string, int>> temp;
 
-	auto saveStuff = [](InputMapper& mapper) {
-		std::map<std::string, int> keys;
-		for(auto& j : mapper.keyMap) {
+	std::map<std::string, int> keys;
+	for (size_t i = 0; i < mappers.size(); i++) {
+		auto mapper = mappers[i];
+		keys.clear();
+
+		for(auto& j : mapper->keyMap) {
 			keys[std::to_string(j.first)] = j.second.Reg;
 		}
-		return keys;
-	};
-
-	temp["hotkeys"] = saveStuff(hotkeys);
-	temp["Chip-8"] = saveStuff(Chip8);
-	temp["GB"] = saveStuff(GB);
-	temp["Nes"] = saveStuff(NES);
+		temp[mapperNames[i]] = keys;
+	}
 
 	j["keymap"] = temp;
 }
 
-void DrawStuff() {
+void Mapper::DrawStuff() {
 	ImGui::BeginChild("input");
 
-	const char* names[] = {
-		"Hotkeys", "Chip-8", "Gameboy", "NES"
-	};
-
 	static int currentItem = 0;
-	ImGui::Combo("##inputCombo", &currentItem, names, std::size(names));
+	ImGui::Combo("##inputCombo", &currentItem, mapperNames.data(), mapperNames.size());
 
-	InputMapper* asdf;
-	switch(currentItem) {
-		case 0: hotkeys.ShowEditWindow(); break;
-		case 1: Chip8.ShowEditWindow(); break;
-		case 2: GB.ShowEditWindow(); break;
-		case 3: NES.ShowEditWindow(); break;
-		default: assert(false); break;
-	}
+	assert(currentItem >= 0 && currentItem < mappers.size());
+	mappers[currentItem]->ShowEditWindow();
 
 	ImGui::EndChild();
 }
 
-void NewFrame() {
+void Mapper::NewFrame() {
 	keyDown.clear();
 	keyUp.clear();
 }
