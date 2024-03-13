@@ -51,7 +51,7 @@ static void InsertPrg(dbItem& cart) {
 
 static void InsertCart(std::string& name, Json& obj) {
 	auto board = obj["board"];
-	int mapper = board["@mapper"];
+	auto mapper = std::stoi(board["@mapper"]);
 
 	if(auto arr = board["prg"].asArray()) {
 		for(auto& entry : *arr) {
