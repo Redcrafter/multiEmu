@@ -22,7 +22,7 @@ class sha1 {
 	friend bool operator!=(const sha1& left, const sha1& right);
 
 	static sha1 FromString(const std::string& str);
-	std::string ToString();
+	std::string ToString() const;
 
   private:
 	void UpdateHash(char* message);

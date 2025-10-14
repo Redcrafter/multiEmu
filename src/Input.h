@@ -19,7 +19,7 @@ union Key {
 	Key(uint64_t Reg) : Reg(Reg) {}
 	Key(int key, int mods) : Info({ key, mods }) {}
 
-	bool operator==(Key other) {
+	bool operator==(const Key& other) const {
 		return Reg == other.Reg;
 	}
 };

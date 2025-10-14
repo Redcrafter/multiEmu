@@ -7,7 +7,7 @@ namespace Gameboy {
 
 class Core final : public ICore {
   private:
-	RenderImage texture;
+	Texture texture;
 
 	int currentTrack = -1;
 	int selectedTrack = -1;
@@ -21,7 +21,6 @@ class Core final : public ICore {
 	~Core() override = default;
 
 	std::string GetName() override { return "Gameboy"; }
-	ImVec2 GetSize() override { return { 160, 144 }; } 
 	md5 GetRomHash() override { return gameboy.mbc ? gameboy.mbc->hash : md5{}; }
 
 	std::vector<MemoryDomain> GetMemoryDomains() override;

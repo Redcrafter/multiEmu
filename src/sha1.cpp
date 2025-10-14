@@ -66,7 +66,7 @@ sha1 sha1::FromString(const std::string& str) {
 	return hash;
 }
 
-std::string sha1::ToString() {
+std::string sha1::ToString() const {
 	char str[41];
 
 	for(int j = 0; j < 5; ++j) {

@@ -44,8 +44,6 @@ static std::array<sample, bufferSize> buffer;
 // used to prevent popping
 static sample lastSample { 0, 0 };
 
-// used to prevent unnecessary resize of inBuffer
-static size_t pushPos;
 // samples added by PushSample
 static std::vector<sample> inBuffer;
 
@@ -81,33 +79,27 @@ static int AudioCallback(void* outputBuffer, void* inputBuffer, unsigned int nBu
 }
 
 bool Audio::Init() {
-	try {
-		dac = std::make_unique<RtAudio>();
+	dac = std::make_unique<RtAudio>();
 
-		if(dac->getDeviceCount() >= 1) {
-			RtAudio::StreamParameters parameters;
-			parameters.deviceId = dac->getDefaultOutputDevice();
-			parameters.nChannels = 2;
-			parameters.firstChannel = 0;
+	if(dac->getDeviceCount() >= 1) {
+		RtAudio::StreamParameters parameters;
+		parameters.deviceId = dac->getDefaultOutputDevice();
+		parameters.nChannels = 2;
+		parameters.firstChannel = 0;
 
-			RtAudio::StreamOptions options;
-			options.streamName = "MultiEmu";
-			// options.flags = RTAUDIO_MINIMIZE_LATENCY; // breaks mac TODO: test non fixed sample request
+		RtAudio::StreamOptions options;
+		options.streamName = "MultiEmu";
+		options.flags = RTAUDIO_MINIMIZE_LATENCY; // breaks mac?
+		// TODO: test non fixed sample request
 
-			uint32_t bufferFrames = sampleRate / 60;
+		uint32_t bufferFrames = sampleRate / 60;
 
-			dac->openStream(&parameters, nullptr, RTAUDIO_FLOAT32, sampleRate, &bufferFrames, &AudioCallback, nullptr, &options);
-			dac->startStream();
+		dac->openStream(&parameters, nullptr, RTAUDIO_FLOAT32, sampleRate, &bufferFrames, &AudioCallback, nullptr, &options);
+		dac->startStream();
 
-			audioRunning = true;
-		} else {
-			logger.Log("No audio device found.\n");
-
-			audioRunning = false;
-		}
-	} catch(RtAudioError& e) {
-		logger.Log("Failed to initialize audio driver: %s\n", e.what());
-
+		audioRunning = true;
+	} else {
+		logger.Log("No audio device found.\n");
 		audioRunning = false;
 	}
 
@@ -115,44 +107,37 @@ bool Audio::Init() {
 }
 
 void Audio::Dispose() {
-	try {
-		if(dac->isStreamOpen()) {
-			dac->stopStream();
-			dac->closeStream();
-		}
-	} catch(RtAudioError& e) {
-		logger.Log("Failed to stop audio stream: %s\n", e.what());
+	if(dac->isStreamOpen()) {
+		dac->stopStream();
+		dac->closeStream();
 	}
 }
 
 void Audio::Resample() {
-	if(!audioRunning || pushPos == 0) {
-		pushPos = 0;
+	if(!audioRunning || inBuffer.empty()) {
 		return;
 	}
 
-	// TODO: prevent aliasing?
-	for(size_t i = 0; i < 735; i++) {
-		auto pos = i / 734.0 * (pushPos - 1);
-		float f = std::fmod(pos, 1);
+	auto ratio = inBuffer.size() / 735.0;
 
-		buffer[writePos % bufferSize] = (1 - f) * inBuffer[floor(pos)] + f * inBuffer[ceil(pos)];
-		writePos++;
+	// TODO: prevent aliasing?
+	if(ratio > 1) {
+		for(size_t i = 0; i < 735; i++) {
+			buffer[writePos % bufferSize] = inBuffer[floor(i * ratio)];
+			writePos++;
+		}
+	} else {
+		// __debugbreak();
+		// should not happen often
 	}
 
-	pushPos = 0;
+	inBuffer.clear();
 }
 
 void Audio::PushSample(float value) {
-	PushSample(value, value);
+	inBuffer.push_back({ value, value });
 }
 
 void Audio::PushSample(float left, float right) {
-	// reduce buffer allocation by overwriting old values
-	if(pushPos < inBuffer.size()) {
-		inBuffer[pushPos] = { left, right };
-	} else {
-		inBuffer.push_back({ left, right });
-	}
-	pushPos++;
+	inBuffer.push_back({ left, right });
 }

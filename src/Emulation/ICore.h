@@ -5,7 +5,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include "../RenderImage.h"
+#include "../Texture.h"
 #include "../md5.h"
 #include "../saver.h"
 
@@ -15,7 +15,7 @@ struct MemoryDomain {
 	size_t Size;
 };
 
-static void DrawTextureWindow(const RenderImage& texture, float pixelRatio = 1) {
+static void DrawTextureWindow(const Texture& texture, int width, int height, ImVec2 tl = ImVec2(0, 0), ImVec2 br = ImVec2(1, 1)) {
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 	ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0);
 	ImGui::Begin("Screen", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar);
@@ -23,15 +23,12 @@ static void DrawTextureWindow(const RenderImage& texture, float pixelRatio = 1) 
 
 	auto windowSize = ImGui::GetWindowSize();
 
-	auto width = texture.GetWidth();
-	auto height = texture.GetHeight();
-
 	auto size = ImVec2(width, height) * std::min(windowSize.x / width, windowSize.y / height);
 
 	ImGui::SetCursorPos((windowSize - size) * 0.5);
 
 	texture.BufferImage();
-	ImGui::Image(reinterpret_cast<void*>(texture.GetTextureId()), size);
+	ImGui::Image(reinterpret_cast<void*>(texture.GetTextureId()), size, tl, br);
 
 	ImGui::End();
 }
@@ -41,7 +38,6 @@ class ICore {
 	virtual ~ICore() = default;
 
 	virtual std::string GetName() = 0;
-	virtual ImVec2 GetSize() = 0; 
 	virtual md5 GetRomHash() = 0;
 
 	virtual std::vector<MemoryDomain> GetMemoryDomains() = 0;

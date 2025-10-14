@@ -12,7 +12,7 @@ namespace Nes {
 
 class Core : public ICore {
 	Bus emulator;
-	RenderImage texture;
+	Texture texture;
 
 	// TasEditor tasEdit{"Tas Editor"};
 	PatternTables tables{ "Pattern Tables" };
@@ -26,7 +26,6 @@ public:
 	~Core() override = default;
 
 	std::string GetName() override { return "NES"; }
-	ImVec2 GetSize() override { return { 256 * (8.0 / 7.0), 240 }; } 
 	md5 GetRomHash() override { return emulator.cartridge ? emulator.cartridge->hash : md5(); }
 
 	std::vector<MemoryDomain> GetMemoryDomains() override;

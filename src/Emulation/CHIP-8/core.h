@@ -10,7 +10,7 @@ namespace Chip8 {
 
 class Core : public ICore {
 	Chip8 emulator;
-	RenderImage texture;
+	Texture texture;
 
 	std::string currentFile;
 	md5 currentFileHash {};
@@ -25,7 +25,6 @@ class Core : public ICore {
 	~Core() override = default;
 
 	std::string GetName() override { return "Chip-8"; }
-	ImVec2 GetSize() override { return { 64, 32 }; } 
 	md5 GetRomHash() override { return currentFileHash; }
 
 	std::vector<MemoryDomain> GetMemoryDomains() override;
@@ -34,7 +33,7 @@ class Core : public ICore {
 
 	void DrawMenuBar(bool& menuOpen) override;
 	void Draw() override {
-		DrawTextureWindow(texture);
+		DrawTextureWindow(texture, texture.GetWidth(), texture.GetHeight());
 		disassembler.DrawWindow();
 	}
 

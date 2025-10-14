@@ -52,7 +52,7 @@ std::unique_ptr<ICore> emulationCore;
 int selectedSaveState = 0;
 std::array<std::unique_ptr<saver>, 10> saveStates;
 
-MemoryEditor memEdit { "Memory Editor" };
+MemoryEditor memEdit;
 
 bool settingsWindow = false;
 bool metricsWindow = false;
@@ -65,7 +65,8 @@ bool isFullscreen = false;
 bool menuBarOpen = false;
 
 static ImVec2 CalcWindowSize() {
-	ImVec2 size = (emulationCore ? emulationCore->GetSize() : ImVec2 { 292, 240 }) * Settings::windowScale;
+	// ImVec2 size = (emulationCore ? emulationCore->GetSize() : ImVec2(292, 240)) * Settings::windowScale;
+	auto size = ImVec2(292, 240) * Settings::windowScale;
 
 	if(!Settings::AutoHideMenu) {
 		auto w = ImGui::FindWindowByName("##MainMenuBar");
@@ -85,8 +86,6 @@ static void LoadCore(const std::string& path) {
 		emulationCore->LoadRom(path);
 
 		Settings::AddRecent(path);
-
-		memEdit.SetCore(emulationCore.get());
 
 		running = true;
 	} catch(std::exception& e) {
@@ -328,6 +327,60 @@ static void drawSettings() {
 	ImGui::End();
 }
 
+static void drawMemoryEditor() {
+	static int selectedDomain = 0;
+
+	if(!emulationCore || !memEdit.Open) return;
+	const auto& domains = emulationCore->GetMemoryDomains();
+	if(selectedDomain > domains.size()) selectedDomain = 0;
+
+	memEdit.ReadFn = [](const ImU8* mem, size_t off, void* user_data) { 
+		return (ImU8)emulationCore->ReadMemory(selectedDomain, off);
+	};
+	memEdit.WriteFn = [](ImU8* mem, size_t off, ImU8 d, void* user_data) {
+		emulationCore->WriteMemory(selectedDomain, off, d);
+	};
+
+	auto mem_size = domains[selectedDomain].Size;
+
+	MemoryEditor::Sizes s;
+	memEdit.CalcSizes(s, mem_size, 0);
+	ImGui::SetNextWindowSize(ImVec2(s.WindowWidth, s.WindowWidth * 0.60f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSizeConstraints(ImVec2(0.0f, 0.0f), ImVec2(s.WindowWidth, FLT_MAX));
+
+	if(ImGui::Begin("Memory Editor", &memEdit.Open, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_MenuBar)) {
+		if(ImGui::BeginMenuBar()) {
+			if(ImGui::BeginMenu("Memory Domain")) {
+				for(auto& domain : domains) {
+					if(ImGui::MenuItem(domain.Name.c_str())) {
+						selectedDomain = domain.Id;
+					}
+				}
+				ImGui::EndMenu();
+			}
+
+			if(ImGui::MenuItem("Export")) {
+				std::string path;
+				NFD::SaveDialog({}, "./", path, (GLFWwindow*)ImGui::GetMainViewport()->PlatformHandle);
+
+				std::ofstream file { path, std::ios::binary };
+				for(size_t i = 0; i < mem_size; i++) {
+					file.put(memEdit.ReadFn(nullptr, i, memEdit.UserData));
+				}
+			}
+
+			ImGui::EndMenuBar();
+		}
+
+		memEdit.DrawContents(nullptr, mem_size, 0);
+		if(memEdit.ContentsWidthChanged) {
+			memEdit.CalcSizes(s, mem_size, 0);
+			ImGui::SetWindowSize(ImVec2(s.WindowWidth, ImGui::GetWindowSize().y));
+		}
+	}
+	ImGui::End();
+}
+
 static void drawGui() {
 	if((menuBarOpen || glfwGetWindowAttrib(window, GLFW_HOVERED) || !Settings::AutoHideMenu) && ImGui::BeginMainMenuBar()) {
 		menuBarOpen = false;
@@ -446,7 +499,7 @@ static void drawGui() {
 			}
 
 			if(ImGui::MenuItem("Hex Editor", nullptr, false, enabled)) {
-				memEdit.Open();
+				memEdit.Open = true;
 			}
 			if(ImGui::MenuItem("Log")) {
 				logger.Show = true;
@@ -470,7 +523,7 @@ static void drawGui() {
 	}
 	logger.DrawScreen();
 
-	memEdit.DrawWindow();
+	drawMemoryEditor();
 	logger.DrawWindow();
 
 	if(metricsWindow) {
@@ -577,14 +630,16 @@ int main(int argc, char* argv[]) {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		if(running && emulationCore != nullptr) {
-			emulationCore->Update();
+		if((running || step) && emulationCore != nullptr) {
 			if(speedUp) {
 				for(size_t i = 1; i < 5; i++) {
 					emulationCore->Update();
 				}
+			} else {
+				emulationCore->Update();
 			}
 			Audio::Resample();
+			step = false;
 		}
 		handleGuiInput();
 		drawGui();
