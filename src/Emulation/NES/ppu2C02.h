@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 
+#include <nlohmann/json.hpp>
+
 #include "Cartridge.h"
 #include "../../RenderImage.h"
 #include "../../saver.h"
@@ -36,15 +38,12 @@ struct PpuState {
 	uint8_t writeState = 0;
 	uint8_t readBuffer = 0;
 	// Color palettes
-	uint8_t palettes[32];
-	// Nametables
-	uint8_t vram[0x1000];
-	// For cartridges without ChrRom
-	uint8_t chrRAM[0x2000];
+	std::array<uint8_t, 32> palettes;
 
-	Sprite oam[64], oam2[8];
+	std::array<Sprite, 64> oam;
+	std::array<Sprite, 8> oam2;
 	uint8_t spriteCount;
-	uint8_t spriteShifterLo[8], spriteShifterHi[8];
+	std::array<uint8_t, 8> spriteShifterLo, spriteShifterHi;
 	bool spriteZeroPossible, spriteZeroBeingRendered;
 
 	int scanlineX = 0, scanlineY = 241;
@@ -136,8 +135,8 @@ class ppu2C02 : public PpuState {
 	void HardReset();
 	void Clock();
 
-	void SaveState(saver& saver);
-	void LoadState(saver& saver);
+	void SaveState(nlohmann::json& saver) const;
+	void LoadState(const nlohmann::json& saver);
 
 	// main bus
 	uint8_t cpuRead(uint16_t addr, bool readOnly);

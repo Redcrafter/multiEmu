@@ -20,8 +20,8 @@ class Mapper004 : public Mapper {
 
 	uint8_t regs[8] { 0, 2, 4, 5, 6, 7, 0, 1 };
 
-	uint32_t prgBankOffset[4];
-	uint32_t chrBankOffset[8];
+	std::array<uint32_t, 4> prgBankOffset;
+	std::array<uint32_t, 8> chrBankOffset;
 
 	bool reloadIrq = false;
 	bool irqEnable = false;
@@ -44,8 +44,8 @@ class Mapper004 : public Mapper {
 	bool ppuRead(uint16_t addr, uint8_t& data, bool readOnly) override;
 	bool ppuWrite(uint16_t addr, uint8_t data) override;
 
-	void SaveState(saver& saver) override;
-	void LoadState(saver& saver) override;
+	void SaveState(nlohmann::json& saver) const override;
+	void LoadState(const nlohmann::json& saver) override;
 
 	void MapSaveRam(const std::string& path) override;
 

@@ -121,36 +121,38 @@ bool Mapper004::ppuWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-void Mapper004::SaveState(saver& saver) {
-	saver << bankSelect.reg;
+void Mapper004::SaveState(nlohmann::json& saver) const {
+	saver["bankSelect.reg"] = bankSelect.reg;
 
-	saver << prgBankOffset;
-	saver << chrBankOffset;
+	saver["prgBankOffset"] = prgBankOffset;
+	saver["chrBankOffset"] = chrBankOffset;
 
-	saver << reloadIrq;
-	saver << irqEnable;
-	saver << lastA12;
-	saver << irqCounter;
-	saver << irqLatch;
+	saver["reloadIrq"] = reloadIrq;
+	saver["irqEnable"] = irqEnable;
+	saver["lastA12"] = lastA12;
+	saver["irqCounter"] = irqCounter;
+	saver["irqLatch"] = irqLatch;
 
-	saver << prgRam;
-	// saver << ramEnable;
+	saver["prgRam"] = std::span<uint8_t>(prgRam, 0x2000);
+	// saver["ramEnable"] = ramEnable;
 }
 
-void Mapper004::LoadState(saver& saver) {
-	saver >> bankSelect.reg;
+void Mapper004::LoadState(const nlohmann::json& saver) {
+	bankSelect.reg = saver["bankSelect.reg"];
 
-	saver >> prgBankOffset;
-	saver >> chrBankOffset;
+	prgBankOffset = saver["prgBankOffset"];
+	chrBankOffset = saver["chrBankOffset"];
 
-	saver >> reloadIrq;
-	saver >> irqEnable;
-	saver >> lastA12;
-	saver >> irqCounter;
-	saver >> irqLatch;
+	reloadIrq = saver["reloadIrq"];
+	irqEnable = saver["irqEnable"];
+	lastA12 = saver["lastA12"];
+	irqCounter = saver["irqCounter"];
+	irqLatch = saver["irqLatch"];
 
-	saver >> prgRam;
-	// saver >> ramEnable;
+	auto& dat = saver["prgRam"].get_binary();
+	assert(dat.size() == 0x2000);
+	std::memcpy(prgRam, dat.data(), 0x2000);
+	// ramEnable = saver["ramEnable"];
 }
 
 void Mapper004::UpdateRegs() {

@@ -12,18 +12,20 @@ class NoMBC final : public MBC {
 	uint8_t Read4(uint16_t addr) const override { return rom[addr & romMask]; }
 	uint8_t ReadA(uint16_t addr) const override { return (ramMask != -1u) ? ram[addr & ramMask] : 0xFF; }
 
-	void Write0(uint16_t addr, uint8_t val) override {};
-	void Write4(uint16_t addr, uint8_t val) override {};
+	void Write0(uint16_t addr, uint8_t val) override {}
+	void Write4(uint16_t addr, uint8_t val) override {}
 	void WriteA(uint16_t addr, uint8_t val) override {
 		if(ramMask != -1u) ram[addr & ramMask] = val;
 	};
 
-	void SaveState(saver& saver) override {
-		saver.write(ram, ramMask + 1);
-	};
-	void LoadState(saver& saver) override {
-		saver.read(ram, ramMask + 1);
-	};
+	void SaveState(nlohmann::json& saver) const override {
+		saver["ram"] = std::span(ram, ramMask + 1);
+	}
+	void LoadState(const nlohmann::json& saver) override {
+		auto& dat = saver["ram"].get_binary();
+		assert(dat.size() == ramMask + 1);
+		std::memcpy(ram, dat.data(), ramMask + 1);
+	}
 };
 
 }

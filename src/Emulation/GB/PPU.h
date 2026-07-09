@@ -3,7 +3,7 @@
 #include <cstdint>
 
 #include "../../RenderImage.h"
-#include "../../saver.h"
+#include <nlohmann/json.hpp>
 
 namespace Gameboy {
 
@@ -22,8 +22,8 @@ class PPU {
 	friend class ppuWindow;
 
   private:
-	uint8_t VRAM[2][0x2000];
-	uint8_t OAM[0xA0];
+	std::array<std::array<uint8_t, 0x2000>, 2> VRAM;
+	std::array<uint8_t, 0xA0> OAM;
 
 	std::array<Pixel, 160> drawBuffer;
 	std::array<uint8_t, 64> gbcBGP, gbcOBP;
@@ -83,8 +83,8 @@ class PPU {
 
 	void Clock();
 
-	void SaveState(saver& saver);
-	void LoadState(saver& saver);
+	void SaveState(nlohmann::json& saver) const;
+	void LoadState(const nlohmann::json& saver);
 
   private:
 	void DrawBg(bool gbc);

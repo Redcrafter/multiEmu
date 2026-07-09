@@ -66,10 +66,10 @@ void Chip8::Reset() {
 	I = 0;
 	SP = -1;
 
-	std::memset(gfx, 0, sizeof(gfx));
-	std::memset(V, 0, sizeof(V));
-	std::memset(stack, 0, sizeof(stack));
-	std::memset(memory.data(), 0, sizeof(memory));
+	V.fill(0);
+	memory.fill(0);
+	stack.fill(0);
+	gfx.fill(0);
 
 	std::memcpy(memory.data(), chip8_fontset, 80);
 
@@ -88,7 +88,7 @@ void Chip8::Clock() {
 		case 0x0000:
 			switch(opcode) {
 				case 0x00E0: // 00E0: Clears the screen
-					std::memset(gfx, 0, sizeof(gfx));
+					gfx.fill(0);
 					break;
 				case 0x00EE: // 00EE: Returns from a subroutine
 					PC = stack[SP];

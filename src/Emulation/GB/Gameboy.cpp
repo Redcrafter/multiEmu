@@ -24,8 +24,8 @@ namespace Gameboy {
 void Gameboy::Reset(Mode mode) {
 	// bool useBoot = false;
 
-	std::memset(ram, 0, sizeof(ram));
-	std::memset(hram, 0, sizeof(hram));
+	std::memset(&ram, 0, sizeof(ram));
+	hram.fill(0);
 
 	inBios = false;
 
@@ -426,62 +426,84 @@ void Gameboy::Advance() {
 	}
 }
 
-void Gameboy::SaveState(saver& saver) {
-	cpu.SaveState(saver);
-	ppu.SaveState(saver);
-	apu.SaveState(saver);
-	mbc->SaveState(saver);
+void Gameboy::SaveState(nlohmann::json& saver) const {
+	cpu.SaveState(saver["cpu"]);
+	ppu.SaveState(saver["ppu"]);
+	apu.SaveState(saver["apu"]);
+	mbc->SaveState(saver["mbc"]);
 
-	saver << DIV;
-	saver << ram;
-	saver << hram;
-	saver << ramBank;
-	saver << InterruptEnable;
-	saver << InterruptFlag;
-	saver << SB;
-	saver << SC;
-	saver << TIMA;
-	saver << TMA;
-	saver << TAC;
-	saver << lastTimer;
-	saver << timaState;
-	saver << FF72 << FF73 << FF74 << FF75;
-	saver << HDMA1 << HDMA2 << HDMA3 << HDMA4;
-	saver << speed;
-	saver << RP;
-	saver << BGPI << OBPI;
-	saver << vramBank;
-	saver << JoyPadSelect;
-	saver << inBios;
+	saver["DIV"] = DIV;
+	saver["ram"] = ram;
+	saver["hram"] = hram;
+	saver["ramBank"] = ramBank;
+	saver["InterruptEnable"] = InterruptEnable;
+	saver["InterruptFlag"] = InterruptFlag;
+	saver["SB"] = SB;
+	saver["SC"] = SC;
+	saver["TIMA"] = TIMA;
+	saver["TMA"] = TMA;
+	saver["TAC"] = TAC;
+	saver["lastTimer"] = lastTimer;
+	saver["timaState"] = timaState;
+	saver["FF72"] = FF72;
+	saver["FF73"] = FF73;
+	saver["FF74"] = FF74;
+	saver["FF75"] = FF75;
+	saver["HDMA1"] = HDMA1;
+	saver["HDMA2"] = HDMA2;
+	saver["HDMA3"] = HDMA3;
+	saver["HDMA4"] = HDMA4;
+	saver["speed"] = speed;
+	saver["RP"] = RP;
+	saver["BGPI"] = BGPI;
+	saver["OBPI"] = OBPI;
+	saver["vramBank"] = vramBank;
+	saver["JoyPadSelect"] = JoyPadSelect;
+	saver["inBios"] = inBios;
+	saver["dmaCycles"] = dmaCycles;
+	saver["dmaSrc"] = dmaSrc;
+	saver["dmaDest"] = dmaDest;
+	saver["dmaReg"] = dmaReg;
 }
 
-void Gameboy::LoadState(saver& saver) {
-	cpu.LoadState(saver);
-	ppu.LoadState(saver);
-	apu.LoadState(saver);
-	mbc->LoadState(saver);
+void Gameboy::LoadState(const nlohmann::json& saver) {
+	cpu.LoadState(saver["cpu"]);
+	ppu.LoadState(saver["ppu"]);
+	apu.LoadState(saver["apu"]);
+	mbc->LoadState(saver["mbc"]);
 
-	saver >> DIV;
-	saver >> ram;
-	saver >> hram;
-	saver >> ramBank;
-	saver >> InterruptEnable;
-	saver >> InterruptFlag;
-	saver >> SB;
-	saver >> SC;
-	saver >> TIMA;
-	saver >> TMA;
-	saver >> TAC;
-	saver >> lastTimer;
-	saver >> timaState;
-	saver >> FF72 >> FF73 >> FF74 >> FF75;
-	saver >> HDMA1 >> HDMA2 >> HDMA3 >> HDMA4;
-	saver >> speed;
-	saver >> RP;
-	saver >> BGPI >> OBPI;
-	saver >> vramBank;
-	saver >> JoyPadSelect;
-	saver >> inBios;
+	DIV = saver["DIV"];
+	ram = saver["ram"];
+	hram = saver["hram"];
+	ramBank = saver["ramBank"];
+	InterruptEnable = saver["InterruptEnable"];
+	InterruptFlag = saver["InterruptFlag"];
+	SB = saver["SB"];
+	SC = saver["SC"];
+	TIMA = saver["TIMA"];
+	TMA = saver["TMA"];
+	TAC = saver["TAC"];
+	lastTimer = saver["lastTimer"];
+	timaState = saver["timaState"];
+	FF72 = saver["FF72"];
+	FF73 = saver["FF73"];
+	FF74 = saver["FF74"];
+	FF75 = saver["FF75"];
+	HDMA1 = saver["HDMA1"];
+	HDMA2 = saver["HDMA2"];
+	HDMA3 = saver["HDMA3"];
+	HDMA4 = saver["HDMA4"];
+	speed = saver["speed"];
+	RP = saver["RP"];
+	BGPI = saver["BGPI"];
+	OBPI = saver["OBPI"];
+	vramBank = saver["vramBank"];
+	JoyPadSelect = saver["JoyPadSelect"];
+	inBios = saver["inBios"];
+	dmaCycles = saver["dmaCycles"];
+	dmaSrc = saver["dmaSrc"];
+	dmaDest = saver["dmaDest"];
+	dmaReg = saver["dmaReg"];
 }
 
 void Gameboy::clockTimer() {

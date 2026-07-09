@@ -86,7 +86,7 @@ void Mapper065::CpuClock() {
 	}
 }
 
-void Mapper065::SaveState(saver& saver) {}
-void Mapper065::LoadState(saver& saver) {}
+void Mapper065::SaveState(nlohmann::json& saver) const {}
+void Mapper065::LoadState(const nlohmann::json& saver) {}
 
 }

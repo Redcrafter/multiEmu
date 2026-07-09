@@ -1,5 +1,5 @@
 #pragma once
-#include "../../saver.h"
+#include <nlohmann/json.hpp>
 
 namespace Nes {
 
@@ -15,6 +15,24 @@ struct SoundBase {
 	uint16_t timerPeriod = 0;
 
 	void ClockLength();
+
+	void SaveBase(nlohmann::json& saver) const {
+		saver["enabled"] = enabled;
+		saver["lengthCounterEnabled"] = lengthCounterEnabled;
+		saver["lengthCounterPeriod"] = lengthCounterPeriod;
+		saver["lengthCounter"] = lengthCounter;
+		saver["timer"] = timer;
+		saver["timerPeriod"] = timerPeriod;
+	}
+
+	void LoadBase(const nlohmann::json& saver) {
+		enabled = saver["enabled"];
+		lengthCounterEnabled = saver["lengthCounterEnabled"];
+		lengthCounterPeriod = saver["lengthCounterPeriod"];
+		lengthCounter = saver["lengthCounter"];
+		timer = saver["timer"];
+		timerPeriod = saver["timerPeriod"];
+	}
 };
 
 struct Envelope : SoundBase {
@@ -27,6 +45,25 @@ struct Envelope : SoundBase {
 	uint8_t constantVolume;
 
 	void ClockEnvelope();
+
+	void SaveEnv(nlohmann::json& saver) const {
+		saver["envelopeEnabled"] = envelopeEnabled;
+		saver["envelopeLoop"] = envelopeLoop;
+		saver["envelopeStart"] = envelopeStart;
+		saver["envelopePeriod"] = envelopePeriod;
+		saver["envelopeValue"] = envelopeValue;
+		saver["envelopeVolume"] = envelopeVolume;
+		saver["constantVolume"] = constantVolume;
+	}
+	void LoadEnv(const nlohmann::json& saver) {
+		envelopeEnabled = saver["envelopeEnabled"];
+		envelopeLoop = saver["envelopeLoop"];
+		envelopeStart = saver["envelopeStart"];
+		envelopePeriod = saver["envelopePeriod"];
+		envelopeValue = saver["envelopeValue"];
+		envelopeVolume = saver["envelopeVolume"];
+		constantVolume = saver["constantVolume"];
+	}
 };
 
 struct Pulse : Envelope {
@@ -51,6 +88,9 @@ struct Pulse : Envelope {
 	void ClockSweep();
 
 	uint8_t Output() const;
+
+	void SaveState(nlohmann::json& saver) const;
+	void LoadState(const nlohmann::json& saver);
 };
 
 struct Triangle : SoundBase {
@@ -61,6 +101,9 @@ struct Triangle : SoundBase {
 	bool linearCounterReload;
 
 	void Clock();
+
+	void SaveState(nlohmann::json& saver) const;
+	void LoadState(const nlohmann::json& saver);
 };
 
 struct Noise : Envelope {
@@ -68,11 +111,24 @@ struct Noise : Envelope {
 	uint16_t shiftRegister = 1;
 
 	void Clock();
+
+	void SaveState(nlohmann::json& saver) const {
+		SaveBase(saver);
+		SaveEnv(saver);
+		saver["mode"] = mode;
+		saver["shiftRegister"] = shiftRegister;
+	}
+	void LoadState(const nlohmann::json& saver) {
+		LoadBase(saver);
+		LoadEnv(saver);
+		mode = saver["mode"];
+		shiftRegister = saver["shiftRegister"];
+	}
 };
 
 struct vrc6Pulse {
 	bool enabled = false;
-	uint8_t Volume = 0;
+	uint8_t volume = 0;
 
 	uint8_t dutyCycle = 0;
 	uint8_t dutyValue = 15;
@@ -84,6 +140,25 @@ struct vrc6Pulse {
 
 	void Clock(uint8_t freqShift);
 	uint8_t Output();
+
+	void SaveState(nlohmann::json& saver) const {
+		saver["enabled"] = enabled;
+		saver["volume"] = volume;
+		saver["dutyCycle"] = dutyCycle;
+		saver["dutyValue"] = dutyValue;
+		saver["mode"] = mode;
+		saver["timer"] = timer;
+		saver["timerPeriod"] = timerPeriod;
+	}
+	void LoadState(const nlohmann::json& saver) {
+		enabled = saver["enabled"];
+		volume = saver["volume"];
+		dutyCycle = saver["dutyCycle"];
+		dutyValue = saver["dutyValue"];
+		mode = saver["mode"];
+		timer = saver["timer"];
+		timerPeriod = saver["timerPeriod"];
+	}
 };
 
 struct vrc6Sawtooth {
@@ -98,11 +173,28 @@ struct vrc6Sawtooth {
 
 	void Clock(uint8_t freqShift);
 	uint8_t Output();
+
+	void SaveState(nlohmann::json& saver) const {
+		saver["enabled"] = enabled;
+		saver["step"] = step;
+		saver["accumulator"] = accumulator;
+		saver["accumRate"] = accumRate;
+		saver["timer"] = timer;
+		saver["timerPeriod"] = timerPeriod;
+	}
+	void LoadState(const nlohmann::json& saver) {
+		enabled = saver["enabled"];
+		step = saver["step"];
+		accumulator = saver["accumulator"];
+		accumRate = saver["accumRate"];
+		timer = saver["timer"];
+		timerPeriod = saver["timerPeriod"];
+	}
 };
 
 struct DMC {
 	bool enabled;
-	bool irq = false;
+	bool irq;
 
 	bool irqEnable;
 	bool loop;
@@ -132,10 +224,13 @@ struct DMC {
 
 static constexpr int bufferLength = 32 * 1024; // 32 KiB
 
-struct RP2A03state {
-	bool Irq = false;
+class RP2A03 {
+	friend class ApuWindow;
+	friend class Core;
 
-	uint8_t last4017Write = 0;
+	bool Irq;
+
+	uint8_t last4017Write;
 	bool frameCounterMode = false;
 	int frameCounter = 0; // twice of what it should be
 	bool IRQinhibit = false;
@@ -151,11 +246,6 @@ struct RP2A03state {
 	vrc6Pulse vrc6Pulse1;
 	vrc6Pulse vrc6Pulse2;
 	vrc6Sawtooth vrc6Saw;
-};
-
-class RP2A03 : public RP2A03state {
-	friend class ApuWindow;
-	friend class Core;
 
   private:
 	Bus* bus = nullptr;
@@ -179,10 +269,10 @@ class RP2A03 : public RP2A03state {
 	void ClockLength();
 
 	void GenerateSample();
-	bool GetIrq();
+	bool GetIrq() const;
 
-	void SaveState(saver& saver);
-	void LoadState(saver& saver);
+	void SaveState(nlohmann::json& saver) const;
+	void LoadState(const nlohmann::json& saver);
 };
 
 }

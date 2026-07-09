@@ -5,9 +5,10 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <nlohmann/json.hpp>
+
 #include "../Texture.h"
 #include "../md5.h"
-#include "../saver.h"
 
 struct MemoryDomain {
 	int Id;
@@ -47,8 +48,8 @@ class ICore {
 	virtual void Draw() = 0;
 	virtual void DrawMenuBar(bool& menuOpen) = 0;
 
-	virtual void SaveState(saver& saver) = 0;
-	virtual void LoadState(saver& saver) = 0;
+	virtual void SaveState(nlohmann::json& saver) const = 0;
+	virtual void LoadState(const nlohmann::json& saver) = 0;
 
 	virtual void LoadRom(const std::string& path) = 0;
 

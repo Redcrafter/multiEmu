@@ -161,39 +161,48 @@ uint8_t Bus::CpuRead(uint16_t addr, bool readOnly) {
 	return data;
 }
 
-void Bus::SaveState(saver& saver) {
-	cpu.SaveState(saver);
-	ppu.SaveState(saver);
-	apu.SaveState(saver);
+void Bus::SaveState(nlohmann::json& saver) const {
+	saver["irqDelay"] = irqDelay;
+	saver["CpuRam"] = CpuRam;
+	saver["cpuOpenBus"] = cpuOpenBus;
 
-	cartridge->SaveState(saver);
+	saver["dmaPage"] = dmaPage;
+	saver["dmaAddr"] = dmaAddr;
+	saver["dmaData"] = dmaData;
 
-	saver << CpuRam;
-	saver << dmaPage;
-	saver << dmaAddr;
-	saver << dmaData;
+	saver["dmaTransfer"] = dmaTransfer;
+	saver["dmaDummy"] = dmaDummy;
 
-	saver << dmaTransfer;
-	saver << dmaDummy;
+	saver["systemClockCounter"] = systemClockCounter;
+	saver["CpuStall"] = CpuStall;
 
-	saver << systemClockCounter;
+	cartridge->SaveState(saver["cartridge"]);
+
+	cpu.SaveState(saver["cpu"]);
+	ppu.SaveState(saver["ppu"]);
+	apu.SaveState(saver["apu"]);
 }
 
-void Bus::LoadState(saver& saver) {
-	cpu.LoadState(saver);
-	ppu.LoadState(saver);
-	apu.LoadState(saver);
+void Bus::LoadState(const nlohmann::json& saver) {
+	irqDelay = saver["irqDelay"];
+	CpuRam = saver["CpuRam"];
+	cpuOpenBus = saver["cpuOpenBus"];
 
-	cartridge->LoadState(saver);
+	dmaPage = saver["dmaPage"];
+	dmaAddr = saver["dmaAddr"];
+	dmaData = saver["dmaData"];
 
-	saver >> CpuRam;
-	saver >> dmaPage;
-	saver >> dmaAddr;
-	saver >> dmaData;
+	dmaTransfer = saver["dmaTransfer"];
+	dmaDummy = saver["dmaDummy"];
 
-	saver >> dmaTransfer;
-	saver >> dmaDummy;
+	systemClockCounter = saver["systemClockCounter"];
+	CpuStall = saver["CpuStall"];
 
-	saver >> systemClockCounter;
+	cartridge->LoadState(saver["cartridge"]);
+
+	cpu.LoadState(saver["cpu"]);
+	ppu.LoadState(saver["ppu"]);
+	apu.LoadState(saver["apu"]);
 }
+
 }

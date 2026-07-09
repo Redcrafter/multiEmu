@@ -9,33 +9,29 @@
 namespace Settings {
 
 void Load() {
-	Json j;
+	if(!fs::exists("./settings.json"))
+		return;
 
-	if(fs::exists("./settings.json")) {
-		try {
-			std::ifstream file("./settings.json");
-			if(!file.good()) {
-				return;
-			}
-			file >> j;
-		} catch(std::exception& e) {
-			logger.LogScreen("Failed to load settings %s", e.what());
+	try {
+		std::ifstream file("./settings.json");
+		if(!file.good()) {
+			return;
 		}
+		auto j = nlohmann::json::parse(file);
 
-		j["enableVsync"].tryGet(EnableVsync);
-		j["autoHideMenu"].tryGet(AutoHideMenu);
-		j["windowScale"].tryGet(windowScale);
-
-		std::vector<std::string> files;
-		j["recent"].tryGet(files);
-		RecentFiles = std::deque<std::string>(files.begin(), files.end());
+		EnableVsync = j["enableVsync"];
+		AutoHideMenu = j["autoHideMenu"];
+		windowScale = j["windowScale"];
+		RecentFiles = j["recent"];
 
 		Input::Mapper::Load(j);
+	} catch(std::exception& e) {
+		logger.LogScreen("Failed to load settings %s", e.what());
 	}
 }
 
 void Save() {
-	Json j = {
+	nlohmann::json j = {
 		{ "enableVsync", EnableVsync },
 		{ "autoHideMenu", AutoHideMenu },
 		{ "windowScale", windowScale },

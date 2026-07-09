@@ -168,7 +168,7 @@ bool NsfMapper::ppuWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-void NsfMapper::SaveState(saver& saver) {}
-void NsfMapper::LoadState(saver& saver) {}
+void NsfMapper::SaveState(nlohmann::json& saver) const {}
+void NsfMapper::LoadState(const nlohmann::json& saver) {}
 
 }

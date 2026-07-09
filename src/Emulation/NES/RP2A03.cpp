@@ -55,7 +55,7 @@ void vrc6Pulse::Clock(uint8_t freqShift) {
 }
 
 uint8_t vrc6Pulse::Output() {
-	return enabled && (mode || dutyValue <= dutyCycle) ? Volume : 0;
+	return enabled && (mode || dutyValue <= dutyCycle) ? volume : 0;
 }
 
 void vrc6Sawtooth::Clock(uint8_t freqShift) {
@@ -97,6 +97,25 @@ void Triangle::Clock() {
 		timer--;
 	}
 }
+
+void Triangle::SaveState(nlohmann::json& saver) const {
+	SaveBase(saver);
+
+	saver["dutyValue"] = dutyValue;
+	saver["linearCounterPeriod"] = linearCounterPeriod;
+	saver["linearCounter"] = linearCounter;
+	saver["linearCounterReload"] = linearCounterReload;
+}
+
+void Triangle::LoadState(const nlohmann::json& saver) {
+	LoadBase(saver);
+
+	dutyValue = saver["dutyValue"];
+	linearCounterPeriod = saver["linearCounterPeriod"];
+	linearCounter = saver["linearCounter"];
+	linearCounterReload = saver["linearCounterReload"];
+}
+
 
 void Noise::Clock() {
 	if(timer == 0) {
@@ -226,6 +245,36 @@ uint8_t Pulse::Output() const {
 	}
 }
 
+void Pulse::SaveState(nlohmann::json& saver) const {
+	SaveBase(saver);
+	SaveEnv(saver);
+
+	saver["negative"] = negative;
+	saver["dutyCycle"] = dutyCycle;
+	saver["dutyValue"] = dutyValue;
+	saver["sweepReload"] = sweepReload;
+	saver["sweepEnabled"] = sweepEnabled;
+	saver["sweepNegate"] = sweepNegate;
+	saver["sweepShift"] = sweepShift;
+	saver["sweepPeriod"] = sweepPeriod;
+	saver["sweepValue"] = sweepValue;
+}
+
+void Pulse::LoadState(const nlohmann::json& saver) {
+	LoadBase(saver);
+	LoadEnv(saver);
+
+	negative = saver["negative"];
+	dutyCycle = saver["dutyCycle"];
+	dutyValue = saver["dutyValue"];
+	sweepReload = saver["sweepReload"];
+	sweepEnabled = saver["sweepEnabled"];
+	sweepNegate = saver["sweepNegate"];
+	sweepShift = saver["sweepShift"];
+	sweepPeriod = saver["sweepPeriod"];
+	sweepValue = saver["sweepValue"];
+}
+
 void DMC::Clock(Bus& bus) {
 	if(timer > 0) {
 		timer -= 2;
@@ -285,6 +334,44 @@ void DMC::FillBuffer(Bus& bus) {
 			}
 		}
 	}
+}
+
+void DMC::SaveState(nlohmann::json& saver) const {
+	saver["enabled"] = enabled;
+	saver["irq"] = irq;
+	saver["irqEnable"] = irqEnable;
+	saver["loop"] = loop;
+	saver["silence"] = silence;
+	saver["value"] = value;
+	saver["sampleAddress"] = sampleAddress;
+	saver["sampleLength"] = sampleLength;
+	saver["currentAddress"] = currentAddress;
+	saver["currentLength"] = currentLength;
+	saver["bufferEmpty"] = bufferEmpty;
+	saver["sampleBuffer"] = sampleBuffer;
+	saver["shiftRegister"] = shiftRegister;
+	saver["bitCount"] = bitCount;
+	saver["timer"] = timer;
+	saver["timerPeriod"] = timerPeriod;
+}
+
+void DMC::LoadState(const nlohmann::json& saver) {
+	enabled = saver["enabled"];
+	irq = saver["irq"];
+	irqEnable = saver["irqEnable"];
+	loop = saver["loop"];
+	silence = saver["silence"];
+	value = saver["value"];
+	sampleAddress = saver["sampleAddress"];
+	sampleLength = saver["sampleLength"];
+	currentAddress = saver["currentAddress"];
+	currentLength = saver["currentLength"];
+	bufferEmpty = saver["bufferEmpty"];
+	sampleBuffer = saver["sampleBuffer"];
+	shiftRegister = saver["shiftRegister"];
+	bitCount = saver["bitCount"];
+	timer = saver["timer"];
+	timerPeriod = saver["timerPeriod"];
 }
 
 RP2A03::RP2A03(Bus* bus): bus(bus) {
@@ -497,7 +584,7 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 	if(vrc6) {
 		switch(addr) {
 			case 0x9000:
-				vrc6Pulse1.Volume = data & 0xF;
+				vrc6Pulse1.volume = data & 0xF;
 				vrc6Pulse1.dutyCycle = (data >> 4) & 7;
 				vrc6Pulse1.mode = data >> 7;
 				return;
@@ -512,7 +599,7 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 				}
 				return;
 			case 0xA000:
-				vrc6Pulse2.Volume = data & 0xF;
+				vrc6Pulse2.volume = data & 0xF;
 				vrc6Pulse2.dutyCycle = (data >> 4) & 7;
 				vrc6Pulse2.mode = data >> 7;
 				return;
@@ -637,17 +724,55 @@ void RP2A03::GenerateSample() {
 	}
 }
 
-bool RP2A03::GetIrq() {
+bool RP2A03::GetIrq() const {
 	return Irq || dmc.irq;
 }
 
-void RP2A03::SaveState(saver& saver) {
-	saver << *reinterpret_cast<RP2A03state*>(this);
+void RP2A03::SaveState(nlohmann::json& saver) const {
+	saver["Irq"] = Irq;
+	saver["last4017Write"] = last4017Write;
+	saver["frameCounterMode"] = frameCounterMode;
+	saver["frameCounter"] = frameCounter;
+	saver["IRQinhibit"] = IRQinhibit;
+
+	pulse1.SaveState(saver["pulse1"]);
+	pulse2.SaveState(saver["pulse2"]);
+	triangle.SaveState(saver["triangle"]);
+	noise.SaveState(saver["noise"]);
+	dmc.SaveState(saver["dmc"]);
+
+	saver["vrc6"] = vrc6;
+	saver["vrc6Halt"] = vrc6Halt;
+	saver["vrc6FreqShift"] = vrc6FreqShift;
+
+	vrc6Pulse1.SaveState(saver["vrc6Pulse1"]);
+	vrc6Pulse2.SaveState(saver["vrc6Pulse2"]);
+	vrc6Saw.SaveState(saver["vrc6Saw"]);
+
 	assert(bufferPos == 0);
 }
 
-void RP2A03::LoadState(saver& saver) {
-	saver >> *reinterpret_cast<RP2A03state*>(this);
+void RP2A03::LoadState(const nlohmann::json& saver) {
+	Irq = saver["Irq"];
+	last4017Write = saver["last4017Write"];
+	frameCounterMode = saver["frameCounterMode"];
+	frameCounter = saver["frameCounter"];
+	IRQinhibit = saver["IRQinhibit"];
+
+	pulse1.LoadState(saver["pulse1"]);
+	pulse2.LoadState(saver["pulse2"]);
+	triangle.LoadState(saver["triangle"]);
+	noise.LoadState(saver["noise"]);
+	dmc.LoadState(saver["dmc"]);
+
+	vrc6 = saver["vrc6"];
+	vrc6Halt = saver["vrc6Halt"];
+	vrc6FreqShift = saver["vrc6FreqShift"];
+
+	vrc6Pulse1.LoadState(saver["vrc6Pulse1"]);
+	vrc6Pulse2.LoadState(saver["vrc6Pulse2"]);
+	vrc6Saw.LoadState(saver["vrc6Saw"]);
+
 	bufferPos = 0;
 }
 

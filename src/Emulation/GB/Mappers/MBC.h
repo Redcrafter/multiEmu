@@ -2,7 +2,8 @@
 #include <cstdint>
 #include <vector>
 
-#include "../../../saver.h"
+#include <nlohmann/json.hpp>
+
 #include "../../../MemoryMapped.h"
 #include "../../../md5.h"
 
@@ -65,8 +66,8 @@ class MBC {
 	virtual void Write4(uint16_t addr, uint8_t val) = 0;
 	virtual void WriteA(uint16_t addr, uint8_t val) = 0;
 
-	virtual void SaveState(saver& saver) = 0;
-	virtual void LoadState(saver& saver) = 0;
+	virtual void SaveState(nlohmann::json& saver) const = 0;
+	virtual void LoadState(const nlohmann::json& saver) = 0;
 };
 
 }

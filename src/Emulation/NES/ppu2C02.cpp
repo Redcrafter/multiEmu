@@ -240,7 +240,7 @@ void ppu2C02::Clock() {
 				}
 
 				if(scanlineY >= 0) {
-					memset((char*)oam2, 0xFF, sizeof(oam2));
+					std::memset((char*)&oam2, 0xFF, sizeof(oam2));
 					spriteCount = 0;
 					spriteZeroPossible = false;
 
@@ -456,14 +456,90 @@ void ppu2C02::Clock() {
 	}
 }
 
-void ppu2C02::SaveState(saver& saver) {
-	saver << Control.reg;
-	saver << *reinterpret_cast<PpuState*>(this);
+void ppu2C02::SaveState(nlohmann::json& saver) const {
+	saver["oddFrame"] = oddFrame;
+	saver["last2002Read"] = last2002Read;
+	saver["writeState"] = writeState;
+	saver["readBuffer"] = readBuffer;
+	saver["palettes"] = palettes;
+	saver["oam"] = std::span<uint8_t>((uint8_t*)&oam, sizeof(oam));
+	saver["oam2"] = std::span<uint8_t>((uint8_t*)&oam2, sizeof(oam2));
+	saver["spriteCount"] = spriteCount;
+	saver["spriteShifterLo"] = spriteShifterLo;
+	saver["spriteShifterHi"] = spriteShifterHi;
+	saver["spriteZeroPossible"] = spriteZeroPossible;
+	saver["spriteZeroBeingRendered"] = spriteZeroBeingRendered;
+
+	saver["scanlineX"] = scanlineX;
+	saver["scanlineY"] = scanlineY;
+
+	saver["Mask.reg"] = Mask.reg;
+	saver["Control.reg"] = Control.reg;
+
+	saver["fineX"] = fineX;
+
+	saver["bgNextTileId"] = bgNextTileId;
+	saver["bgNextTileAttrib"] = bgNextTileAttrib;
+	saver["bgNextTile"] = bgNextTile;
+	saver["bgShifterPattern"] = bgShifterPattern;
+	saver["bgShifterAttrib"] = bgShifterAttrib;
+
+	saver["vramAddr.reg"] = vramAddr.reg;
+	saver["tramAddr.reg"] = tramAddr.reg;
+
+	saver["ioBus"] = ioBus;
+	saver["reset1"] = reset1;
+	saver["reset2"] = reset2;
+	saver["reset3"] = reset3;
+
+	saver["nmi"] = nmi;
+	saver["oamAddr"] = oamAddr;
 }
 
-void ppu2C02::LoadState(saver& saver) {
-	saver >> Control.reg;
-	saver >> *reinterpret_cast<PpuState*>(this);
+void ppu2C02::LoadState(const nlohmann::json& saver) {
+	oddFrame = saver["oddFrame"];
+	last2002Read = saver["last2002Read"];
+	writeState = saver["writeState"];
+	readBuffer = saver["readBuffer"];
+	palettes = saver["palettes"];
+	{
+		const std::array<uint8_t, sizeof(oam)>& dat = saver["oam"];
+		std::memcpy(&oam, dat.data(), sizeof(oam));
+	}
+	{
+		const std::array<uint8_t, sizeof(oam2)>& dat = saver["oam2"];
+		std::memcpy(&oam2, dat.data(), sizeof(oam2));
+	}
+	spriteCount = saver["spriteCount"];
+	spriteShifterLo = saver["spriteShifterLo"];
+	spriteShifterHi = saver["spriteShifterHi"];
+	spriteZeroPossible = saver["spriteZeroPossible"];
+	spriteZeroBeingRendered = saver["spriteZeroBeingRendered"];
+
+	scanlineX = saver["scanlineX"];
+	scanlineY = saver["scanlineY"];
+
+	Mask.reg = saver["Mask.reg"];
+	Control.reg = saver["Control.reg"];
+
+	fineX = saver["fineX"];
+
+	bgNextTileId = saver["bgNextTileId"];
+	bgNextTileAttrib = saver["bgNextTileAttrib"];
+	bgNextTile = saver["bgNextTile"];
+	bgShifterPattern = saver["bgShifterPattern"];
+	bgShifterAttrib = saver["bgShifterAttrib"];
+
+	vramAddr.reg = saver["vramAddr.reg"];
+	tramAddr.reg = saver["tramAddr.reg"];
+
+	ioBus = saver["ioBus"];
+	reset1 = saver["reset1"];
+	reset2 = saver["reset2"];
+	reset3 = saver["reset3"];
+
+	nmi = saver["nmi"];
+	oamAddr = saver["oamAddr"];
 }
 
 uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {

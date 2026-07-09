@@ -918,22 +918,22 @@ void LR35902::cycleOamBug(uint16_t value) {
 	cycleStall();
 }
 
-void LR35902::SaveState(saver& saver) {
-	saver << reg;
-	saver << PC;
-	saver << SP;
-	saver << IMEtoggle;
-	saver << IME;
-	saver << state;
+void LR35902::SaveState(nlohmann::json& saver) const {
+	saver["reg"] = reg;
+	saver["PC"] = PC;
+	saver["SP"] = SP;
+	saver["IMEtoggle"] = IMEtoggle;
+	saver["IME"] = IME;
+	saver["state"] = state;
 }
 
-void LR35902::LoadState(saver& saver) {
-	saver >> reg;
-	saver >> PC;
-	saver >> SP;
-	saver >> IMEtoggle;
-	saver >> IME;
-	saver >> state;
+void LR35902::LoadState(const nlohmann::json& saver) {
+	reg = saver["reg"];
+	PC = saver["PC"];
+	SP = saver["SP"];
+	IMEtoggle = saver["IMEtoggle"];
+	IME = saver["IME"];
+	state = saver["state"];
 }
 
 }

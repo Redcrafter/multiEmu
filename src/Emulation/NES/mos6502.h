@@ -1,7 +1,7 @@
 #pragma once
-#include "../../saver.h"
-
 #include <fstream>
+
+#include <nlohmann/json.hpp>
 
 // #define printDebug 1
 
@@ -282,8 +282,8 @@ class mos6502 {
 
 	void Nmi();
 
-	void SaveState(saver& saver) const;
-	void LoadState(saver& saver);
+	void SaveState(nlohmann::json& saver) const;
+	void LoadState(const nlohmann::json& saver);
 
   private:
 	void PushStack(uint8_t val);

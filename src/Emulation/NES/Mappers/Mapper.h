@@ -1,10 +1,12 @@
 #pragma once
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <stdexcept>
 
+#include <nlohmann/json.hpp>
+
 #include "../../../md5.h"
-#include "../../../saver.h"
 
 namespace Nes {
 
@@ -44,8 +46,8 @@ class Mapper {
 	virtual bool ppuRead(uint16_t addr, uint8_t& data, bool readOnly) = 0;
 	virtual bool ppuWrite(uint16_t addr, uint8_t data) { return false; };
 
-	virtual void SaveState(saver& saver) = 0;
-	virtual void LoadState(saver& saver) = 0;
+	virtual void SaveState(nlohmann::json& saver) const = 0;
+	virtual void LoadState(const nlohmann::json& saver) = 0;
 
 	virtual void MapSaveRam(const std::string& path) {
 		assert(false);

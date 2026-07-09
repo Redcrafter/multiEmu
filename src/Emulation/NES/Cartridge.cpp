@@ -3,10 +3,10 @@
 #include <cmath>
 #include <fstream>
 #include <map>
+#include <nlohmann/json.hpp>
 
 #include "Mappers/Mappers.h"
 #include "../../fs.h"
-#include "../../json.h"
 #include "../../logger.h"
 #include "../../md5.h"
 #include "../../sha1.h"
@@ -77,18 +77,17 @@ void LoadCardDb(const std::string& path) {
 	logger.Log("Loading nes cart db\n");
 
 	try {
-		Json test;
 		std::ifstream f(path);
-		f >> test;
+		auto test = nlohmann::json::parse(f);
 
-		for(auto& game : *test["database"]["game"].asArray()) {
+		for(auto& game : test["database"]["game"]) {
 			std::string name = game["@name"];
 
 			auto& cartridge = game["cartridge"];
-			if(cartridge.asObject()) {
+			if(cartridge.is_object()) {
 				InsertCart(name, cartridge);
-			} else if(auto arr = cartridge.asArray()) {
-				for(auto& obj : *arr) {
+			} else if(cartridge.is_array()) {
+				for(auto& obj : cartridge) {
 					InsertCart(name, obj);
 				}
 			} else {

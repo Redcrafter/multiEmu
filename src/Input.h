@@ -4,7 +4,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include "json.h"
+#include <nlohmann/json.hpp>
 
 namespace Input {
 
@@ -52,8 +52,8 @@ class Mapper {
 
 	static void OnKey(int key, int scancode, int action, int mods);
 
-	static void Load(Json& j);
-	static void Save(Json& j);
+	static void Load(const nlohmann::json& j);
+	static void Save(nlohmann::json& j);
 
 	static void DrawStuff();
 	static void NewFrame();

@@ -48,23 +48,27 @@ void Core::DrawMenuBar(bool& menuOpen) {
 	}
 }
 
-void Core::SaveState(saver& saver) {
-	saver << emulator.V;
-	saver << emulator.memory;
-	saver << emulator.I << emulator.PC;
-	saver << emulator.delay_timer << emulator.sound_timer;
-	saver << emulator.SP;
-	saver << emulator.stack;
-	saver << emulator.gfx;
+void Core::SaveState(nlohmann::json& saver) const {
+	saver["V"] = emulator.V;
+	saver["memory"] = emulator.memory;
+	saver["I"] = emulator.I;
+	saver["PC"] = emulator.PC;
+	saver["delay_timer"] = emulator.delay_timer;
+	saver["sound_timer"] = emulator.sound_timer;
+	saver["SP"] = emulator.SP;
+	saver["stack"] = emulator.stack;
+	saver["gfx"] = emulator.gfx;
 }
-void Core::LoadState(saver& saver) {
-	saver >> emulator.V;
-	saver >> emulator.memory;
-	saver >> emulator.I >> emulator.PC;
-	saver >> emulator.delay_timer >> emulator.sound_timer;
-	saver >> emulator.SP;
-	saver >> emulator.stack;
-	saver >> emulator.gfx;
+void Core::LoadState(const nlohmann::json& saver) {
+	emulator.V = saver["V"];
+	emulator.memory = saver["memory"];
+	emulator.I = saver["I"];
+	emulator.PC = saver["PC"];
+	emulator.delay_timer = saver["delay_timer"];
+	emulator.sound_timer = saver["sound_timer"];
+	emulator.SP = saver["SP"];
+	emulator.stack = saver["stack"];
+	emulator.gfx = saver["gfx"];
 }
 
 void Core::Update() {

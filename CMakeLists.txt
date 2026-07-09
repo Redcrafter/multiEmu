@@ -36,13 +36,14 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/thestk/rtaudio.git
   GIT_TAG        6.0.1
 )
+FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz)
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(imgui imgui_club glfw rtaudio)
+FetchContent_MakeAvailable(imgui imgui_club glfw rtaudio json)
 
 find_package(OpenGL REQUIRED)
 
@@ -135,7 +136,7 @@ add_executable(emu WIN32 ${Common_sources} ${imgui_sources}
     "${rtaudio_SOURCE_DIR}/RtAudio.cpp")
 
 target_include_directories(emu PRIVATE ${imgui_SOURCE_DIR} ${rtaudio_SOURCE_DIR} "${imgui_club_SOURCE_DIR}/imgui_memory_editor" glfw ${INCLUDES})
-target_link_libraries(emu PRIVATE glfw ${LIBS})
+target_link_libraries(emu PRIVATE glfw ${LIBS} nlohmann_json::nlohmann_json)
 target_compile_definitions(emu PRIVATE IMGUI_IMPL_OPENGL_LOADER_GL3W)
 set_project_warnings(emu)
 

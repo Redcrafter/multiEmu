@@ -15,7 +15,6 @@
 #include "nativefiledialog/nfd.h"
 
 #include "Input.h"
-#include "saver.h"
 
 #include "imguiWindows/imgui_memory_editor.h"
 // #include "imguiWindows/imgui_tas_editor.h"
@@ -50,7 +49,7 @@ GLFWwindow* window;
 std::unique_ptr<ICore> emulationCore;
 
 int selectedSaveState = 0;
-std::array<std::unique_ptr<saver>, 10> saveStates;
+std::array<nlohmann::json, 10> saveStates;
 
 MemoryEditor memEdit;
 
@@ -99,7 +98,8 @@ static void LoadCore(const std::string& path) {
 
 		if(fs::exists(sPath)) {
 			try {
-				saveStates[i] = std::make_unique<saver>(sPath);
+				std::ifstream file(sPath);
+				saveStates[i] = nlohmann::json::parse(file);
 			} catch(std::exception& e) {
 				logger.Log("Error loading state: %s\n%s\n", sPath.c_str(), e.what());
 			}
@@ -159,13 +159,9 @@ static void SaveState(int number) {
 	if(emulationCore == nullptr) {
 		return;
 	}
-	auto state = std::move(saveStates[number]);
-	if(state) {
-		state->clear();
-	} else {
-		state = std::make_unique<saver>();
-	}
-	emulationCore->SaveState(*state);
+	auto& state = saveStates[number];
+	state.clear();
+	emulationCore->SaveState(state);
 
 	try {
 		fs::create_directories("./saves/" + emulationCore->GetName() + "/");
@@ -173,7 +169,9 @@ static void SaveState(int number) {
 		if(fs::exists(path)) {
 			fs::copy(path, path + ".old", fs::copy_options::overwrite_existing);
 		}
-		state->Save(path);
+		auto str = state.dump();
+		std::ofstream out(path);
+		out << str;
 
 		logger.LogScreen("Saved state %i", number);
 	} catch(std::exception& e) {
@@ -189,10 +187,7 @@ static void LoadState(int number) {
 
 	const auto& state = saveStates[number];
 	if(state != nullptr) {
-		state->beginRead();
-		emulationCore->LoadState(*state);
-		state->endRead();
-
+		emulationCore->LoadState(state);
 		logger.LogScreen("Loaded state %i", number);
 	} else {
 		logger.LogScreen("Save state %i empty", number);

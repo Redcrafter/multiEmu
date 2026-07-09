@@ -37,8 +37,8 @@ class Core : public ICore {
 		disassembler.DrawWindow();
 	}
 
-	void SaveState(saver& saver) override;
-	void LoadState(saver& saver) override;
+	void SaveState(nlohmann::json& saver) const override;
+	void LoadState(const nlohmann::json& saver) override;
 
 	void LoadRom(const std::string& path) override {
 		emulator.Reset();

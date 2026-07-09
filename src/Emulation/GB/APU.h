@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
 
+#include <nlohmann/json.hpp>
+
 #include "../../audio.h"
 
 namespace Gameboy {
@@ -47,17 +49,17 @@ struct Length {
 		lengthEnabled = (data >> 6) & 1;
 	}
 
-	void SaveLength(saver& saver) {
-		saver << lengthCounter;
-		saver << dacEnabled;
-		saver << channelEnabled;
-		saver << lengthEnabled;
+	void SaveLength(nlohmann::json& saver) const {
+		saver["lengthCounter"] = lengthCounter;
+		saver["dacEnabled"] = dacEnabled;
+		saver["channelEnabled"] = channelEnabled;
+		saver["lengthEnabled"] = lengthEnabled;
 	}
-	void LoadLength(saver& saver) {
-		saver >> lengthCounter;
-		saver >> dacEnabled;
-		saver >> channelEnabled;
-		saver >> lengthEnabled;
+	void LoadLength(const nlohmann::json& saver) {
+		lengthCounter = saver["lengthCounter"];
+		dacEnabled = saver["dacEnabled"];
+		channelEnabled = saver["channelEnabled"];
+		lengthEnabled = saver["lengthEnabled"];
 	}
 };
 
@@ -93,19 +95,19 @@ struct Envelope {
 		}
 	}
 
-	void SaveEnvelope(saver& saver) {
-		saver << envelopeDir;
-		saver << envelopePeriod;
-		saver << envelopeInitialVol;
-		saver << envPeriodTimer;
-		saver << envVolume;
+	void SaveEnvelope(nlohmann::json& saver) const {
+		saver["envelopeDir"] = envelopeDir;
+		saver["envelopePeriod"] = envelopePeriod;
+		saver["envelopeInitialVol"] = envelopeInitialVol;
+		saver["envPeriodTimer"] = envPeriodTimer;
+		saver["envVolume"] = envVolume;
 	}
-	void LoadEnvelope(saver& saver) {
-		saver >> envelopeDir;
-		saver >> envelopePeriod;
-		saver >> envelopeInitialVol;
-		saver >> envPeriodTimer;
-		saver >> envVolume;
+	void LoadEnvelope(const nlohmann::json& saver) {
+		envelopeDir = saver["envelopeDir"];
+		envelopePeriod = saver["envelopePeriod"];
+		envelopeInitialVol = saver["envelopeInitialVol"];
+		envPeriodTimer = saver["envPeriodTimer"];
+		envVolume = saver["envVolume"];
 	}
 };
 
@@ -143,21 +145,21 @@ struct SquareBase : Envelope, Length {
 		return 0;
 	}
 
-	void SaveSquare(saver& saver) {
+	void SaveSquare(nlohmann::json& saver) const {
 		SaveEnvelope(saver);
 		SaveLength(saver);
-		saver << frequency;
-		saver << freqTimer;
-		saver << soundPattern;
-		saver << wavePos;
+		saver["frequency"] = frequency;
+		saver["freqTimer"] = freqTimer;
+		saver["soundPattern"] = soundPattern;
+		saver["wavePos"] = wavePos;
 	}
-	void LoadSquare(saver& saver) {
+	void LoadSquare(const nlohmann::json& saver) {
 		LoadEnvelope(saver);
 		LoadLength(saver);
-		saver >> frequency;
-		saver >> freqTimer;
-		saver >> soundPattern;
-		saver >> wavePos;
+		frequency = saver["frequency"];
+		freqTimer = saver["freqTimer"];
+		soundPattern = saver["soundPattern"];
+		wavePos = saver["wavePos"];
 	}
 };
 
@@ -205,29 +207,29 @@ struct Square1 : SquareBase {
 		}
 	}
 
-	void Save(saver& saver) {
+	void Save(nlohmann::json& saver) const {
 		SaveSquare(saver);
-		saver << shadowFrequency;
-		saver << sweepShift;
-		saver << sweepPeriod;
-		saver << sweepTimer;
-		saver << sweepDir;
-		saver << sweepEnable;
+		saver["shadowFrequency"] = shadowFrequency;
+		saver["sweepShift"] = sweepShift;
+		saver["sweepPeriod"] = sweepPeriod;
+		saver["sweepTimer"] = sweepTimer;
+		saver["sweepDir"] = sweepDir;
+		saver["sweepEnable"] = sweepEnable;
 	}
-	void Load(saver& saver) {
+	void Load(const nlohmann::json& saver) {
 		LoadSquare(saver);
-		saver >> shadowFrequency;
-		saver >> sweepShift;
-		saver >> sweepPeriod;
-		saver >> sweepTimer;
-		saver >> sweepDir;
-		saver >> sweepEnable;
+		shadowFrequency = saver["shadowFrequency"];
+		sweepShift = saver["sweepShift"];
+		sweepPeriod = saver["sweepPeriod"];
+		sweepTimer = saver["sweepTimer"];
+		sweepDir = saver["sweepDir"];
+		sweepEnable = saver["sweepEnable"];
 	}
 };
 struct Square2 : SquareBase {};
 
 struct Wave : Length {
-	uint8_t waveRam[16];
+	std::array<uint8_t, 16> waveRam;
 	uint16_t frequency;
 	uint16_t freqTimer;
 	uint8_t outputLevel;
@@ -263,21 +265,21 @@ struct Wave : Length {
 		return 0;
 	}
 
-	void Save(saver& saver) {
+	void Save(nlohmann::json& saver) const {
 		SaveLength(saver);
-		saver << waveRam;
-		saver << frequency;
-		saver << freqTimer;
-		saver << outputLevel;
-		saver << wavePos;
+		saver["waveRam"] = waveRam;
+		saver["frequency"] = frequency;
+		saver["freqTimer"] = freqTimer;
+		saver["outputLevel"] = outputLevel;
+		saver["wavePos"] = wavePos;
 	}
-	void Load(saver& saver) {
+	void Load(const nlohmann::json& saver) {
 		LoadLength(saver);
-		saver >> waveRam;
-		saver >> frequency;
-		saver >> freqTimer;
-		saver >> outputLevel;
-		saver >> wavePos;
+		waveRam = saver["waveRam"];
+		frequency = saver["frequency"];
+		freqTimer = saver["freqTimer"];
+		outputLevel = saver["outputLevel"];
+		wavePos = saver["wavePos"];
 	}
 };
 struct Noise : Envelope, Length {
@@ -312,23 +314,23 @@ struct Noise : Envelope, Length {
 		return 0;
 	}
 
-	void Save(saver& saver) {
+	void Save(nlohmann::json& saver) const {
 		SaveEnvelope(saver);
 		SaveLength(saver);
-		saver << freqTimer;
-		saver << lfsr;
-		saver << divider;
-		saver << shiftClock;
-		saver << counterStep;
+		saver["freqTimer"] = freqTimer;
+		saver["lfsr"] = lfsr;
+		saver["divider"] = divider;
+		saver["shiftClock"] = shiftClock;
+		saver["counterStep"] = counterStep;
 	}
-	void Load(saver& saver) {
+	void Load(const nlohmann::json& saver) {
 		LoadEnvelope(saver);
 		LoadLength(saver);
-		saver >> freqTimer;
-		saver >> lfsr;
-		saver >> divider;
-		saver >> shiftClock;
-		saver >> counterStep;
+		freqTimer = saver["freqTimer"];
+		lfsr = saver["lfsr"];
+		divider = saver["divider"];
+		shiftClock = saver["shiftClock"];
+		counterStep = saver["counterStep"];
 	}
 };
 
@@ -675,31 +677,31 @@ class APU {
 		}
 	}
 
-	void SaveState(saver& saver) {
-		ch1.Save(saver);
-		ch2.SaveSquare(saver);
-		ch3.Save(saver);
-		ch4.Save(saver);
+	void SaveState(nlohmann::json& saver) const {
+		ch1.Save(saver["ch1"]);
+		ch2.SaveSquare(saver["ch2"]);
+		ch3.Save(saver["ch3"]);
+		ch4.Save(saver["ch4"]);
 
-		saver << cycles;
-		saver << fsStep;
-		saver << sampleCounter;
-		saver << nr50;
-		saver << nr51;
-		saver << enabled;
+		saver["cycles"] = cycles;
+		saver["fsStep"] = fsStep;
+		saver["sampleCounter"] = sampleCounter;
+		saver["nr50"] = nr50;
+		saver["nr51"] = nr51;
+		saver["enabled"] = enabled;
 	}
-	void LoadState(saver& saver) {
-		ch1.Load(saver);
-		ch2.LoadSquare(saver);
-		ch3.Load(saver);
-		ch4.Load(saver);
+	void LoadState(const nlohmann::json& saver) {
+		ch1.Load(saver["ch1"]);
+		ch2.LoadSquare(saver["ch2"]);
+		ch3.Load(saver["ch3"]);
+		ch4.Load(saver["ch4"]);
 
-		saver >> cycles;
-		saver >> fsStep;
-		saver >> sampleCounter;
-		saver >> nr50;
-		saver >> nr51;
-		saver >> enabled;
+		cycles = saver["cycles"];
+		fsStep = saver["fsStep"];
+		sampleCounter = saver["sampleCounter"];
+		nr50 = saver["nr50"];
+		nr51 = saver["nr51"];
+		enabled = saver["enabled"];
 	}
 };
 

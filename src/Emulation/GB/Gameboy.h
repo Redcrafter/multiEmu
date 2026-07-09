@@ -2,7 +2,8 @@
 #include <cstdint>
 #include <memory>
 
-#include "../../saver.h"
+#include <nlohmann/json.hpp>
+
 #include "APU.h"
 #include "LR35902.h"
 #include "Mappers/MBC.h"
@@ -41,9 +42,9 @@ class Gameboy {
 
 	uint16_t DIV;
 
-	uint8_t ram[8][0x1000];
+	std::array<std::array<uint8_t, 0x1000>, 8> ram;
 
-	uint8_t hram[127];
+	std::array<uint8_t, 127> hram;
 	uint8_t ramBank;
 
 	uint8_t InterruptEnable;
@@ -91,8 +92,8 @@ class Gameboy {
 	uint8_t CpuRead(uint16_t addr) const;
 	void CpuWrite(uint16_t addr, uint8_t val);
 
-	void SaveState(saver& saver);
-	void LoadState(saver& saver);
+	void SaveState(nlohmann::json& saver) const;
+	void LoadState(const nlohmann::json& saver);
 
   private:
 	void clockTimer();

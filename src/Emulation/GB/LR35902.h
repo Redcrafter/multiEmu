@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 
-#include "../../saver.h"
+#include <nlohmann/json.hpp>
 
 namespace Gameboy {
 
@@ -87,7 +87,7 @@ class LR35902 {
 			Reg16 AF;
 		};
 
-		uint8_t reg[8];
+		std::array<uint8_t, 8> reg;
 	};
 
 	uint16_t PC;
@@ -105,8 +105,8 @@ class LR35902 {
 
 	void Step();
 
-	void SaveState(saver& saver);
-	void LoadState(saver& saver);
+	void SaveState(nlohmann::json& saver) const;
+	void LoadState(const nlohmann::json& saver);
 
   private:
 	uint8_t read(uint16_t addr);

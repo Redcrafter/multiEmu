@@ -15,7 +15,7 @@ class Bus {
   private:
 	bool irqDelay;
 
-	uint8_t CpuRam[2 * 1024];
+	std::array<uint8_t, 2 * 1024> CpuRam;
 	uint8_t cpuOpenBus;
 
 	uint8_t dmaPage;
@@ -46,8 +46,8 @@ class Bus {
 	void CpuWrite(uint16_t addr, uint8_t data);
 	uint8_t CpuRead(uint16_t addr, bool readOnly = false);
 
-	void SaveState(saver& saver);
-	void LoadState(saver& saver);
+	void SaveState(nlohmann::json& saver) const;
+	void LoadState(const  nlohmann::json& saver);
 
 	friend class Core;
 };

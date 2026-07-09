@@ -5,7 +5,7 @@ namespace Gameboy {
 
 class MBC2 final : public MBC {
   private:
-	uint8_t ram[512];
+	std::array<uint8_t, 512> ram;
 	uint32_t romBank = 0x4000;
 	bool ramEnable = false;
 
@@ -29,15 +29,15 @@ class MBC2 final : public MBC {
 		if(ramEnable) ram[addr & 0x1FF] = val;
 	};
 
-	void SaveState(saver& saver) override {
-		saver << ram;
-		saver << ramEnable;
-		saver << romBank;
+	void SaveState(nlohmann::json& saver) const override {
+		saver["ram"] = ram;
+		saver["ramEnable"] = ramEnable;
+		saver["romBank"] = romBank;
 	};
-	void LoadState(saver& saver) override {
-		saver >> ram;
-		saver >> ramEnable;
-		saver >> romBank;
+	void LoadState(const nlohmann::json& saver) override {
+		ram = saver["ram"];
+		ramEnable = saver["ramEnable"];
+		romBank = saver["romBank"];
 	};
 };
 

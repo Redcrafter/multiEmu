@@ -11,8 +11,8 @@ class Mapper000 : public Mapper {
 	int cpuRead(uint16_t addr, uint8_t& data) override;
 	bool ppuRead(uint16_t addr, uint8_t& data, bool readOnly) override;
 
-	void SaveState(saver& saver) override {}
-	void LoadState(saver& saver) override {}
+	void SaveState(nlohmann::json& saver) const override;
+	void LoadState(const nlohmann::json& saver) override;
 };
 
 }

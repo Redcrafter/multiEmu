@@ -27,4 +27,16 @@ bool Mapper000::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 	return false;
 }
 
+void Mapper000::SaveState(nlohmann::json& saver) const {
+	saver["vram"] = vram;
+	saver["chrRam"] = chrRam;
+	saver["Irq"] = Irq;
+}
+
+void Mapper000::LoadState(const nlohmann::json& saver) {
+	vram = saver["vram"];
+	chrRam = saver["chrRam"];
+	Irq = saver["Irq"];
+}
+
 }

@@ -34,12 +34,12 @@ bool Mapper002::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 	return false;
 }
 
-void Mapper002::SaveState(saver& saver) {
-	saver << selectedBank;
+void Mapper002::SaveState(nlohmann::json& saver) const {
+	saver["selectedBank"] = selectedBank;
 }
 
-void Mapper002::LoadState(saver& saver) {
-	saver >> selectedBank;
+void Mapper002::LoadState(const nlohmann::json& saver) {
+	selectedBank = saver["selectedBank"];
 }
 
 }

@@ -41,14 +41,14 @@ bool Mapper232::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 	return false;
 }
 
-void Mapper232::SaveState(saver& saver) {
-	saver << prgBanks[0];
-	saver << prgBanks[1];
+void Mapper232::SaveState(nlohmann::json& saver) const {
+	saver["prgBanks[0]"] = prgBanks[0];
+	saver["prgBanks[1]"] = prgBanks[1];
 }
 
-void Mapper232::LoadState(saver& saver) {
-	saver >> prgBanks[0];
-	saver >> prgBanks[1];
+void Mapper232::LoadState(const nlohmann::json& saver) {
+	prgBanks[0] = saver["prgBanks[0]"];
+	prgBanks[1] = saver["prgBanks[1]"];
 }
 
 }

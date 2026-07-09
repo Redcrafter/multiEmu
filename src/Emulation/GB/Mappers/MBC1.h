@@ -62,25 +62,27 @@ class MBC1 final : public MBC {
 		if(ramEnable) ram[ramBank | (addr & 0x1FFF)] = val;
 	};
 
-	void SaveState(saver& saver) override {
-		saver.write(ram, ramMask + 1);
-		saver << romBank0;
-		saver << romBank1;
-		saver << ramBank;
-		saver << ramEnable;
-		saver << reg1;
-		saver << extendedBank;
-		saver << mode;
+	void SaveState(nlohmann::json& saver) const override {
+		saver["ram"] = std::span<uint8_t>(ram, ramMask + 1);
+		saver["romBank0"] = romBank0;
+		saver["romBank1"] = romBank1;
+		saver["ramBank"] = ramBank;
+		saver["ramEnable"] = ramEnable;
+		saver["reg1"] = reg1;
+		saver["extendedBank"] = extendedBank;
+		saver["mode"] = mode;
 	};
-	void LoadState(saver& saver) override {
-		saver.read(ram, ramMask + 1);
-		saver >> romBank0;
-		saver >> romBank1;
-		saver >> ramBank;
-		saver >> ramEnable;
-		saver >> reg1;
-		saver >> extendedBank;
-		saver >> mode;
+	void LoadState(const nlohmann::json& saver) override {
+		auto& dat = saver["ram"].get_binary();
+		assert(dat.size() == ramMask + 1);
+		std::memcpy(ram, dat.data(), ramMask + 1);
+		romBank0 = saver["romBank0"];
+		romBank1 = saver["romBank1"];
+		ramBank = saver["ramBank"];
+		ramEnable = saver["ramEnable"];
+		reg1 = saver["reg1"];
+		extendedBank = saver["extendedBank"];
+		mode = saver["mode"];
 	};
 
   private:

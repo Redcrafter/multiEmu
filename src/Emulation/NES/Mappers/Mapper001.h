@@ -13,8 +13,8 @@ class Mapper001 : public Mapper {
 
 	uint8_t chrBank0 = 0, chrBank1 = 0, prgBank = 0;
 
-	uint32_t prgBankOffset[2];
-	uint32_t chrBankOffset[2];
+	std::array<uint32_t, 2> prgBankOffset;
+	std::array<uint32_t, 2> chrBankOffset;
 
 	bool ramEnable = true;
 	uint8_t* prgRam = nullptr;
@@ -29,8 +29,8 @@ class Mapper001 : public Mapper {
 	bool cpuWrite(uint16_t addr, uint8_t data) override;
 	bool ppuRead(uint16_t addr, uint8_t& mapped, bool readOnly) override;
 
-	void SaveState(saver& saver) override;
-	void LoadState(saver& saver) override;
+	void SaveState(nlohmann::json& saver) const override;
+	void LoadState(const nlohmann::json& saver) override;
 
 	void MapSaveRam(const std::string& path) override;
 };

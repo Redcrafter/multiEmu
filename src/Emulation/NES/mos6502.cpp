@@ -109,44 +109,44 @@ void mos6502::Nmi() {
 	NMI = true;
 }
 
-void mos6502::SaveState(saver& saver) const {
-	saver << IRQ;
-	saver << NMI;
+void mos6502::SaveState(nlohmann::json& saver) const {
+	saver["IRQ"] = IRQ;
+	saver["NMI"] = NMI;
 
-	saver << A;
-	saver << X;
-	saver << Y;
-	saver << SP;
-	saver << PC;
+	saver["A"] = A;
+	saver["X"] = X;
+	saver["Y"] = Y;
+	saver["SP"] = SP;
+	saver["PC"] = PC;
 
-	saver << Status.reg;
-	saver << state;
+	saver["Status"] = Status.reg;
+	saver["state"] = state;
 
-	saver << ptr;
-	saver << addr_abs;
+	saver["ptr"] = ptr;
+	saver["addr_abs"] = addr_abs;
 
-	saver << instruction.instruction;
-	saver << instruction.addrMode;
+	saver["instruction"] = instruction.instruction;
+	saver["addrMode"] = instruction.addrMode;
 }
 
-void mos6502::LoadState(saver& saver) {
-	saver >> IRQ;
-	saver >> NMI;
+void mos6502::LoadState(const nlohmann::json& saver) {
+	IRQ = saver["IRQ"];
+	NMI = saver["NMI"];
 
-	saver >> A;
-	saver >> X;
-	saver >> Y;
-	saver >> SP;
-	saver >> PC;
+	A = saver["A"];
+	X = saver["X"];
+	Y = saver["Y"];
+	SP = saver["SP"];
+	PC = saver["PC"];
 
-	saver >> Status.reg;
-	saver >> state;
+	Status.reg = saver["Status"];
+	state = saver["state"];
 
-	saver >> ptr;
-	saver >> addr_abs;
+	ptr = saver["ptr"];
+	addr_abs = saver["addr_abs"];
 
-	saver >> instruction.instruction;
-	saver >> instruction.addrMode;
+	instruction.instruction = saver["instruction"];
+	instruction.addrMode = saver["addrMode"];
 }
 
 void mos6502::Clock() {

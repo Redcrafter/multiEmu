@@ -54,8 +54,8 @@ class GbsMBC : public MBC {
 	void Write4(uint16_t addr, uint8_t val) override {}
 	void WriteA(uint16_t addr, uint8_t val) override { ram[addr & 0x1FFF] = val; }
 
-	void SaveState(saver& saver) override {}
-	void LoadState(saver& saver) override {}
+	void SaveState(nlohmann::json& saver) const override {}
+	void LoadState(const nlohmann::json& saver) override {}
 };
 
 inline GbsMBC::GbsMBC(Gameboy& gb, const std::string& path) : MBC({}, 0x2000, false) , gb(gb) {

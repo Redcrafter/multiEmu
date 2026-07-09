@@ -30,14 +30,14 @@ bool Mapper079::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 	return false;
 }
 
-void Mapper079::SaveState(saver& saver) {
-	saver << prgBank;
-	saver << chrBank;
+void Mapper079::SaveState(nlohmann::json& saver) const {
+	saver["prgBank"] = prgBank;
+	saver["chrBank"] = chrBank;
 }
 
-void Mapper079::LoadState(saver& saver) {
-	saver >> prgBank;
-	saver >> chrBank;
+void Mapper079::LoadState(const nlohmann::json& saver) {
+	prgBank = saver["prgBank"];
+	chrBank = saver["chrBank"];
 }
 
 }

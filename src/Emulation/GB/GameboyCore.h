@@ -30,8 +30,8 @@ class Core final : public ICore {
 	void Draw() override;
 	void DrawMenuBar(bool& menuOpen) override;
 
-	void SaveState(saver& saver) override { gameboy.SaveState(saver); }
-	void LoadState(saver& saver) override { gameboy.LoadState(saver); }
+	void SaveState(nlohmann::json& saver) const override { gameboy.SaveState(saver); }
+	void LoadState(const nlohmann::json& saver) override { gameboy.LoadState(saver); }
 
 	void LoadRom(const std::string& path) override;
 

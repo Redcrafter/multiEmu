@@ -354,52 +354,52 @@ void PPU::Reset() {
 	LX = 0x9C;
 }
 
-void PPU::SaveState(saver& saver) {
-	saver << VRAM;
-	saver << OAM;
-	saver << LX;
-	saver << LY;
-	saver << windowCounter;
-	saver << STAT.reg;
-	saver << Control.reg;
-	saver << SCX;
-	saver << SCY;
-	saver << LYC;
-	saver << WY;
-	saver << WX;
+void PPU::SaveState(nlohmann::json& saver) const {
+	saver["VRAM"] = VRAM;
+	saver["OAM"] = OAM;
+	saver["LX"] = LX;
+	saver["LY"] = LY;
+	saver["windowCounter"] = windowCounter;
+	saver["STAT.reg"] = STAT.reg;
+	saver["Control.reg"] = Control.reg;
+	saver["SCX"] = SCX;
+	saver["SCY"] = SCY;
+	saver["LYC"] = LYC;
+	saver["WY"] = WY;
+	saver["WX"] = WX;
 
 	if(bus.gbc) {
-		saver << gbcBGP;
-		saver << gbcOBP;
-		saver << OPRI;
+		saver["gbcBGP"] = gbcBGP;
+		saver["gbcOBP"] = gbcOBP;
+		saver["OPRI"] = OPRI;
 	} else {
-		saver << BGP;
-		saver << OBP0;
-		saver << OBP1;
+		saver["BGP"] = BGP;
+		saver["OBP0"] = OBP0;
+		saver["OBP1"] = OBP1;
 	}
 }
-void PPU::LoadState(saver& saver) {
-	saver >> VRAM;
-	saver >> OAM;
-	saver >> LX;
-	saver >> LY;
-	saver >> windowCounter;
-	saver >> STAT.reg;
-	saver >> Control.reg;
-	saver >> SCX;
-	saver >> SCY;
-	saver >> LYC;
-	saver >> WY;
-	saver >> WX;
+void PPU::LoadState(const nlohmann::json& saver) {
+	VRAM = saver["VRAM"];
+	OAM = saver["OAM"];
+	LX = saver["LX"];
+	LY = saver["LY"];
+	windowCounter = saver["windowCounter"];
+	STAT.reg = saver["STAT.reg"];
+	Control.reg = saver["Control.reg"];
+	SCX = saver["SCX"];
+	SCY = saver["SCY"];
+	LYC = saver["LYC"];
+	WY = saver["WY"];
+	WX = saver["WX"];
 
 	if(bus.gbc) {
-		saver >> gbcBGP;
-		saver >> gbcOBP;
-		saver >> OPRI;
+		gbcBGP = saver["gbcBGP"];
+		gbcOBP = saver["gbcOBP"];
+		OPRI = saver["OPRI"];
 	} else {
-		saver >> BGP;
-		saver >> OBP0;
-		saver >> OBP1;
+		BGP = saver["BGP"];
+		OBP0 = saver["OBP0"];
+		OBP1 = saver["OBP1"];
 	}
 }
 

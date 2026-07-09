@@ -121,11 +121,11 @@ void Core::DrawMenuBar(bool& menuOpen) {
 	}
 }
 
-void Core::SaveState(saver& saver) {
+void Core::SaveState(nlohmann::json& saver) const {
 	emulator.SaveState(saver);
 }
 
-void Core::LoadState(saver& saver) {
+void Core::LoadState(const nlohmann::json& saver) {
 	emulator.LoadState(saver);
 }
 

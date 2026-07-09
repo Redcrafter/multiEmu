@@ -130,40 +130,41 @@ bool Mapper001::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 	return false;
 }
 
-void Mapper001::SaveState(saver& saver) {
-	saver << lastWrite;
+void Mapper001::SaveState(nlohmann::json& saver) const {
+	saver["lastWrite"] = lastWrite;
 
-	saver << Control;
-	saver << shiftRegister;
+	saver["Control"] = Control;
+	saver["shiftRegister"] = shiftRegister;
 
-	saver << chrBank0;
-	saver << chrBank1;
-	saver << prgBank;
+	saver["chrBank0"] = chrBank0;
+	saver["chrBank1"] = chrBank1;
+	saver["prgBank"] = prgBank;
 
-	saver << prgBankOffset;
-	saver << chrBankOffset;
+	saver["prgBankOffset"] = prgBankOffset;
+	saver["chrBankOffset"] = chrBankOffset;
 
-	saver << ramEnable;
-
-	saver << prgRam;
+	saver["ramEnable"] = ramEnable;
+	saver["prgRam"] = std::span<uint8_t>(prgRam, 0x2000);
 }
 
-void Mapper001::LoadState(saver& saver) {
-	saver >> lastWrite;
+void Mapper001::LoadState(const nlohmann::json& saver) {
+	lastWrite = saver["lastWrite"];
 
-	saver >> Control;
-	saver >> shiftRegister;
+	Control = saver["Control"];
+	shiftRegister = saver["shiftRegister"];
 
-	saver >> chrBank0;
-	saver >> chrBank1;
-	saver >> prgBank;
+	chrBank0 = saver["chrBank0"];
+	chrBank1 = saver["chrBank1"];
+	prgBank = saver["prgBank"];
 
-	saver >> prgBankOffset;
-	saver >> chrBankOffset;
+	prgBankOffset = saver["prgBankOffset"];
+	chrBankOffset = saver["chrBankOffset"];
 
-	saver >> ramEnable;
-
-	saver >> prgRam;
+	ramEnable = saver["ramEnable"];
+	
+	auto& dat = saver["prgRam"].get_binary();
+	assert(dat.size() == 0x2000);
+	std::memcpy(prgRam, dat.data(), 0x2000);
 }
 
 void Mapper001::MapSaveRam(const std::string& path) {

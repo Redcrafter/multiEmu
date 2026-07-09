@@ -145,9 +145,8 @@ void Mapper::OnKey(int key, int scancode, int action, int mods) {
 	}
 }
 
-void Mapper::Load(Json& j) {
-	std::map<std::string, std::map<std::string, int>> temp;
-	j["keymap"].tryGet(temp);
+void Mapper::Load(const nlohmann::json& j) {
+	std::map<std::string, std::map<std::string, int>> temp = j["keymap"];
 
 	for (size_t i = 0; i < mappers.size(); i++) {
 		auto mapper = mappers[i];
@@ -161,7 +160,7 @@ void Mapper::Load(Json& j) {
 	}
 }
 
-void Mapper::Save(Json& j) {
+void Mapper::Save(nlohmann::json& j) {
 	std::map<std::string, std::map<std::string, int>> temp;
 
 	std::map<std::string, int> keys;

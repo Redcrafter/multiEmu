@@ -41,12 +41,22 @@ bool Mapper007::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 	return false;
 }
 
-void Mapper007::SaveState(saver& saver) {
-	saver << prgBank;
+void Mapper007::SaveState(nlohmann::json& saver) const {
+	saver["prgBank"] = prgBank;
+	saver["mirror"] = mirror;
+	saver["vram"] = vram;
+
+	if(chr.empty())
+		saver["chrRam"] = chrRam;
 }
 
-void Mapper007::LoadState(saver& saver) {
-	saver >> prgBank;
+void Mapper007::LoadState(const nlohmann::json& saver) {
+	prgBank = saver["prgBank"];
+	mirror = saver["mirror"];
+	vram = saver["vram"];
+
+	if(chr.empty())
+		chrRam = saver["chrRam"];
 }
 
 }
