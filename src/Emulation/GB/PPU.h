@@ -2,8 +2,9 @@
 #include <array>
 #include <cstdint>
 
-#include "../../RenderImage.h"
 #include <nlohmann/json.hpp>
+
+#include "../../Texture.h"
 
 namespace Gameboy {
 
@@ -72,12 +73,12 @@ class PPU {
 	uint8_t OPRI;
 
 	Gameboy& bus;
-	RenderImage& texture;
+	Texture& texture;
 
   public:
 	bool frameComplete = false;
 
-	PPU(Gameboy& bus, RenderImage& texture) : bus(bus), texture(texture) {}
+	PPU(Gameboy& bus, Texture& texture) : bus(bus), texture(texture) {}
 
 	void Reset();
 

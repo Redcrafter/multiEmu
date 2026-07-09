@@ -79,7 +79,7 @@ class Gameboy {
 
 	bool gbc = false;
 
-	Gameboy(RenderImage& texture) : cpu(*this), ppu(*this, texture) {}
+	Gameboy(Texture& texture) : cpu(*this), ppu(*this, texture) {}
 
 	void Reset(Mode mode);
 	void Clock();

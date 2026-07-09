@@ -4,8 +4,7 @@
 #include <nlohmann/json.hpp>
 
 #include "Cartridge.h"
-#include "../../RenderImage.h"
-#include "../../saver.h"
+#include "../../Texture.h"
 
 namespace Nes {
 
@@ -129,7 +128,7 @@ class ppu2C02 : public PpuState {
 	std::shared_ptr<Mapper> cartridge;
 
   public:
-	RenderImage* texture = nullptr;
+	Texture* texture = nullptr;
 
 	void Reset();
 	void HardReset();

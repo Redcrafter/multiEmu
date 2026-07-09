@@ -2,7 +2,7 @@
 #include <string>
 
 #include "../ppu2C02.h"
-#include "../../../RenderImage.h"
+#include "../../../Texture.h"
 
 namespace Nes {
 
@@ -16,7 +16,7 @@ class PatternTables {
 	int pallet1 = 0, pallet2 = 0;
 
 	bool open = false;
-	RenderImage image;
+	Texture image;
 
   public:
 	PatternTables(std::string title);

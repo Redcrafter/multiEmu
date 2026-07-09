@@ -300,6 +300,10 @@ static void drawSettings() {
 					Settings::Save();
 				}
 
+                if(ImGui::Checkbox("Render game in own ImGui window", &Settings::GameInWindow)) {
+					Settings::Save();
+                }
+
 				int val = Settings::windowScale - 1;
 				static const char* drawModeNames[] = { "x1", "x2", "x3", "x4" };
 				if(ImGui::Combo("DrawMode", &val, drawModeNames, 4)) {

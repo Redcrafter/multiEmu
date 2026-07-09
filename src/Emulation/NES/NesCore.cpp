@@ -87,7 +87,7 @@ void Core::Draw() {
 
 		ImGui::End();
 	} else {
-		DrawTextureWindow(this->texture, 256 * (8.0 / 7.0), 240);
+		DrawTextureWindow(this->texture, 8.0 / 7.0);
 	}
 
 	cpuWindow.DrawWindow();

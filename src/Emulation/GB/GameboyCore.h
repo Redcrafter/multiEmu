@@ -40,6 +40,10 @@ class Core final : public ICore {
 		Reset(); // no hard reset
 	}
 	void Update() override;
+
+    ImVec2 GetSize() const override {
+        return {160, 144};
+    }
 };
 
 }

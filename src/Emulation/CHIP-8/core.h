@@ -8,7 +8,7 @@
 
 namespace Chip8 {
 
-class Core : public ICore {
+class Core final : public ICore {
 	Chip8 emulator;
 	Texture texture;
 
@@ -33,7 +33,7 @@ class Core : public ICore {
 
 	void DrawMenuBar(bool& menuOpen) override;
 	void Draw() override {
-		DrawTextureWindow(texture, texture.GetWidth(), texture.GetHeight());
+		DrawTextureWindow(texture, 1);
 		disassembler.DrawWindow();
 	}
 
@@ -60,6 +60,10 @@ class Core : public ICore {
 		emulator.LoadRom(currentFile);
 	}
 	void Update() override;
+
+    ImVec2 GetSize() const override {
+        return {64, 32};
+    }
 };
 
 }

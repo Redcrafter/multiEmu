@@ -19,7 +19,7 @@ class ppuWindow {
 	bool open = false;
 	const PPU& ppu;
 
-	RenderImage image;
+	Texture image;
 
   public:
 	ppuWindow(const PPU& ppu)

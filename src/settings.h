@@ -9,6 +9,7 @@ inline bool EnableVsync = false;
 inline bool AutoHideMenu = true;
 inline int windowScale = 2;
 inline std::deque<std::string> RecentFiles;
+inline bool GameInWindow = false;
 
 void Load();
 void Save();

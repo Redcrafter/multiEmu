@@ -23,6 +23,7 @@ void Load() {
 		AutoHideMenu = j["autoHideMenu"];
 		windowScale = j["windowScale"];
 		RecentFiles = j["recent"];
+        GameInWindow = j["gameInWindow"];
 
 		Input::Mapper::Load(j);
 	} catch(std::exception& e) {
@@ -36,6 +37,7 @@ void Save() {
 		{ "autoHideMenu", AutoHideMenu },
 		{ "windowScale", windowScale },
 		{ "recent", RecentFiles },
+        { "gameInWindow", GameInWindow },
 	};
 	Input::Mapper::Save(j);
 

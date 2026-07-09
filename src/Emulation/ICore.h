@@ -9,6 +9,7 @@
 
 #include "../Texture.h"
 #include "../md5.h"
+#include "../settings.h"
 
 struct MemoryDomain {
 	int Id;
@@ -16,20 +17,52 @@ struct MemoryDomain {
 	size_t Size;
 };
 
-static void DrawTextureWindow(const Texture& texture, int width, int height, ImVec2 tl = ImVec2(0, 0), ImVec2 br = ImVec2(1, 1)) {
-	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0);
-	ImGui::Begin("Screen", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar);
-	ImGui::PopStyleVar(2);
+static void DrawTextureWindow(const Texture& texture, float pixelAspectRatio) {
+    if(Settings::GameInWindow) {
+	    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0);
+	    ImGui::Begin("Screen", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoTitleBar);
+	    ImGui::PopStyleVar(2);
+	} else {
+	    ImGuiWindowFlags window_flags =
+		    ImGuiWindowFlags_NoTitleBar |
+		    ImGuiWindowFlags_NoResize |
+		    ImGuiWindowFlags_NoMove |
+		    ImGuiWindowFlags_NoScrollbar |
+		    ImGuiWindowFlags_NoScrollWithMouse |
+		    ImGuiWindowFlags_NoCollapse |
+		    ImGuiWindowFlags_NoBackground |
+		    ImGuiWindowFlags_NoSavedSettings |
+		    ImGuiWindowFlags_NoBringToFrontOnFocus |
+		    ImGuiWindowFlags_NoNavFocus |
+		    ImGuiWindowFlags_NoDocking;
+
+	    ImGuiViewport* viewport = ImGui::GetMainViewport();
+	    ImGui::SetNextWindowPos(viewport->WorkPos);
+	    ImGui::SetNextWindowSize(viewport->WorkSize);
+	    ImGui::SetNextWindowViewport(viewport->ID);
+	    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+	    ImGui::Begin("NES", nullptr, window_flags);
+	    ImGui::PopStyleVar(3);
+    }
 
 	auto windowSize = ImGui::GetWindowSize();
 
+    auto width = texture.GetWidth() * pixelAspectRatio;
+	auto height = texture.GetHeight();
 	auto size = ImVec2(width, height) * std::min(windowSize.x / width, windowSize.y / height);
-
 	ImGui::SetCursorPos((windowSize - size) * 0.5);
 
 	texture.BufferImage();
-	ImGui::Image(reinterpret_cast<void*>(texture.GetTextureId()), size, tl, br);
+
+    auto draw_list = ImGui::GetWindowDrawList();
+
+	draw_list->AddCallback(ImGui::GetPlatformIO().DrawCallback_SetSamplerNearest);
+	ImGui::Image(reinterpret_cast<void*>(texture.GetTextureId()), size);
+	draw_list->AddCallback(ImGui::GetPlatformIO().DrawCallback_SetSamplerLinear);
 
 	ImGui::End();
 }
@@ -56,4 +89,7 @@ class ICore {
 	virtual void Reset() = 0;
 	virtual void HardReset() = 0;
 	virtual void Update() = 0;
+
+    // used to calculate window size
+    virtual ImVec2 GetSize() const = 0;
 };

@@ -10,7 +10,7 @@
 
 namespace Nes {
 
-class Core : public ICore {
+class Core final : public ICore {
 	Bus emulator;
 	Texture texture;
 
@@ -42,6 +42,10 @@ public:
 	void Reset() override;
 	void HardReset() override;
 	void Update() override;
+
+	ImVec2 GetSize() const override {
+		return { 256 * (8.0 / 7.0), 240 };
+	}
 };
 
 }

@@ -200,7 +200,7 @@ void Core::Draw() {
 
 		ImGui::End();
 	} else {
-		DrawTextureWindow(texture, texture.GetWidth(), texture.GetHeight());
+		DrawTextureWindow(texture, 1);
 	}
 
 	_ppuWindow.DrawWindow();
