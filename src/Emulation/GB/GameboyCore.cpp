@@ -15,6 +15,12 @@
 
 namespace Gameboy {
 
+static void _assert(bool cond, const char* expr, const char* file, int line) {
+	if(!cond) throw std::runtime_error(std::string("assertion failed: ") + expr + " in " + file + ":" + std::to_string(line));
+}
+
+#define assert(expression) _assert(expression, #expression, __FILE__, __LINE__)
+
 static std::vector<uint8_t> readFile(const std::string& path) {
 	std::ifstream input(path, std::ios::binary);
 	return std::vector<uint8_t>(std::istreambuf_iterator<char>(input), {});
@@ -73,8 +79,11 @@ void Core::LoadRom(const std::string& path) {
 	if(ext == ".gb" || ext == ".gbc") {
 		auto data = readFile(path);
 
+		if(data.size() < 0x8000) {
+			throw std::runtime_error("file too small for a gameboy rom");
+		}
 		if(!checkLogo(&data[0x0104])) {
-			throw std::runtime_error("Not a gameboy game");
+			throw std::runtime_error("Invalid gameboy header logo");
 		}
 
 		mode = Mode::DMG;
@@ -84,7 +93,7 @@ void Core::LoadRom(const std::string& path) {
 		}
 		auto sgbFlag = data[0x0146];
 		if(sgbFlag == 0x03) {
-			mode = Mode::SGB;
+			// mode = Mode::SGB;
 		}
 		uint8_t cartType = data[0x0147];
 		uint32_t romSize = data[0x0148];
@@ -95,16 +104,21 @@ void Core::LoadRom(const std::string& path) {
 		}
 
 		if(data.size() != romSize) {
-			throw std::runtime_error("File size not equal to rom size");
+			if(data.size() % 0x8000 == 0) {
+				romSize = data.size();
+			} else {
+				throw std::runtime_error("File size not equal to rom size");
+			}
 		}
 
 		uint32_t ramSize = data[0x0149];
 		switch(ramSize) {
 			case 0: ramSize = 0x0; break;
-			case 1: ramSize = 0x800; break;
 			case 2: ramSize = 0x2000; break;
 			case 3: ramSize = 0x8000; break;
-			default: throw std::runtime_error("Invalid ram size");
+			case 4: ramSize = 0x20000; break;
+			case 5: ramSize = 0x10000; break;
+			default: throw std::runtime_error("Invalid ram size " + std::to_string(ramSize));
 		}
 
 		uint8_t headerChecksum = data[0x014D];
@@ -125,17 +139,19 @@ void Core::LoadRom(const std::string& path) {
 			// throw std::runtime_error("Invalid global checksum");
 		}
 
-		romHash = md5((char*)data.data(), data.size());
-
 		switch(cartType) {
 			case 0x0:  assert(ramSize == 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, false); break;
 			case 0x1:  assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC1>(data, ramSize, false); break;
-			case 0x2: 						 gameboy.mbc = std::make_unique<MBC1>(data, ramSize, false); break;
+			case 0x2:  assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC1>(data, ramSize, false); break;
 			case 0x3:  assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC1>(data, ramSize, true); break;
 			case 0x5:  assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC2>(data, false); break;
 			case 0x6:  assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC2>(data, true); break;
 			case 0x8:  assert(ramSize != 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, false); break;
 			case 0x9:  assert(ramSize != 0); gameboy.mbc = std::make_unique<NoMBC>(data, ramSize, true); break;
+			/* MMM01
+			case 0x0B:
+			case 0x0C:
+			case 0x0D:*/
 			case 0x0F: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, true, true); break;
 			case 0x10: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, true, true); break;
 			case 0x11: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC3>(data, ramSize, false, false); break;
@@ -147,9 +163,16 @@ void Core::LoadRom(const std::string& path) {
 			case 0x1C: assert(ramSize == 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, false, true); break;
 			case 0x1D: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, false, true); break;
 			case 0x1E: assert(ramSize != 0); gameboy.mbc = std::make_unique<MBC5>(data, ramSize, true, true); break;
+
+			// case 0x20: // MBC6
+			// case 0x22: // MBC7
+			// case 0xFC: // POCKET CAMERA
+			// case 0xFD: // BANDAI TAMA5
+			// case 0xFE: // HuC3
+			// case 0xFF: // HuC1
 			default: throw std::runtime_error("unknown mbc " + std::to_string(cartType));
 		}
-		
+
 		gameboy.Reset(mode);
 	} else if(ext == ".gbs") {
 		gameboy.mbc = std::make_unique<GbsMBC>(gameboy, path);
@@ -162,12 +185,15 @@ void Core::Reset() {
 }
 
 void Core::Update() {
-	const auto cycles = 4194304 / 60.0;
+    // in case the cpu halts?
+    // const auto cycles = 4194304 / 60.0;
+	const auto cycles = 80000;
 
-	while(gameboy.cyclesPassed < cycles) {
+	while(gameboy.cyclesPassed < cycles && !gameboy.ppu.frameComplete) {
 		gameboy.Clock();
 	}
-	gameboy.cyclesPassed -= cycles;
+	gameboy.cyclesPassed = 0;
+	gameboy.ppu.frameComplete = false;
 
 	if(mode == Mode::DMG && gameboy.cpu.state == CpuState::Stop) {
 		texture.Clear({ 0xFF, 0xFF, 0xFF });

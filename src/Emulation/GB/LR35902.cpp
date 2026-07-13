@@ -77,7 +77,7 @@ void LR35902::Reset(Mode mode) {
 	auto cgbFlag = bus.CpuRead(0x0143);
 	auto checkSum = bus.CpuRead(0x014D);
 	auto oldLicense = bus.CpuRead(0x014B);
-	
+
 	uint8_t titleSum = 0;
 	if((oldLicense == 1 || oldLicense == 33) && bus.CpuRead(0x0144) == '0' && bus.CpuRead(0x0145) == '1') {
 		for(int i = 0x0134; i <= 0x0143; i++) {
@@ -93,7 +93,7 @@ void LR35902::Reset(Mode mode) {
 			HL = 0x8403;
 			break;
 		case Mode::DMG:
-		case Mode::MGB: 
+		case Mode::MGB:
 			AF = 0x0180;
 			F.H = F.C = checkSum != 0;
 			BC = 0x0013;
@@ -245,7 +245,8 @@ void LR35902::Step() {
 		bus.InterruptFlag &= ~(1 << id);
 
 		cycleStall();
-		cycleStall();
+		cycleOamBug(PC + 1);
+		bus.TriggerOamBug(SP);
 		cycleStall();
 
 		write(--SP, PC >> 8);
@@ -304,7 +305,7 @@ void LR35902::Step() {
 		printf(" LY=%02X DIV=%02X TIMA=%02X\n", bus.CpuRead(0xFF44), bus.DIV >> 8, bus.TIMA);
 	}
 #endif
-	
+
 	switch(opcode) {
 #pragma region control/misc
 		case 0x00: break; // NOP
@@ -742,7 +743,7 @@ void LR35902::Step() {
 			auto temp = (int8_t)read(PC++);
 			cycleStall();
 		    cycleStall();
-		
+
 			F.H = (temp & 0xF) + (SP & 0xF) > 0xF;
 			F.C = (temp & 0xFF) + (SP & 0xFF) > 0xFF;
 			F.Z = false;
@@ -915,7 +916,11 @@ void LR35902::cycleStall() {
 	bus.pendingCycles += 4;
 }
 void LR35902::cycleOamBug(uint16_t value) {
-	cycleStall();
+	if(!bus.gbc) {
+		bus.Advance();
+		bus.TriggerOamBug(value);
+	}
+	bus.pendingCycles += 4;
 }
 
 void LR35902::SaveState(nlohmann::json& saver) const {

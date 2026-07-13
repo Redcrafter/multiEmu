@@ -38,7 +38,7 @@ void Gameboy::Reset(Mode mode) {
 	TMA = 0;			 // FF06
 	TAC = 0;			 // FF07
 	InterruptFlag = 1;	 // FF0F
-	apu.reset();	     // FF10 - FF3F
+	apu.reset();		 // FF10 - FF3F
 	ppu.Reset();		 // FF40 - FF4B
 	speed = 0;			 // FF4D
 	vramBank = 0;		 // FF4F
@@ -60,9 +60,12 @@ void Gameboy::Reset(Mode mode) {
 	timaState = GB_TIMA_RUNNING;
 	pendingCycles = 0;
 	cyclesPassed = 0;
-	
+
+	dmaReg = 0xFF;
+	dmaDest = 0xA0;
+
 	auto cgbFlag = CpuRead(0x0143);
-	
+
 	gbc = apu.gbc = false;
 	switch(mode) {
 		case Mode::DMG0:
@@ -80,6 +83,7 @@ void Gameboy::Reset(Mode mode) {
 		case Mode::AGB:
 			SC = 3;		  // FF02
 			DIV = 0xA344; // FF04
+			dmaReg = 0;
 
 			FF72 = 0;
 			FF73 = 0;
@@ -95,7 +99,6 @@ void Gameboy::Reset(Mode mode) {
 			if(cgbFlag == 0x80 || cgbFlag == 0xC0) {
 				gbc = apu.gbc = true;
 			} else { // DMG mode
-
 			}
 			break;
 	}
@@ -200,7 +203,7 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 			case 0xFF43: return ppu.SCX;
 			case 0xFF44: return ppu.LY;
 			case 0xFF45: return ppu.LYC;
-			case 0xFF46: return gbc ? 0 : 0xFF;
+			case 0xFF46: return dmaReg;
 			case 0xFF47: return ppu.BGP;
 			case 0xFF48: return ppu.OBP0;
 			case 0xFF49: return ppu.OBP1;
@@ -298,8 +301,10 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 						// serial bus ignore
 						break;
 					case 0xFF04: DIV = 0; break;
-					case 0xFF05: if(timaState != GB_TIMA_RELOADED) TIMA = val; break;
-					case 0xFF06: 
+					case 0xFF05:
+						if(timaState != GB_TIMA_RELOADED) TIMA = val;
+						break;
+					case 0xFF06:
 						TMA = val;
 						if(timaState != GB_TIMA_RUNNING) TIMA = val;
 						break;
@@ -314,8 +319,8 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 					case 0xFF38: case 0xFF39: case 0xFF3A: case 0xFF3B: case 0xFF3C: case 0xFF3D: case 0xFF3E: case 0xFF3F:
 						apu.write(addr, val);
 						break;
-					case 0xFF40: 
-						ppu.Control.reg = val; 
+					case 0xFF40:
+						ppu.Control.reg = val;
 						if(!ppu.Control.lcdEnable) {
 							ppu.STAT.modeFlag = 0;
 							ppu.LY = 0;
@@ -328,17 +333,17 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 					case 0xFF44: ppu.LY = val; break;
 					case 0xFF45: ppu.LYC = val; break;
 					case 0xFF46: // DMA
-						// TODO: do actual dma instead of this
-						for(int i = 0; i < 0xA0; i++) {
-							ppu.OAM[i] = CpuRead(val << 8 | i);
-						}
+						dmaCycles = -7;
+						dmaDest = 0;
+						dmaSrc = val << 8;
+						dmaReg = val;
 						break;
 					case 0xFF47: ppu.BGP = val; break;
 					case 0xFF48: ppu.OBP0 = val; break;
 					case 0xFF49: ppu.OBP1 = val; break;
 					case 0xFF4A: ppu.WY = val; break;
 					case 0xFF4B: ppu.WX = val; break;
-					case 0xFF4D: if(gbc) speed = speed & 0x80 | val & 0x7F; break;
+					case 0xFF4D: if(gbc) speed = (speed & 0x80) | (val & 0x7F); break;
 					case 0xFF4F: if(gbc) vramBank = val & 1; break;
 					case 0xFF50: inBios = !val; break;
 					case 0xFF51: if(gbc) HDMA1 = val; break;
@@ -350,7 +355,7 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 							auto cpu = ((HDMA1 << 8) | HDMA2) & 0xFFF0;
 							auto vram = ((HDMA3 << 4) | (HDMA4 >> 4));
 							auto len = ((val & 0x7F) + 1) * 0x10;
-							for (size_t i = 0; i < len; i++) {
+							for(int i = 0; i < len; i++) {
 								ppu.VRAM[vramBank][vram & 0x1FF] = CpuRead(cpu);
 								cpu++;
 								vram++;
@@ -359,7 +364,7 @@ void Gameboy::CpuWrite(uint16_t addr, uint8_t val) {
 						break;
 					case 0xFF56: if(gbc) RP = val & 0xC1; break;
 					case 0xFF68: if(gbc) BGPI = val; break;
-					case 0xFF69: 
+					case 0xFF69:
 						if(gbc) {
 							ppu.gbcBGP[BGPI & 0x3F] = val;
 							if(BGPI & 0x80) BGPI = (BGPI & 0x80) | ((BGPI & 0x3F) + 1);
@@ -396,34 +401,30 @@ void Gameboy::Clock() {
 
 void Gameboy::Advance() {
 	if(pendingCycles == 0) return;
-	
+
 	assert(pendingCycles % 4 == 0);
-	
-	if(speed & 0x80) {
-		auto count = pendingCycles / 8;
 
-		for(int i = 0; i < count; ++i) {
-			clockTimer();
-			clockTimer();
-
-			ppu.Clock();
-			apu.clock();
-		}
-
-		cyclesPassed += count * 4;
-		pendingCycles -= count * 8;
-	} else {
-		auto count = pendingCycles / 4;
-
-		for(int i = 0; i < count; ++i) {
-			clockTimer();
-			ppu.Clock();
-			apu.clock();
-		}
-
-		cyclesPassed += pendingCycles;
-		pendingCycles = 0;
+	for(size_t i = 0; i < pendingCycles / 4; i++) {
+		clockTimer();
 	}
+	clockDma(pendingCycles);
+
+	// cpu, timer and dma run at double speed
+	int count = (speed & 0x80) ? pendingCycles / 2 : pendingCycles;
+	ppu.Clock(count);
+	apu.clock(count);
+
+	cyclesPassed += count;
+	pendingCycles = 0;
+}
+
+void Gameboy::TriggerOamBug(uint16_t address) {
+	if(gbc) return;
+
+    // todo: https://gbdev.io/pandocs/OAM_Corruption_Bug.html
+
+	/*if(address >= 0xFE00 && address < 0xFF00) {
+	}*/
 }
 
 void Gameboy::SaveState(nlohmann::json& saver) const {
@@ -529,6 +530,17 @@ void Gameboy::clockTimer() {
 		}
 	}
 	lastTimer = timer;
+}
+
+void Gameboy::clockDma(int cycles) {
+	dmaCycles += cycles;
+
+	while(dmaCycles >= 4 && dmaDest < 0xA0) {
+		dmaCycles -= 4;
+		ppu.OAM[dmaDest] = CpuRead(dmaSrc < 0xE000 ? dmaSrc : dmaSrc & ~0x2000);
+		dmaSrc++;
+		dmaDest++;
+	}
 }
 
 }

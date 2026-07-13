@@ -73,6 +73,11 @@ class Gameboy {
 	uint8_t JoyPadSelect;
 	bool inBios;
 
+	int32_t dmaCycles;
+	uint16_t dmaSrc;
+	uint8_t dmaDest;
+	uint8_t dmaReg;
+
   public:
 	uint8_t pendingCycles;
   	float cyclesPassed;
@@ -92,11 +97,14 @@ class Gameboy {
 	uint8_t CpuRead(uint16_t addr) const;
 	void CpuWrite(uint16_t addr, uint8_t val);
 
+	void TriggerOamBug(uint16_t address);
+
 	void SaveState(nlohmann::json& saver) const;
 	void LoadState(const nlohmann::json& saver);
 
   private:
 	void clockTimer();
+	void clockDma(int cycles);
 };
 
 }

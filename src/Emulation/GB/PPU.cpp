@@ -69,98 +69,104 @@ struct Sprite {
 	};
 };
 
-void PPU::Clock() {
+void PPU::Clock(int cycles) {
 	if(!Control.lcdEnable) return;
 
-	LX += 4;
-	if(LX == 456) {
-		LX = 0;
-		LY = (LY + 1) % 154;
+	for(size_t i = 0; i < cycles / 2; i++) {
+		LX += 2;
+		if(LX == 456) {
+			LX = 0;
+			LY = (LY + 1) % 154;
 
-		if(LY == 144) {
-			STAT.modeFlag = 1;
-			windowCounter = 0;
+			if(LY == 144) {
+				STAT.modeFlag = 1;
+				windowCounter = 0;
 
-			bus.Interrupt(Interrupt::VBlank);
-			if(STAT.vBlankInterrupt) bus.Interrupt(Interrupt::LCDStat);
+				bus.Interrupt(Interrupt::VBlank);
+				if(STAT.vBlankInterrupt) bus.Interrupt(Interrupt::LCDStat);
 
-			frameComplete = true;
-		}
+				frameComplete = true;
+			}
 
-		// mode 2: 0-79
-		if(LY < 144) {
-			STAT.modeFlag = 2;
-			if(STAT.oamInterrupt) bus.Interrupt(Interrupt::LCDStat);
-		}
-	}
-
-	if(LY < 144) {
-		// mode 3: 80-251
-		if(LX == 80) {
-			STAT.modeFlag = 3;
-
-			if(Control.lcdEnable) {
-				if(bus.gbc) {
-					DrawBg(true);
-					DrawWindow(true);
-					DrawSprites(true);
-
-					for(size_t i = 0; i < 160; i++) {
-						auto el = drawBuffer[i];
-						auto id = ((el.palette & 7) * 4 + el.id) * 2;
-
-						uint16_t col;
-						if(el.palette & 0x80) { // sprite
-							col = gbcOBP[id] | gbcOBP[id + 1] << 8;
-						} else { // bg/window
-							col = gbcBGP[id] | gbcBGP[id + 1] << 8;
-						}
-
-						Color color { (col << 3) & 0xF8, (col >> 2) & 0xF8, (col >> 7) & 0xF8 };
-						texture.SetPixel(i, LY, color);
-					}
-				} else {
-					if(Control.bgWindowEnable) {
-						DrawBg(false);
-						DrawWindow(false);
-					} else {
-						std::fill(drawBuffer.begin(), drawBuffer.end(), Pixel { 0, 0, 0, 0 });
-					}
-					DrawSprites(false);
-
-					for(size_t i = 0; i < 160; i++) {
-						auto el = drawBuffer[i];
-						auto color = (el.palette >> (el.id << 1)) & 3;
-						texture.SetPixel(i, LY, palette[color]);
-					}
-				}
-			} else {
-				for(size_t i = 0; i < 160; i++) {
-					texture.SetPixel(i, LY, { 0xFF, 0xFF, 0xFF });
-				}
+			// mode 2: 0-79
+			if(LY < 144) {
+				STAT.modeFlag = 2;
+				if(STAT.oamInterrupt) bus.Interrupt(Interrupt::LCDStat);
 			}
 		}
 
-		// mode 0: 252-456
-		if(LX == 252) {
-			STAT.modeFlag = 0;
-			if(STAT.hBlankInterrupt) bus.Interrupt(Interrupt::LCDStat);
+		if(LY < 144) {
+			// mode 3: 80-251
+			if(LX == 80) {
+				STAT.modeFlag = 3;
+
+				if(Control.lcdEnable) {
+					if(bus.gbc) {
+						DrawBg(true);
+						DrawWindow(true);
+						DrawSprites(true);
+
+						for(size_t i = 0; i < 160; i++) {
+							auto el = drawBuffer[i];
+							auto id = ((el.palette & 7) * 4 + el.id) * 2;
+
+							uint16_t col;
+							if(el.palette & 0x80) { // sprite
+								col = gbcOBP[id] | gbcOBP[id + 1] << 8;
+							} else { // bg/window
+								col = gbcBGP[id] | gbcBGP[id + 1] << 8;
+							}
+
+							const Color color {
+								(uint8_t)((col << 3) & 0xF8),
+								(uint8_t)((col >> 2) & 0xF8),
+								(uint8_t)((col >> 7) & 0xF8)
+							};
+							texture.SetPixel(i, LY, color);
+						}
+					} else {
+						if(Control.bgWindowEnable) {
+							DrawBg(false);
+							DrawWindow(false);
+						} else {
+							std::fill(drawBuffer.begin(), drawBuffer.end(), Pixel { 0, 0, 0, false });
+						}
+						DrawSprites(false);
+
+						for(size_t i = 0; i < 160; i++) {
+							auto el = drawBuffer[i];
+							auto color = (el.palette >> (el.id << 1)) & 3;
+							texture.SetPixel(i, LY, palette[color]);
+						}
+					}
+				} else {
+					for(size_t i = 0; i < 160; i++) {
+						texture.SetPixel(i, LY, { 0xFF, 0xFF, 0xFF });
+					}
+				}
+			}
+
+			// mode 0: 252-456
+			if(LX == 252) {
+				STAT.modeFlag = 0;
+				if(STAT.hBlankInterrupt) bus.Interrupt(Interrupt::LCDStat);
+			}
+		}
+
+		if(LX >= 4 || LY == 0) {
+			auto compareLy = LY;
+			if(LY == 153 && LX >= 12) {
+				compareLy = 0;
+			}
+
+			if(compareLy == LYC && !STAT.lycFlag && STAT.lycInterrupt) {
+				bus.Interrupt(Interrupt::LCDStat);
+			}
+			STAT.lycFlag = compareLy == LYC;
+		} else {
+			STAT.lycFlag = false;
 		}
 	}
-
-	// if(LX >= 4 || LY == 0) {
-		auto compareLy = LY;
-		if(LY == 153 && LX >= 12) {
-			compareLy = 0;
-		}
-
-		if(compareLy == LYC && !STAT.lycFlag && STAT.lycInterrupt) {
-			bus.Interrupt(Interrupt::LCDStat);
-		}
-		STAT.lycFlag = compareLy == LYC;
-	// } else {
-	// 	STAT.lycFlag = false;
-	// }
 }
 
 void PPU::DrawBg(bool gbc) {
@@ -177,8 +183,6 @@ void PPU::DrawBg(bool gbc) {
 	auto y = (LY + SCY) & 7;
 	// Where in the tileline to start
 	auto x = SCX & 7;
-
-	auto prioOverwrite = gbc && !Control.bgWindowEnable;
 
 	for(int i = 0; i < 160;) {
 		auto tile = VRAM[0][mapOffs + lineoffs];
@@ -209,7 +213,7 @@ void PPU::DrawBg(bool gbc) {
 			i++;
 		}
 		x = 0;
-		lineoffs = (lineoffs + 1) & 31;
+		lineoffs = (lineoffs + 1) & 0x1F;
 	}
 }
 
@@ -265,7 +269,7 @@ void PPU::DrawSprites(bool gbc) {
 
 	int spriteCount = 0;
 	for(int i = 0; i < 40 && spriteCount < 10; i++) {
-		auto s = ((Sprite*)OAM)[i];
+		auto s = ((Sprite*)&OAM)[i];
 
 		// relative y position
 		auto y = LY - (s.Y - 16);
@@ -274,7 +278,7 @@ void PPU::DrawSprites(bool gbc) {
 		if(y < 0 || y >= spriteSize) continue;
 
 		spriteCount++;
-		if(s.X == 0 || s.X >= 160) continue;
+		if(s.X == 0 || x >= 160) continue;
 
 		// used pallet
 		uint8_t prio;
@@ -333,7 +337,7 @@ void PPU::Reset() {
 	/*for(size_t i = 0; i < 200; i++) {
 		VRAM[0][16 + i * 2] = tileInit[i];
 	}*/
-	//std::copy_n(mapInit, sizeof(mapInit), &VRAM[0][0x1904]);
+	// std::copy_n(mapInit, sizeof(mapInit), &VRAM[0][0x1904]);
 
 	Control.reg = 0x91; // FF40
 	STAT.reg = 0x85;	// FF41

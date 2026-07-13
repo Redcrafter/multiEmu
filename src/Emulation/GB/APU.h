@@ -14,6 +14,8 @@ const uint8_t WAVE_DUTY_TABLE[4][8] = {
 	{ 1, 1, 1, 1, 1, 1, 0, 0 }
 };
 
+const uint8_t WAVE_SHIFT[4] = { 4, 0, 1, 2 };
+
 struct Length {
 	uint16_t lengthCounter;
 
@@ -131,18 +133,19 @@ struct SquareBase : Envelope, Length {
 
 	void clock() {
 		if(freqTimer == 0) {
-			freqTimer = 2048 - frequency;
+			freqTimer = (2048 - frequency) * 4;
 			wavePos = (wavePos + 1) & 7;
 		}
 
 		freqTimer--;
 	}
 
-	float output() {
-		if(dacEnabled && channelEnabled) {
-			return (WAVE_DUTY_TABLE[soundPattern][wavePos] * envVolume) / 7.5 - 1;
-		}
-		return 0;
+	uint8_t pcm() const {
+		return dacEnabled && channelEnabled ? WAVE_DUTY_TABLE[soundPattern][wavePos] * envVolume : 0;
+	}
+
+	float output() const {
+		return dacEnabled && channelEnabled ? (WAVE_DUTY_TABLE[soundPattern][wavePos] * envVolume) / 7.5f - 1 : 0;
 	}
 
 	void SaveSquare(nlohmann::json& saver) const {
@@ -231,36 +234,22 @@ struct Square2 : SquareBase {};
 struct Wave : Length {
 	std::array<uint8_t, 16> waveRam;
 	uint16_t frequency;
-	uint16_t freqTimer;
+	int16_t freqTimer;
 	uint8_t outputLevel;
 	uint8_t wavePos;
 
-	void clock() {
-		if(freqTimer == 0) {
-			freqTimer = 2048 - frequency;
+	void clock(int cycles) {
+		freqTimer -= cycles;
+		while(freqTimer < 0) {
+			freqTimer += (2048 - frequency) * 2;
 			wavePos = (wavePos + 1) & 31;
 		}
-		freqTimer--;
-
-		if(freqTimer == 0) {
-			freqTimer = 2048 - frequency;
-			wavePos = (wavePos + 1) & 31;
-		}
-		freqTimer--;
 	}
 
-	float output() {
+	float output() const {
 		// TODO: not channelEnabled?
 		if(dacEnabled && channelEnabled) {
-			auto sample = (waveRam[wavePos / 2] >> (wavePos & 1 ? 4 : 0)) & 0xF;
-			int volumeShift = 0;
-			switch(outputLevel) {
-				case 0: volumeShift = 4; break;
-				case 1: volumeShift = 0; break;
-				case 2: volumeShift = 1; break;
-				case 3: volumeShift = 2; break;
-			}
-			return (sample >> volumeShift) / 7.5 - 1;
+			return (((waveRam[wavePos / 2] >> (wavePos & 1 ? 4 : 0)) & 0xF) >> WAVE_SHIFT[outputLevel]) / 7.5 - 1;
 		}
 		return 0;
 	}
@@ -283,7 +272,7 @@ struct Wave : Length {
 	}
 };
 struct Noise : Envelope, Length {
-	uint16_t freqTimer;
+	int32_t freqTimer;
 	uint16_t lfsr;
 	uint8_t divider;
 	uint8_t shiftClock;
@@ -295,19 +284,19 @@ struct Noise : Envelope, Length {
 		shiftClock = data >> 4;
 	}
 
-	void clock() {
-		if(freqTimer == 0) {
-			freqTimer = (divider == 0 ? 2 : divider << 2) << shiftClock;
+	void clock(int cycles) {
+		freqTimer -= cycles;
+		while(freqTimer < 0) {
+			freqTimer += (divider == 0 ? 8 : divider << 4) << shiftClock;
 
 			auto mask = counterStep ? 0x4040 : 0x4000;
 			auto newHigh = (lfsr ^ (lfsr >> 1)) & 1;
 			lfsr >>= 1;
 			lfsr = newHigh ? lfsr | mask : lfsr & ~mask;
 		}
-		freqTimer--;
 	}
 
-	float output() {
+	float output() const {
 		if(dacEnabled && channelEnabled) {
 			return ((!(lfsr & 1)) * envVolume) / 7.5f - 1;
 		}
@@ -342,8 +331,8 @@ class APU {
 	Noise ch4;
 
 	uint16_t cycles;
-	uint16_t fsStep;
 	uint16_t sampleCounter;
+	uint8_t fsStep;
 	uint8_t nr50;
 	uint8_t nr51;
 	bool enabled;
@@ -396,18 +385,15 @@ class APU {
 
 	uint8_t FF76() const {
 		if(!gbc) return 0xFF;
-
-		uint8_t val = 0;
-		if(ch1.dacEnabled && ch1.channelEnabled) {
-			val |= (WAVE_DUTY_TABLE[ch1.soundPattern][ch1.wavePos] * ch1.envVolume) & 0xF;
-		}
-		if(ch2.dacEnabled && ch2.channelEnabled) {
-			val |= (WAVE_DUTY_TABLE[ch2.soundPattern][ch2.wavePos] * ch2.envVolume) << 4;
-		}
-		return val;
+		return ch1.pcm() | (ch2.pcm() << 4);
 	}
 	uint8_t FF77() const {
-		return 0xFF;
+		if(!gbc) return 0xFF;
+
+		uint8_t val = 0;
+		if(ch3.dacEnabled && ch3.channelEnabled) val |= ((ch3.waveRam[ch3.wavePos / 2] >> (ch3.wavePos & 1 ? 4 : 0)) & 0xF) >> WAVE_SHIFT[ch3.outputLevel];
+		if(ch4.dacEnabled && ch4.channelEnabled) val |= ((!(ch4.lfsr & 1)) * ch4.envVolume) << 4;
+		return val;
 	}
 
 	void write(uint16_t address, uint8_t data) {
@@ -435,6 +421,8 @@ class APU {
 
 				if(data & 0x80 && ch1.dacEnabled) {
 					ch1.channelEnabled = true;
+
+					ch1.freqTimer = 4;
 
 					ch1.envPeriodTimer = ch1.envelopePeriod;
 					ch1.envVolume = ch1.envelopeInitialVol;
@@ -469,6 +457,8 @@ class APU {
 
 				if(data & 0x80 && ch2.dacEnabled) {
 					ch2.channelEnabled = true;
+
+					ch2.freqTimer = 4;
 
 					// Envelope is triggered.
 					ch2.envPeriodTimer = ch2.envelopePeriod;
@@ -547,7 +537,7 @@ class APU {
 					ch1.wavePos = 0;
 					ch2.wavePos = 0;
 					ch3.wavePos = 0;
-					
+
 					for(size_t i = 0xFF10; i < 0xFF26; i++) write(i, 0);
 				} else if(data & 0x80 && !enabled) {
 				}
@@ -557,16 +547,21 @@ class APU {
 		}
 	}
 
-	void clock() {
+	void clock(int c) {
 		if(!enabled) return;
 
-		ch1.clock();
-		ch2.clock();
-		ch3.clock();
-		ch4.clock();
+		for(int i = 0; i < c; ++i) {
+			ch1.clock();
+			ch2.clock();
+		}
+		ch3.clock(c);
+		ch4.clock(c);
 
+		cycles += c;
 		// should be 0x1FFF but gets ticked 4 times
-		if(cycles == 0x7FF) {
+		if(cycles > 0x1FFF) {
+			cycles &= 0x1FFF;
+
 			switch(fsStep) {
 				case 0:
 				case 4:
@@ -588,16 +583,16 @@ class APU {
 					ch2.clockEnvelope();
 					ch4.clockEnvelope();
 					break;
+				default: break;
 			}
 
 			fsStep = (fsStep + 1) & 7;
 		}
 
-		cycles = (cycles + 1) & 0x7FF;
-
-		sampleCounter++;
-		if(sampleCounter == 23) {
-			sampleCounter = 0;
+		sampleCounter += c;
+		// 1 sample every 95 cycles
+		if(sampleCounter >= 95) {
+			sampleCounter -= 95;
 
 			auto left = 0.0;
 			auto right = 0.0;

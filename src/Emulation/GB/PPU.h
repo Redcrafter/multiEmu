@@ -82,7 +82,7 @@ class PPU {
 
 	void Reset();
 
-	void Clock();
+	void Clock(int cycles);
 
 	void SaveState(nlohmann::json& saver) const;
 	void LoadState(const nlohmann::json& saver);
