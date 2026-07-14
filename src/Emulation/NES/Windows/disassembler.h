@@ -36,7 +36,7 @@ class DisassemblerWindow {
 	bool open = false;
 
   public:
-	DisassemblerWindow(std::string title): title(std::move(title)) {}
+	DisassemblerWindow(std::string title) : title(std::move(title)) {}
 
 	void Open(const std::vector<uint8_t>& data);
 	// void Load(const std::vector<uint8_t>& data);

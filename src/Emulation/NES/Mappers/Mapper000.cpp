@@ -6,7 +6,7 @@ Mapper000::Mapper000(const std::vector<uint8_t>& prg, const std::vector<uint8_t>
 	if(this->prg.size() > 0x8000) {
 		throw std::invalid_argument("Invalid prg size");
 	}
-	if(this->chr.size() > 0x2000) {
+	if(this->chr.size() > 0x2000 || this->chr.empty()) {
 		throw std::invalid_argument("Invalid chr size");
 	}
 }
@@ -19,12 +19,13 @@ int Mapper000::cpuRead(uint16_t addr, uint8_t& data) {
 	return false;
 }
 
-bool Mapper000::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
-	if(addr < 0x2000 && !chr.empty()) {
-		data = chr[addr];
-		return true;
+uint8_t Mapper000::ppuRead(uint16_t addr, bool readOnly) {
+	if(addr < 0x2000) {
+		return chr[addr];
+	} else {
+		// 0x2000 - 0x3EFF
+		return vram[mapMirrorAddress(mirror, addr)];
 	}
-	return false;
 }
 
 void Mapper000::SaveState(nlohmann::json& saver) const {

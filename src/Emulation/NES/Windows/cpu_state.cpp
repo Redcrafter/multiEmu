@@ -4,7 +4,7 @@
 
 namespace Nes {
 
-CpuStateWindow::CpuStateWindow(std::string title) : Title(std::move(title)) { }
+CpuStateWindow::CpuStateWindow(std::string title) : Title(std::move(title)) {}
 
 void CpuStateWindow::Open() {
 	open = true;

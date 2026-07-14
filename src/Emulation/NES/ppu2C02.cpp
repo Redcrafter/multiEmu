@@ -12,71 +12,84 @@ namespace Nes {
 static const uint32_t ioBusCountDown = 4288392;
 
 static const Color colors[] = {
-	{84, 84, 84},
-	{0, 30, 116},
-	{8, 16, 144},
-	{48, 0, 136},
-	{68, 0, 100},
-	{92, 0, 48},
-	{84, 4, 0},
-	{60, 24, 0},
-	{32, 42, 0},
-	{8, 58, 0},
-	{0, 64, 0},
-	{0, 60, 0},
-	{0, 50, 60},
-	{0, 0, 0},
-	{0, 0, 0},
-	{0, 0, 0},
-	{152, 150, 152},
-	{8, 76, 196},
-	{48, 50, 236},
-	{92, 30, 228},
-	{136, 20, 176},
-	{160, 20, 100},
-	{152, 34, 32},
-	{120, 60, 0},
-	{84, 90, 0},
-	{40, 114, 0},
-	{8, 124, 0},
-	{0, 118, 40},
-	{0, 102, 120},
-	{0, 0, 0},
-	{0, 0, 0},
-	{0, 0, 0},
-	{236, 238, 236},
-	{76, 154, 236},
-	{120, 124, 236},
-	{176, 98, 236},
-	{228, 84, 236},
-	{236, 88, 180},
-	{236, 106, 100},
-	{212, 136, 32},
-	{160, 170, 0},
-	{116, 196, 0},
-	{76, 208, 32},
-	{56, 204, 108},
-	{56, 180, 204},
-	{60, 60, 60},
-	{0, 0, 0},
-	{0, 0, 0},
-	{236, 238, 236},
-	{168, 204, 236},
-	{188, 188, 236},
-	{212, 178, 236},
-	{236, 174, 236},
-	{236, 174, 212},
-	{236, 180, 176},
-	{228, 196, 144},
-	{204, 210, 120},
-	{180, 222, 120},
-	{168, 226, 144},
-	{152, 226, 180},
-	{160, 214, 228},
-	{160, 162, 160},
-	{0, 0, 0},
-	{0, 0, 0}
+	{ 84, 84, 84 },
+	{ 0, 30, 116 },
+	{ 8, 16, 144 },
+	{ 48, 0, 136 },
+	{ 68, 0, 100 },
+	{ 92, 0, 48 },
+	{ 84, 4, 0 },
+	{ 60, 24, 0 },
+	{ 32, 42, 0 },
+	{ 8, 58, 0 },
+	{ 0, 64, 0 },
+	{ 0, 60, 0 },
+	{ 0, 50, 60 },
+	{ 0, 0, 0 },
+	{ 0, 0, 0 },
+	{ 0, 0, 0 },
+	{ 152, 150, 152 },
+	{ 8, 76, 196 },
+	{ 48, 50, 236 },
+	{ 92, 30, 228 },
+	{ 136, 20, 176 },
+	{ 160, 20, 100 },
+	{ 152, 34, 32 },
+	{ 120, 60, 0 },
+	{ 84, 90, 0 },
+	{ 40, 114, 0 },
+	{ 8, 124, 0 },
+	{ 0, 118, 40 },
+	{ 0, 102, 120 },
+	{ 0, 0, 0 },
+	{ 0, 0, 0 },
+	{ 0, 0, 0 },
+	{ 236, 238, 236 },
+	{ 76, 154, 236 },
+	{ 120, 124, 236 },
+	{ 176, 98, 236 },
+	{ 228, 84, 236 },
+	{ 236, 88, 180 },
+	{ 236, 106, 100 },
+	{ 212, 136, 32 },
+	{ 160, 170, 0 },
+	{ 116, 196, 0 },
+	{ 76, 208, 32 },
+	{ 56, 204, 108 },
+	{ 56, 180, 204 },
+	{ 60, 60, 60 },
+	{ 0, 0, 0 },
+	{ 0, 0, 0 },
+	{ 236, 238, 236 },
+	{ 168, 204, 236 },
+	{ 188, 188, 236 },
+	{ 212, 178, 236 },
+	{ 236, 174, 236 },
+	{ 236, 174, 212 },
+	{ 236, 180, 176 },
+	{ 228, 196, 144 },
+	{ 204, 210, 120 },
+	{ 180, 222, 120 },
+	{ 168, 226, 144 },
+	{ 152, 226, 180 },
+	{ 160, 214, 228 },
+	{ 160, 162, 160 },
+	{ 0, 0, 0 },
+	{ 0, 0, 0 }
 };
+
+static uint8_t mapPalletIndex(uint16_t addr) {
+	// 0x3F00 - 0x3FFF
+	addr &= 0x1F;
+	switch(addr) {
+		case 0x10: addr = 0x00; break;
+		case 0x14: addr = 0x04; break;
+		case 0x18: addr = 0x08; break;
+		case 0x1C: addr = 0x0C; break;
+		default: break;
+	}
+	return addr;
+}
 
 void ppu2C02::Reset() {
 	Control.reg = 0;
@@ -97,25 +110,46 @@ void ppu2C02::Reset() {
 }
 
 void ppu2C02::HardReset() {
-	Control.reg = 0;
+	frameComplete = false;
+
+	oddFrame = false;
+	last2002Read = 0;
+
+	writeState = 0;
+	readBuffer = 0;
+
+	palettes.fill(0);
+	oam.fill({});
+	oam2.fill({});
+
+	spriteCount = 0;
+	spriteShifterLo.fill(0);
+	spriteShifterHi.fill(0);
+
+	scanlineX = 0;
+	scanlineY = 241;
+
 	Mask.reg = 0;
 	Status.reg = 0xA0;
-
-	oamAddr = 0;
-	writeState = 0;
+	Control.reg = 0;
 
 	fineX = 0;
+	bgNextTileId = 0;
+	bgNextTileAttrib = 0;
+	bgNextTile = 0;
+	bgShifterPattern = 0;
+	bgShifterAttrib = 0;
 
 	tramAddr.reg = 0,
 	vramAddr.reg = 0;
 
-	readBuffer = 0;
-	oddFrame = false;
+	ioBus = 0;
+	reset1 = 0;
+	reset2 = 0;
+	reset3 = 0;
 
-	last2002Read = 0;
-
-	scanlineX = 0;
-	scanlineY = 241;
+	nmi = 0;
+	oamAddr = 0;
 }
 
 void ppu2C02::Clock() {
@@ -159,7 +193,7 @@ void ppu2C02::Clock() {
 
 	if(scanlineY < 240) {
 		if((scanlineX >= 1 && scanlineX <= 256) || (scanlineX >= 321 && scanlineX <= 336)) {
-			if(Mask.renderBackground) {
+			if(Mask.renderBackground || Mask.renderSprites) {
 				bgShifterPattern <<= 2;
 				bgShifterAttrib <<= 2;
 			}
@@ -304,6 +338,8 @@ void ppu2C02::Clock() {
 		}
 
 		if(scanlineX >= 257 && scanlineX <= 320) {
+			oamAddr = 0;
+
 			int i = (scanlineX - 257) / 8;
 			const auto sprite = oam2[i];
 			uint8_t bits;
@@ -439,8 +475,8 @@ void ppu2C02::Clock() {
 	}
 
 	if(scanlineX > 0 && scanlineX <= 256 &&
-	   scanlineY >= 0 && scanlineY < 240) 
-	   texture->SetPixel(scanlineX - 1, scanlineY, GetPaletteColor(palette, pixel));
+	   scanlineY >= 0 && scanlineY < 240)
+		texture->SetPixel(scanlineX - 1, scanlineY, GetPaletteColor(palette, pixel));
 
 	scanlineX++;
 	if(scanlineX >= 341) {
@@ -559,10 +595,12 @@ uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {
 			break;
 		case 0x2004:
 			reset1 = reset2 = reset3 = ioBusCountDown;
-			if((oamAddr & 3) == 2) {
-				ioBus = reinterpret_cast<uint8_t*>(oam)[oamAddr] & 0xE3;
+			if(scanlineY < 240 && scanlineX < 64 && (Mask.renderBackground || Mask.renderSprites)) {
+				ioBus = 0xFF;
+			} else if((oamAddr & 3) == 2) {
+				ioBus = reinterpret_cast<uint8_t*>(&oam)[oamAddr] & 0xE3;
 			} else {
-				ioBus = reinterpret_cast<uint8_t*>(oam)[oamAddr];
+				ioBus = reinterpret_cast<uint8_t*>(&oam)[oamAddr];
 			}
 			break;
 		case 0x2007:
@@ -573,10 +611,12 @@ uint8_t ppu2C02::cpuRead(uint16_t addr, bool readOnly) {
 					readBuffer = ppuRead(vramAddr.reg);
 				} else {
 					reset1 = reset2 = reset3 = ioBusCountDown;
-					readBuffer = getRef(vramAddr.reg - 0x1000);
-					ioBus = (ioBus & 0xC0) | (getRef(vramAddr.reg) & 0x3F);
+					readBuffer = cartridge->ppuRead(vramAddr.reg, false); // Read buffer skips over pallet memory and goes directly to vram
+					ioBus = (ioBus & 0xC0) | getPallet(vramAddr.reg);
 				}
-
+				if(scanlineY < 240 && (Mask.renderBackground || Mask.renderSprites)) {
+					vramAddr.reg += 0x1000;
+				}
 				vramAddr.reg += Control.vramIncrement ? 32 : 1;
 			}
 			break;
@@ -608,8 +648,12 @@ void ppu2C02::cpuWrite(uint16_t addr, uint8_t data) {
 			oamAddr = data;
 			break;
 		case 0x2004: // Ignore during rendering
-			reinterpret_cast<uint8_t*>(oam)[oamAddr] = data;
-			oamAddr++;
+			if(scanlineY >= 0 && scanlineY < 240) {
+				oamAddr += 4;
+			} else {
+				reinterpret_cast<uint8_t*>(&oam)[oamAddr] = data;
+				oamAddr++;
+			}
 			break;
 		case 0x2005:
 			if(writeState) {
@@ -641,107 +685,43 @@ void ppu2C02::cpuWrite(uint16_t addr, uint8_t data) {
 }
 
 uint8_t ppu2C02::ppuRead(uint16_t addr, bool readOnly) {
-	uint8_t data = 0;
-
+	// assert(addr < 0x4000);
 	addr &= 0x3FFF;
-	if(cartridge->ppuRead(addr, data, readOnly)) {
-		// Patten tables: 0x000 - 0x1FFF
-	} else {
-		return getRef(addr);
+	if(addr >= 0x3F00) { // 0x3F00 - 0x3FFF
+		return getPallet(addr);
 	}
-
-	return data;
+	return cartridge->ppuRead(addr, readOnly);
 }
 
 void ppu2C02::ppuWrite(uint16_t addr, uint8_t data) {
-	addr &= 0x3FFF;
-	if(cartridge->ppuWrite(addr, data)) {
-		// 0x000 - 0x1FFF
+	assert(addr < 0x4000);
+	if(addr >= 0x3F00) { // 0x3F00 - 0x3FFF
+		if(Mask.grayscale) {
+			palettes[mapPalletIndex(addr)] = (data & 0x30) | (palettes[mapPalletIndex(addr)] & 0x0F);
+		} else {
+			palettes[mapPalletIndex(addr)] = data & 0x3F;
+		}
 	} else {
-		getRef(addr) = data;
+		cartridge->ppuWrite(addr, data);
 	}
 }
 
 void ppu2C02::LoadBackgroundShifters() {
 	bgShifterPattern = (bgShifterPattern & 0xFFFF0000) | bgNextTile;
-
 	bgShifterAttrib = (bgShifterAttrib & 0xFFFF0000) | ((bgNextTileAttrib & 3) * 0x5555);
 }
 
-uint8_t& ppu2C02::getRef(uint16_t addr) {
-	addr &= 0x3FFF;
+uint8_t ppu2C02::getPallet(uint16_t addr) const {
+	addr = mapPalletIndex(addr);
 
-	if(addr <= 0x1FFF) {
-		return chrRAM[addr]; // in case cartridge doesn't have rom
+	if(Mask.grayscale) {
+		return palettes[addr] & 0x30;
 	}
-	if(addr <= 0x3EFF) {
-		// 0x2000 - 0x3EFF
-		switch(cartridge->mirror) {
-			case MirrorMode::Horizontal:
-				if(addr < 0x2800) {
-					addr &= 0x3ff;
-				} else {
-					addr = (addr & 0x3ff) + 0x400;
-				}
-				break;
-			case MirrorMode::Vertical:
-				addr &= 0x7ff;
-				break;
-			case MirrorMode::OnescreenLo:
-				addr &= 0x3ff;
-				break;
-			case MirrorMode::OnescreenHi:
-				addr &= 0x3ff + 0x400;
-				break;
-			case MirrorMode::FourScreen:
-				addr &= 0xFFF;
-				break;
-		}
-
-		return vram[addr];
-	}
-	if(addr <= 0x3FFF) {
-		// 0x3F00 - 0x3FFF
-		addr &= 0x001F;
-		switch(addr) {
-			case 0x10:
-				addr = 0x0000;
-				break;
-			case 0x14:
-				addr = 0x0004;
-				break;
-			case 0x18:
-				addr = 0x0008;
-				break;
-			case 0x1C:
-				addr = 0x000C;
-				break;
-		}
-		return palettes[addr];
-	}
-
-	throw std::logic_error("unreachable");
+	return palettes[addr] & 0x3F;
 }
 
 Color ppu2C02::GetPaletteColor(uint8_t palette, uint8_t pixel) const {
-	uint8_t addr = ((palette << 2) + pixel) & 0x1F;
-
-	switch(addr) {
-		case 0x10:
-			addr = 0x0000;
-			break;
-		case 0x14:
-			addr = 0x0004;
-			break;
-		case 0x18:
-			addr = 0x0008;
-			break;
-		case 0x1C:
-			addr = 0x000C;
-			break;
-	}
-
-	return colors[palettes[addr] & 0x3F];
+	return colors[getPallet(((palette << 2) + pixel)) & 0x3F];
 }
 
 }

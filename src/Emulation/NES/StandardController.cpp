@@ -30,7 +30,7 @@ static uint8_t GetController(int number) {
 	for(int i = 0; i < 8; ++i) {
 		val |= inputMapper.GetKey(offset + i) << i;
 	}
-	return val;
+	return ~val;
 }
 
 StandardController::StandardController(int number) : number(number) {
@@ -48,11 +48,12 @@ uint8_t StandardController::CpuRead(uint16_t addr, bool readOnly) {
 	if(ShiftStrobe) {
 		ControllerLatch = GetController(number);
 	}
+
 	auto ret = ControllerLatch & 1;
 	if(!readOnly) {
 		ControllerLatch >>= 1;
 	}
-	return ret;
+	return !ret;
 }
 
 }

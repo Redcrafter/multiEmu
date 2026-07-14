@@ -52,12 +52,12 @@ NsfFormat::NsfFormat(const std::string& path) {
 	stream.read((char*)rom.data(), length);
 }
 
-//NSF ROM and general approaches are heavily derived from BizHawk. the general ideas:
-//1. Have a hardcoded NSF driver rom loaded to 0x3800
-//2. Have fake registers at $3FFx for the NSF driver to use
-//3. These addresses are chosen because no known NSF could possibly use them for anything.
-//4. Patch the PRG with our own IRQ vectors when the NSF play and init routines aren't running.
-//   That way we can use NMI for overall control and cause our code to be the NMI handler without breaking the NSF data by corrupting the last few bytes
+// NSF ROM and general approaches are heavily derived from BizHawk. the general ideas:
+// 1. Have a hardcoded NSF driver rom loaded to 0x3800
+// 2. Have fake registers at $3FFx for the NSF driver to use
+// 3. These addresses are chosen because no known NSF could possibly use them for anything.
+// 4. Patch the PRG with our own IRQ vectors when the NSF play and init routines aren't running.
+//    That way we can use NMI for overall control and cause our code to be the NMI handler without breaking the NSF data by corrupting the last few bytes
 
 const uint16_t NMI_VECTOR = 0x3800;
 const uint16_t RESET_VECTOR = 0x3820;
@@ -107,7 +107,7 @@ int NsfMapper::cpuRead(uint16_t addr, uint8_t& data) {
 			data = 0;
 			return true;
 		case 0x3FF2:
-			data = 0; //always return NTSC for now
+			data = 0; // always return NTSC for now
 			return true;
 		case 0x3FF3:
 			Patch_Vectors = false;
@@ -160,12 +160,10 @@ bool NsfMapper::cpuWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool NsfMapper::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
-	return false;
-}
-
-bool NsfMapper::ppuWrite(uint16_t addr, uint8_t data) {
-	return false;
+uint8_t NsfMapper::ppuRead(uint16_t addr, bool readOnly) {
+	if(addr >= 0x2000) { // 0x2000 - 0x3EFF
+		return vram[mapMirrorAddress(mirror, addr)];
+	}
 }
 
 void NsfMapper::SaveState(nlohmann::json& saver) const {}

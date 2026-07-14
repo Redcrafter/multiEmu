@@ -1,6 +1,6 @@
 #include "disassembler.h"
 
-#include <map>
+#include <unordered_map>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
@@ -14,6 +14,7 @@ namespace Nes {
 constexpr int CYCLES_CROSS_PAGE_ADDS_ONE = 1;
 constexpr int CYCLES_BRANCH_TAKEN_ADDS_ONE = 2;
 
+// clang-format off
 const opcode lookup[] = {
 	{BRK, IMP, 7, 0}, {ORA, IZX, 6, 0}, {KIL, IMM, 0}, {SLO, IZX, 8, 0}, {NOP, ZP0, 3}, {ORA, ZP0, 3}, {ASL, ZP0, 5}, {SLO, ZP0, 5}, {PHP, IMP, 3}, {ORA, IMM, 2, 0}, {ASL, IMP, 2}, {ANC, IMM, 2, 0}, {NOP, ABS, 4, 0}, {ORA, ABS, 4, 0}, {ASL, ABS, 6, 0}, {SLO, ABS, 6, 0},
 	{BPL, REL, 2, 3}, {ORA, IZY, 5, 1}, {KIL, IMM, 0}, {SLO, IZY, 8, 0}, {NOP, ZPX, 4}, {ORA, ZPX, 4}, {ASL, ZPX, 6}, {SLO, ZPX, 6}, {CLC, IMP, 2}, {ORA, ABY, 4, 1}, {NOP, IMP, 2}, {SLO, ABY, 7, 0}, {NOP, ABX, 4, 1}, {ORA, ABX, 4, 1}, {ASL, ABX, 7, 0}, {SLO, ABX, 7, 0},
@@ -32,6 +33,7 @@ const opcode lookup[] = {
 	{CPX, IMM, 2, 0}, {SBC, IZX, 6, 0}, {NOP, IMM, 2}, {ISC, IZX, 8, 0}, {CPX, ZP0, 3}, {SBC, ZP0, 3}, {INC, ZP0, 5}, {ISC, ZP0, 5}, {INX, IMP, 2}, {SBC, IMM, 2, 0}, {NOP, IMP, 2}, {SBC, IMM, 2, 0}, {CPX, ABS, 4, 0}, {SBC, ABS, 4, 0}, {INC, ABS, 6, 0}, {ISC, ABS, 6, 0},
 	{BEQ, REL, 2, 3}, {SBC, IZY, 5, 1}, {KIL, IMM, 0}, {ISC, IZY, 8, 0}, {NOP, ZPX, 4}, {SBC, ZPX, 4}, {INC, ZPX, 6}, {ISC, ZPX, 6}, {SED, IMP, 2}, {SBC, ABY, 4, 1}, {NOP, IMP, 2}, {ISC, ABY, 7, 0}, {NOP, ABX, 4, 1}, {SBC, ABX, 4, 1}, {INC, ABX, 7, 0}, {ISC, ABX, 7, 0},
 };
+// clang-format on
 
 static bool isIllegal(uint8_t opCode, const opcode& instr) {
 	if((opCode & 3) == 3) {
@@ -67,7 +69,7 @@ static void displayInstruction(const Element& el) {
 	}
 
 	auto instr = lookup[el.opcode];
-	
+
 	int size = 0;
 
 	ImGui::TableSetColumnIndex(2);
@@ -76,7 +78,7 @@ static void displayInstruction(const Element& el) {
 	ImGui::SameLine();
 
 	uint16_t operand16 = el.op1 | el.op2 << 8;
-	
+
 	switch(instr.addrMode) {
 		case IMP:
 			size = 1;
@@ -142,7 +144,7 @@ static void displayInstruction(const Element& el) {
 
 	ImGui::TableSetColumnIndex(1);
 	switch(size) {
-		case 1: 
+		case 1:
 			ImGui::Text("%02X", el.opcode);
 			break;
 		case 2:
@@ -228,15 +230,15 @@ static int InstructionSize(const AddressingModes mode) {
 
 class NesDisassembler {
 	std::vector<uint8_t> prg;
-	std::map<uint16_t, Element> explored;
+	std::unordered_map<uint16_t, Element> explored;
 
 	std::vector<uint16_t> locations;
 
 	uint16_t mask = 0;
 
-public:
+  public:
 	NesDisassembler(std::vector<uint8_t> data) : prg(std::move(data)) {
-		assertBreak(this->prg.size() == 0x4000 || this->prg.size() == 0.8000);
+		assertBreak(this->prg.size() == 0x4000 || this->prg.size() == 0x8000);
 		mask = prg.size() - 1;
 
 		locations.push_back(read(0xFFFA) | read(0xFFFB) << 8); // nmi vector
@@ -244,16 +246,18 @@ public:
 		locations.push_back(read(0xFFFE) | read(0xFFFF) << 8); // irq/break vector
 	}
 
-private:
+  private:
 	uint8_t read(uint16_t pos) {
 		// assert(pos >= 0x8000);
 		return prg[pos & mask];
 	}
 
-public:
+  public:
 	void DisasmSingle(uint16_t pc) { // uint32_t prgAddress
-		// should be in memory somewhere
-		assert(pc >= 0x8000);
+		// if not in memory somewhere
+		if(pc < 0x8000) {
+			return;
+		}
 
 		if(explored.count(pc)) {
 			// position already visited
@@ -267,7 +271,7 @@ public:
 		auto instr = lookup[opcode];
 
 		if(isIllegal(opcode, instr)) {
-			logger.Log("Decompiler warning: Illegal Instruction '%s' at %04X", InstructionNames[opcode], pc);
+			logger.Log("Decompiler warning: Illegal Instruction '%s' at %04X", InstructionNames[instr.instruction], pc);
 			return;
 		}
 
@@ -336,7 +340,7 @@ public:
 		uint32_t pos = 0x8000;
 
 		std::vector<Element> out;
-		
+
 		out.reserve(explored.size());
 		for(auto& value : explored) {
 			if(value.first != pos) {
@@ -424,11 +428,11 @@ void DisassemblerWindow::DrawWindow() {
 
 		ImGuiListClipper clipper;
 		clipper.Begin(lines.size());
-		
+
 		while(clipper.Step()) {
 			for(int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++) {
 				const auto& item = lines[i];
-				
+
 				ImGui::TableNextRow();
 
 				displayInstruction(item);

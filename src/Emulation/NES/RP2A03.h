@@ -220,6 +220,9 @@ struct DMC {
 	void Clock(Bus& bus);
 	void Reload();
 	void FillBuffer(Bus& bus);
+
+	void SaveState(nlohmann::json& saver) const;
+	void LoadState(const nlohmann::json& saver);
 };
 
 static constexpr int bufferLength = 32 * 1024; // 32 KiB
@@ -261,6 +264,7 @@ class RP2A03 {
 
 	void Clock();
 	void Reset();
+	void HardReset();
 
 	void CpuWrite(uint16_t addr, uint8_t data);
 	uint8_t ReadStatus(bool readOnly);

@@ -33,12 +33,12 @@ bool Mapper232::cpuWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper232::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
-	if(addr < 0x2000 && !chr.empty()) {
-		data = chr[addr & 0x1FFF];
-		return true;
+uint8_t Mapper232::ppuRead(uint16_t addr, bool readOnly) {
+	if(addr < 0x2000) {
+		return chr[addr & 0x1FFF];
+	} else { // 0x2000 - 0x3EFF
+		return vram[mapMirrorAddress(mirror, addr)];
 	}
-	return false;
 }
 
 void Mapper232::SaveState(nlohmann::json& saver) const {

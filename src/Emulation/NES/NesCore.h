@@ -3,10 +3,10 @@
 #include "Bus.h"
 
 // #include "imguiWindows/imgui_tas_editor.h"
-#include "Windows/pattern_tables.h"
-#include "Windows/cpu_state.h"
 #include "Windows/apu_window.h"
+#include "Windows/cpu_state.h"
 #include "Windows/disassembler.h"
+#include "Windows/pattern_tables.h"
 
 namespace Nes {
 
@@ -15,13 +15,14 @@ class Core final : public ICore {
 	Texture texture;
 
 	// TasEditor tasEdit{"Tas Editor"};
-	PatternTables tables{ "Pattern Tables" };
-	CpuStateWindow cpuWindow{ "Cpu State" };
-	ApuWindow apuWindow{ "Apu Visuals" };
-	DisassemblerWindow disassembler{ "Disassembler" };
+	PatternTables tables { "Pattern Tables" };
+	CpuStateWindow cpuWindow { "Cpu State" };
+	ApuWindow apuWindow { "Apu Visuals" };
+	DisassemblerWindow disassembler { "Disassembler" };
 
 	std::string currentFile;
-public:
+
+  public:
 	Core();
 	~Core() override = default;
 

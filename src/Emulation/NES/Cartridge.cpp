@@ -1,15 +1,14 @@
 #include "Cartridge.h"
 
-#include <cmath>
 #include <fstream>
 #include <map>
 #include <nlohmann/json.hpp>
 
-#include "Mappers/Mappers.h"
 #include "../../fs.h"
 #include "../../logger.h"
 #include "../../md5.h"
 #include "../../sha1.h"
+#include "Mappers/Mappers.h"
 
 namespace Nes {
 
@@ -19,7 +18,6 @@ struct INESheader {
 	uint8_t ChrRomSize;
 
 	uint8_t Flags6;
-
 	uint8_t Flags7;
 	uint8_t prgRamSize;
 	uint8_t tvSystem1;
@@ -37,34 +35,30 @@ struct dbItem {
 static bool dbInitialized = false;
 static std::map<sha1, dbItem> cartDb;
 
-static void InsertPrg(dbItem& cart) {
-	if(cartDb.count(cart.prgHash)) {
-		auto el = cartDb[cart.prgHash];
-		if(el.mapper != cart.mapper) {
+static void InsertPrg(const std::string& name, uint16_t mapper, const std::string& hash_str) {
+	auto hash = sha1::FromString(hash_str);
+	if(cartDb.count(hash)) {
+		auto& el = cartDb[hash];
+		if(el.mapper != mapper) {
 			// we only care about the mapper
-			logger.Log("duplicate hash found: %s from %s\n", cart.prgHash.ToString().c_str(), cart.name.c_str());
+			logger.Log("duplicate hash found: %s from %s\n", hash.ToString().c_str(), name.c_str());
 		}
 	} else {
-		cartDb.insert(std::make_pair(cart.prgHash, cart));
+		cartDb.insert(std::make_pair(hash, dbItem { name, mapper, hash }));
 	}
 }
 
-static void InsertCart(std::string& name, Json& obj) {
-	auto board = obj["board"];
-	auto mapper = std::stoi(board["@mapper"]);
+static void InsertCart(const std::string& name, nlohmann::json& obj) {
+	auto& board = obj["board"];
+	auto mapper = std::stoi(board["@mapper"].get<std::string>());
+	auto& prg = board["prg"];
 
-	if(auto arr = board["prg"].asArray()) {
-		for(auto& entry : *arr) {
-			sha1 hash = sha1::FromString(entry["@sha1"]);
-
-			dbItem item {name, (uint16_t)mapper, hash};
-			InsertPrg(item);
+	if(prg.is_array()) {
+		for(auto& entry : prg) {
+			InsertPrg(name, (uint16_t)mapper, entry["@sha1"]);
 		}
 	} else {
-		sha1 hash = sha1::FromString(board["prg"]["@sha1"]);
-
-		dbItem item {name, (uint16_t)mapper, hash};
-		InsertPrg(item);
+		InsertPrg(name, mapper, prg["@sha1"]);
 	}
 }
 
@@ -150,7 +144,7 @@ std::shared_ptr<Mapper> LoadCart(const std::string& path) {
 
 	logger.Log("prg sha1: %s\n", prgHash.ToString().c_str());
 	// logger.Log("chr sha1: %s\n", chrHash.ToString().c_str());
-	if(cartDb.count(prgHash)) {
+	if(cartDb.count(prgHash)) { // roms sometimes report wrong mapper id so we do a lookup for the rom hash
 		const auto item = cartDb[prgHash];
 		mapperId = item.mapper;
 
@@ -169,25 +163,28 @@ std::shared_ptr<Mapper> LoadCart(const std::string& path) {
 		case 4: mapper = std::make_shared<Mapper004>(prgRom, chrRom); break;
 		case 7: mapper = std::make_shared<Mapper007>(prgRom, chrRom); break;
 		case 11: mapper = std::make_shared<Mapper011>(prgRom, chrRom); break;
-		// case 24: mapper = std::make_shared<VRC6Mapper>(prgRom, chrRom, false);
-		// case 26: mapper = std::make_shared<VRC6Mapper>(prgRom, chrRom, true);
+		case 24: mapper = std::make_shared<VRC6Mapper>(prgRom, chrRom, false); break;
+		case 26: mapper = std::make_shared<VRC6Mapper>(prgRom, chrRom, true); break;
 		case 65: mapper = std::make_shared<Mapper065>(prgRom, chrRom); break;
 		case 71: mapper = std::make_shared<Mapper071>(prgRom, chrRom); break;
 		case 79: mapper = std::make_shared<Mapper079>(prgRom, chrRom); break;
 		case 232: mapper = std::make_shared<Mapper232>(prgRom, chrRom); break;
 		default: throw std::logic_error("Mapper not implemented");
 	}
-	mapper->mirror = header.Flags6 & 1 ? MirrorMode::Vertical : MirrorMode::Horizontal;
-	if(header.Flags6 & 8) {
+	if(header.Flags6 & 1) {
+		mapper->mirror = MirrorMode::Vertical;
+	} else if(header.Flags6 & 8) {
 		mapper->mirror = MirrorMode::FourScreen;
+	} else {
+		mapper->mirror = MirrorMode::Horizontal;
 	}
 
 	stream.clear();
 	stream.seekg(0, std::ios::beg);
 	mapper->hash = md5(stream);
-	mapper->hasSram = (header.Flags6 >> 1) & 1;
+	auto hasSram = (header.Flags6 >> 1) & 1;
 
-	if(mapper->hasSram) {
+	if(hasSram) {
 		auto path = "./saves/NES/" + mapper->hash.ToString() + ".saveRam";
 		mapper->MapSaveRam(path);
 	}

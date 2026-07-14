@@ -4,6 +4,7 @@
 namespace Nes {
 
 // address mode of jsr changed
+// clang-format off
 const Instruction lookup[] = {
 	{BRK, IMP}, {ORA, IZX}, {KIL, IMM}, {SLO, IZX}, {NOP, ZP0}, {ORA, ZP0}, {ASL, ZP0}, {SLO, ZP0}, {PHP, IMP}, {ORA, IMM}, {ASL, IMP}, {ANC, IMM}, {NOP, ABS}, {ORA, ABS}, {ASL, ABS}, {SLO, ABS},
 	{BPL, REL}, {ORA, IZY}, {KIL, IMM}, {SLO, IZY}, {NOP, ZPX}, {ORA, ZPX}, {ASL, ZPX}, {SLO, ZPX}, {CLC, IMP}, {ORA, ABY}, {NOP, IMP}, {SLO, ABY}, {NOP, ABX}, {ORA, ABX}, {ASL, ABX}, {SLO, ABX},
@@ -22,6 +23,7 @@ const Instruction lookup[] = {
 	{CPX, IMM}, {SBC, IZX}, {NOP, IMM}, {ISC, IZX}, {CPX, ZP0}, {SBC, ZP0}, {INC, ZP0}, {ISC, ZP0}, {INX, IMP}, {SBC, IMM}, {NOP, IMP}, {SBC, IMM}, {CPX, ABS}, {SBC, ABS}, {INC, ABS}, {ISC, ABS},
 	{BEQ, REL}, {SBC, IZY}, {KIL, IMM}, {ISC, IZY}, {NOP, ZPX}, {SBC, ZPX}, {INC, ZPX}, {ISC, ZPX}, {SED, IMP}, {SBC, ABY}, {NOP, IMP}, {ISC, ABY}, {NOP, ABX}, {SBC, ABX}, {INC, ABX}, {ISC, ABX},
 };
+// clang-format on
 
 static State InstructionType(Instructions instruction) {
 	switch(instruction) {
@@ -70,9 +72,9 @@ static State InstructionType(Instructions instruction) {
 	}
 }
 
-mos6502::mos6502(Bus* bus): bus(bus) {
+mos6502::mos6502(Bus* bus) : bus(bus) {
 	#ifdef printDebug
-	file.open("D:\\Daten\\Desktop\\test.log");
+	file.open("C:\\Daten\\Desktop\\test.log");
 	#endif
 }
 
@@ -197,7 +199,7 @@ void mos6502::Clock() {
 			switch(instruction.addrMode) {
 				case IMP:
 					#ifdef printDebug
-					switch (instruction.instruction) {
+					switch(instruction.instruction) {
 						case Instructions::ASL:
 						case Instructions::ROL:
 						case Instructions::LSR:
@@ -237,7 +239,7 @@ void mos6502::Clock() {
 							break;
 						case Instructions::LSR:
 							Status.C = A & 1;
-						
+
 							A >>= 1;
 							Status.Z = A == 0;
 							Status.N = A & 0x80;
@@ -392,7 +394,8 @@ void mos6502::Clock() {
 							Status.Z = X == 0;
 							Status.N = X & 0x80;
 							break;
-						case Instructions::SBC: SBC(fetched);
+						case Instructions::SBC:
+							SBC(fetched);
 							break;
 						case Instructions::ARR:
 							A &= fetched;
@@ -490,7 +493,7 @@ void mos6502::Clock() {
 			switch(instruction.addrMode) {
 				case REL:
 					if(addr_abs & 0x80) {
-						// Negative 
+						// Negative
 						addr_abs |= 0xFF00;
 					}
 					#ifdef printDebug
@@ -538,14 +541,14 @@ void mos6502::Clock() {
 						case Instructions::BIT:
 						case Instructions::LAX:
 						case Instructions::LAS:
-						case Instructions::TAS:
 						case Instructions::NOP:
 							if(((addr_abs + X) & 0xFF00) == (addr_abs & 0xFF00)) {
 								addr_abs += X;
 								state = InstructionType(instruction.instruction);
-								break;
+							} else {
+								state = State::PageError;
 							}
-							[[fallthrough]];
+							break;
 						default:
 							state = State::PageError;
 							break;
@@ -570,14 +573,14 @@ void mos6502::Clock() {
 						case Instructions::BIT:
 						case Instructions::LAX:
 						case Instructions::LAS:
-						case Instructions::TAS:
 						case Instructions::NOP:
 							if(((addr_abs + Y) & 0xFF00) == (addr_abs & 0xFF00)) {
 								addr_abs += Y;
 								state = InstructionType(instruction.instruction);
-								break;
+							} else {
+								state = State::PageError;
 							}
-							[[fallthrough]];
+							break;
 						default:
 							state = State::PageError;
 							break;
@@ -618,14 +621,14 @@ void mos6502::Clock() {
 						case Instructions::BIT:
 						case Instructions::LAX:
 						case Instructions::LAS:
-						case Instructions::TAS:
 						case Instructions::NOP:
 							if(((addr_abs + Y) & 0xFF00) == (addr_abs & 0xFF00)) {
 								addr_abs += Y;
 								state = InstructionType(instruction.instruction);
-								break;
+							} else {
+								state = State::PageError;
 							}
-							[[fallthrough]];
+							break;
 						default:
 							state = State::PageError;
 							break;
@@ -751,6 +754,12 @@ void mos6502::Clock() {
 					state = State::FetchOpcode;
 					break;
 				case Instructions::NOP:
+					state = State::FetchOpcode;
+					break;
+				case Instructions::LAS:
+					A = X = SP = fetched & SP;
+					Status.Z = A == 0;
+					Status.N = A & 0x80;
 					state = State::FetchOpcode;
 					break;
 				case Instructions::ASL:
@@ -895,34 +904,34 @@ void mos6502::Clock() {
 					Status.N = ptr & 0x80;
 					break;
 				case Instructions::SHX:
-					ptr = ((addr_abs - Y) & 0xFF00) | (addr_abs & 0xFF);
-
-					if(ptr >> 8 != addr_abs >> 8) {
-						ptr &= X << 8;
+					if((writeAddr & 0xFF00) != ((writeAddr - Y) & 0xFF00)) {
+						// page crossing
+						writeAddr = (X << 8) | (writeAddr & 0xFF);
+						toWrite = X;
+					} else {
+						toWrite = X & ((writeAddr >> 8) + 1);
 					}
-					writeAddr = ptr;
-					toWrite = X & ((ptr >> 8) + 1);
 					break;
 				case Instructions::SHY:
-					ptr = ((addr_abs - X) & 0xFF00) | (addr_abs & 0xFF);
-
-					if(ptr >> 8 != addr_abs >> 8) {
-						ptr &= Y << 8;
+					if((writeAddr & 0xFF00) != ((writeAddr - X) & 0xFF00)) {
+						// page crossing
+						writeAddr = (Y << 8) | (writeAddr & 0xFF);
+						toWrite = Y;
+					} else {
+						toWrite = Y & ((writeAddr >> 8) + 1);
 					}
-					writeAddr = ptr;
-					toWrite = Y & ((ptr >> 8) + 1);
 					break;
-				case Instructions::TAS:
-					SP = A & X; // IDK
+				case Instructions::TAS: // SHS
+					SP = A & X;
 					[[fallthrough]];
-				case Instructions::AHX:
-					ptr = ((addr_abs - Y) & 0xFF00) | (addr_abs & 0xFF);
-
-					if(ptr >> 8 != addr_abs >> 8) {
-						ptr &= (X & A) << 8;
+				case Instructions::AHX: // SHA
+					if((writeAddr & 0xFF00) != ((writeAddr - Y) & 0xFF00)) {
+						// page crossing
+						writeAddr = (((A & X) << 8) | 0xFF) & writeAddr;
+						toWrite = A & X;
+					} else {
+						toWrite = A & X & ((writeAddr >> 8) + 1);
 					}
-					writeAddr = ptr;
-					toWrite = X & A & ((ptr >> 8) + 1);
 					break;
 				default: throw std::logic_error("Not reachable");
 			}
@@ -1020,6 +1029,7 @@ void mos6502::Clock() {
 					Status.U = true;
 					PushStack(Status.reg);
 					Status.I = true;
+					Status.B = false;
 					break;
 				case Instructions::NMI:
 				nmi:
@@ -1119,13 +1129,12 @@ void mos6502::ADC(uint8_t val) {
 	Status.Z = A == 0;
 	Status.N = A & 0x80;
 }
-
 void mos6502::SBC(uint8_t val) {
 	val ^= 0xFF;
 	uint16_t temp = A + val + Status.C;
 
-	Status.C = temp & 0xFF00;
-	Status.V = (temp ^ A) & (temp ^ val) & 0x0080;
+	Status.C = temp > 255;
+	Status.V = (temp ^ A) & (temp ^ val) & 0x80;
 
 	A = temp;
 
@@ -1135,21 +1144,16 @@ void mos6502::SBC(uint8_t val) {
 
 uint8_t mos6502::ROL(uint8_t val) {
 	uint8_t tmp = (val << 1) | Status.C;
-
 	Status.C = val & 0x80;
 	Status.Z = tmp == 0;
 	Status.N = tmp & 0x80;
-
 	return tmp;
 }
-
 uint8_t mos6502::ROR(uint8_t val) {
 	uint8_t tmp = (Status.C << 7) | (val >> 1);
 	Status.C = val & 1;
-
 	Status.Z = tmp == 0;
 	Status.N = tmp & 0x80;
-
 	return tmp;
 }
 

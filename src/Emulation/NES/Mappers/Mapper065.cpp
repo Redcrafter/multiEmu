@@ -65,16 +65,12 @@ bool Mapper065::cpuWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper065::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
+uint8_t Mapper065::ppuRead(uint16_t addr, bool readOnly) {
 	if(addr < 0x2000) {
-		data = chr[((addr & 0x3FF) | (chrBankOffset[addr >> 10] << 10)) & chrMask];
-		return true;
+		return chr[((addr & 0x3FF) | (chrBankOffset[addr >> 10] << 10)) & chrMask];
+	} else { // 0x2000 - 0x3EFF
+		return vram[mapMirrorAddress(mirror, addr)];
 	}
-	return false;
-}
-
-bool Mapper065::ppuWrite(uint16_t addr, uint8_t data) {
-	return false;
 }
 
 void Mapper065::CpuClock() {

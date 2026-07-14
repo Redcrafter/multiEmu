@@ -36,7 +36,7 @@ void PatternTables::DrawWindow() {
 
 		// ImGui::BeginGroup();
 		ImGui::Image(reinterpret_cast<void*>(image.GetTextureId()), ImVec2(512, 256), ImVec2(0, 0), ImVec2(1, 0.8));
-		const char* test[] = {"1", "2", "3", "4", "5", "6", "7", "8"};
+		const char* test[] = { "1", "2", "3", "4", "5", "6", "7", "8" };
 
 		ImGui::SetNextItemWidth(150);
 		ImGui::Combo("Patten1 pallet", &pallet1, test, 8);

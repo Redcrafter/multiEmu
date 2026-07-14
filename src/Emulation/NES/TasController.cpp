@@ -33,7 +33,7 @@ std::string TasController::GetInput() {
 	auto a = inputs[inputIndex];
 	std::string inputs = "........";
 
-	char chars[] = {'A', 'B', 'S', 'T', 'U', 'D', 'L', 'R'};
+	char chars[] = { 'A', 'B', 'S', 'T', 'U', 'D', 'L', 'R' };
 
 	for(int i = 0; i < 8; ++i) {
 		if(a & (1 << i)) inputs[7 - i] = chars[i];

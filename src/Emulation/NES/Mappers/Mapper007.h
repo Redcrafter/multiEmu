@@ -3,8 +3,7 @@
 
 namespace Nes {
 
-class Mapper007 : public Mapper {
-  private:
+class Mapper007 final : public Mapper {
 	uint8_t prgBank = 0;
 
   public:
@@ -13,7 +12,7 @@ class Mapper007 : public Mapper {
 
 	int cpuRead(uint16_t addr, uint8_t& data) override;
 	bool cpuWrite(uint16_t addr, uint8_t data) override;
-	bool ppuRead(uint16_t addr, uint8_t& data, bool readOnly) override;
+	uint8_t ppuRead(uint16_t addr, bool readOnly) override;
 
 	void SaveState(nlohmann::json& saver) const override;
 	void LoadState(const nlohmann::json& saver) override;

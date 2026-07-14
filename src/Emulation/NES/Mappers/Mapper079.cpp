@@ -22,12 +22,12 @@ bool Mapper079::cpuWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper079::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
-	if(addr < 0x2000 && !chr.empty()) {
-		data = chr[((addr & 0x1FFF) | (chrBank * 0x2000)) & chrMask];
-		return true;
+uint8_t Mapper079::ppuRead(uint16_t addr, bool readOnly) {
+	if(addr < 0x2000) {
+		return chr[((addr & 0x1FFF) | (chrBank * 0x2000)) & chrMask];
+	} else { // 0x2000 - 0x3EFF
+		return vram[mapMirrorAddress(mirror, addr)];
 	}
-	return false;
 }
 
 void Mapper079::SaveState(nlohmann::json& saver) const {

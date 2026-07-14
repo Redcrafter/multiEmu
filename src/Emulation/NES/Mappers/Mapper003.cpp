@@ -29,12 +29,12 @@ bool Mapper003::cpuWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper003::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
+uint8_t Mapper003::ppuRead(uint16_t addr, bool readOnly) {
 	if(addr < 0x2000) {
-		data = chr[((addr & 0x1FFF) | (selectedBank * 0x2000)) & chrMask];
-		return true;
+		return chr[((addr & 0x1FFF) | (selectedBank * 0x2000)) & chrMask];
+	} else { // 0x2000 - 0x3EFF
+		return vram[mapMirrorAddress(mirror, addr)];
 	}
-	return false;
 }
 
 void Mapper003::SaveState(nlohmann::json& saver) const {

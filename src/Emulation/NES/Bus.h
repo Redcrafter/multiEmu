@@ -1,13 +1,12 @@
 #pragma once
 #include <cstdint>
 
-// #include "cpu6502.h"
 #include "RP2A03.h"
+#include "mos6502.h"
 #include "ppu2C02.h"
 
 #include "Cartridge.h"
 #include "Controller.h"
-#include "mos6502.h"
 
 namespace Nes {
 
@@ -47,7 +46,7 @@ class Bus {
 	uint8_t CpuRead(uint16_t addr, bool readOnly = false);
 
 	void SaveState(nlohmann::json& saver) const;
-	void LoadState(const  nlohmann::json& saver);
+	void LoadState(const nlohmann::json& saver);
 
 	friend class Core;
 };

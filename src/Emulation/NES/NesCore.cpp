@@ -3,10 +3,11 @@
 #include <algorithm>
 
 #include "../../Input.h"
-#include "../../logger.h"
 #include "../../fs.h"
+#include "../../logger.h"
 
 #include "Mappers/NsfMapper.h"
+#include "Mappers/VRC6Mapper.h"
 #include "StandardController.h"
 
 namespace Nes {
@@ -53,10 +54,10 @@ void Core::WriteMemory(int domain, size_t address, uint8_t val) {
 		case CpuBus:
 		case PpuBus: break;
 		case CIRam:
-			emulator.ppu.vram[address] = val;
+			emulator.cartridge->vram[address] = val;
 			break;
 		case Oam:
-			reinterpret_cast<uint8_t*>(emulator.ppu.oam)[address] = val;
+			reinterpret_cast<uint8_t*>(&emulator.ppu.oam)[address] = val;
 			break;
 		case PrgRom:
 		case ChrRom: break;
@@ -67,8 +68,8 @@ uint8_t Core::ReadMemory(int domain, size_t address) {
 		case CpuRam: return emulator.CpuRam[address];
 		case CpuBus: return emulator.CpuRead(address, true);
 		case PpuBus: return emulator.ppu.ppuRead(address, true);
-		case CIRam: return emulator.ppu.vram[address];
-		case Oam: return reinterpret_cast<uint8_t*>(emulator.ppu.oam)[address];
+		case CIRam: return emulator.cartridge->vram[address];
+		case Oam: return reinterpret_cast<uint8_t*>(emulator.ppu.oam.data())[address];
 		case PrgRom: return emulator.cartridge->prg[address];
 		case ChrRom: return emulator.cartridge->chr[address];
 	}
@@ -131,13 +132,12 @@ void Core::LoadState(const nlohmann::json& saver) {
 
 void Core::LoadRom(const std::string& path) {
 	auto ext = fs::path(path).extension().string();
-	std::transform(ext.begin(), ext.end(), ext.begin(), [](unsigned char c) { return std::tolower(c); });
+	std::ranges::transform(ext, ext.begin(), [](const unsigned char c) { return std::tolower(c); });
 
 	if(ext == ".nes") {
 		std::shared_ptr<Mapper> cart = LoadCart(path);
 
-		// TODO: hard reset
-		emulator.apu.vrc6 = false;
+		emulator.apu.vrc6 = typeid(*cart) == typeid(VRC6Mapper); // todo: a bit hacky. maybe find a better way to do this
 		emulator.InsertCartridge(cart);
 		emulator.HardReset();
 

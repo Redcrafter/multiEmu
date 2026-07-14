@@ -42,7 +42,7 @@ struct NsfFormat {
 	NsfFormat(const std::string& path);
 };
 
-class NsfMapper : public Mapper {
+class NsfMapper final : public Mapper {
   public:
 	NsfFormat nsf;
 
@@ -67,51 +67,51 @@ class NsfMapper : public Mapper {
 
 	uint8_t NSFROM[0x23] = {
 		//@NMIVector
-		//Suspend vector patching
-		//3800:LDA $3FF3
+		// Suspend vector patching
+		// 3800:LDA $3FF3
 		0xAD, 0xF3, 0x3F,
 
-		//Initialize stack pointer
-		//3803:LDX #$FF
+		// Initialize stack pointer
+		// 3803:LDX #$FF
 		0xA2, 0xFF,
-		//3805:TXS
+		// 3805:TXS
 		0x9A,
 
-		//Check (and clear) InitPending flag
-		//3806:LDA $3FF0
+		// Check (and clear) InitPending flag
+		// 3806:LDA $3FF0
 		0xAD, 0xF0, 0x3F,
-		//3809:BEQ $8014
+		// 3809:BEQ $8014
 		0xF0, 0x09,
 
-		//Read the next song (resetting the player) and PAL flag into A and X and then call the INIT routine
-		//380B:LDA $3FF1
+		// Read the next song (resetting the player) and PAL flag into A and X and then call the INIT routine
+		// 380B:LDA $3FF1
 		0xAD, 0xF1, 0x3F,
-		//380E:LDX $3FF2
+		// 380E:LDX $3FF2
 		0xAE, 0xF2, 0x3F,
-		//3811:JSR INIT
+		// 3811:JSR INIT
 		0x20, 0x00, 0x00,
 
-		//Fall through to:
+		// Fall through to:
 		//@Play - call PLAY routine with X and Y cleared (this is not supposed to be required, but fceux did it)
-		//3814:LDA #$00
+		// 3814:LDA #$00
 		0xA9, 0x00,
-		//3816:TAX
+		// 3816:TAX
 		0xAA,
-		//3817:TAY
+		// 3817:TAY
 		0xA8,
-		//3818:JSR PLAY
+		// 3818:JSR PLAY
 		0x20, 0x00, 0x00,
 
-		//Resume vector patching and infinite loop waiting for next NMI
-		//381B:LDA $3FF4
+		// Resume vector patching and infinite loop waiting for next NMI
+		// 381B:LDA $3FF4
 		0xAD, 0xF4, 0x3F,
-		//381E:BCC $XX1E
+		// 381E:BCC $XX1E
 		0x90, 0xFE,
 
 		//@ResetVector - just set up an infinite loop waiting for the first NMI
-		//3820:CLC
+		// 3820:CLC
 		0x18,
-		//3821:BCC $XX24
+		// 3821:BCC $XX24
 		0x90, 0xFE,
 	};
 
@@ -122,8 +122,8 @@ class NsfMapper : public Mapper {
 
 	int cpuRead(uint16_t addr, uint8_t& data) override;
 	bool cpuWrite(uint16_t addr, uint8_t data) override;
-	bool ppuRead(uint16_t addr, uint8_t& data, bool readOnly) override;
-	bool ppuWrite(uint16_t addr, uint8_t data) override;
+
+	uint8_t ppuRead(uint16_t addr, bool readOnly) override;
 
 	void SaveState(nlohmann::json& saver) const override;
 	void LoadState(const nlohmann::json& saver) override;

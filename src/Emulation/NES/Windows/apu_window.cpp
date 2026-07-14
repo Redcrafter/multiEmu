@@ -12,7 +12,6 @@ static ImRect MakeBox(const char* label) {
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	const ImGuiStyle& style = GImGui->Style;
 
-
 	const ImVec2 label_size = ImGui::CalcTextSize(label, nullptr, true);
 	const auto frame_size = ImVec2(ImGui::CalcItemWidth(), 80);
 
@@ -35,13 +34,13 @@ static ImRect MakeBox(const char* label) {
 
 void ApuWindow::DrawPulse(const Pulse& pulse, const char* label) const {
 	const ImRect inner_bb = MakeBox(label);
-	
+
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	const auto DrawList = window->DrawList;
 	const auto width = inner_bb.GetWidth();
 	const auto height = inner_bb.GetHeight();
 	auto lineColor = ImGui::GetColorU32(ImVec4(1, 1, 1, 1));
-	
+
 	if(pulse.enabled && !(pulse.lengthCounter == 0 || pulse.timerPeriod < 8 || pulse.timerPeriod > 0x7FF)) {
 		int val = pulse.dutyCycle;
 		double dutyLen = val == 0 ? 0.125 : val * 0.25;
@@ -49,7 +48,7 @@ void ApuWindow::DrawPulse(const Pulse& pulse, const char* label) const {
 		float x = inner_bb.Min.x;
 		float w = width * (pulse.timerPeriod * 16.0 / cyclesPerFrame);
 		float h = inner_bb.Min.y;
-		
+
 		// center duty
 		x += fmod(width / 2, w);
 
@@ -57,6 +56,10 @@ void ApuWindow::DrawPulse(const Pulse& pulse, const char* label) const {
 			h += (height / 15) * pulse.constantVolume;
 		} else {
 			h += (height / 15) * pulse.envelopeVolume;
+		}
+
+		if(h == inner_bb.Min.y) {
+			goto skip;
 		}
 
 		if(x - w * dutyLen <= inner_bb.Min.x) {
@@ -89,14 +92,15 @@ void ApuWindow::DrawPulse(const Pulse& pulse, const char* label) const {
 			DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
 		}
 	} else {
+	skip:
 		DrawList->PathLineTo(inner_bb.Min);
 		DrawList->PathLineTo(ImVec2(inner_bb.Max.x, inner_bb.Min.y));
 	}
 
-	DrawList->PathStroke(lineColor, false, 2);
+	DrawList->PathStroke(lineColor, 2.0f, ImDrawFlags_None);
 }
 void ApuWindow::DrawTriangle() const {
-	const auto &triangle = apu->triangle;
+	const auto& triangle = apu->triangle;
 	const ImRect inner_bb = MakeBox("Triangle");
 
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
@@ -104,11 +108,11 @@ void ApuWindow::DrawTriangle() const {
 	const auto width = inner_bb.GetWidth();
 	const auto height = inner_bb.GetHeight();
 	auto lineColor = ImGui::GetColorU32(ImVec4(1, 1, 1, 1));
-	
+
 	if(triangle.enabled && triangle.lengthCounter > 0 && triangle.linearCounter > 0 && triangle.timerPeriod >= 2) {
 		float x = inner_bb.Min.x;
 		float w = width * (triangle.timerPeriod * 32.0 / cyclesPerFrame);
-		
+
 		/*x += fmod(width / 2, w);
 
 		if(x - w / 2 <= inner_bb.Min.x) {
@@ -120,7 +124,7 @@ void ApuWindow::DrawTriangle() const {
 		DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
 		*/
 		DrawList->PathLineTo(inner_bb.Min);
-		
+
 		while(true) {
 			x += w / 2;
 			if(x > inner_bb.Max.x) {
@@ -149,7 +153,7 @@ void ApuWindow::DrawNoise() const {
 	const int available = apu->lastBufferPos;
 
 	const ImRect inner_bb = MakeBox("Noise");
-	
+
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	const auto DrawList = window->DrawList;
 	const auto pps = inner_bb.GetWidth() / (double)available;
@@ -172,7 +176,7 @@ void ApuWindow::DrawNoise() const {
 			last = val;
 		}
 	}
-	
+
 	DrawList->PathLineTo(ImVec2(inner_bb.Max.x, lastY));
 	DrawList->PathStroke(ImGui::GetColorU32(ImVec4(1, 1, 1, 1)), false, 1);
 }
@@ -180,7 +184,7 @@ void ApuWindow::DrawDMC() const {
 	const int available = apu->lastBufferPos;
 
 	const ImRect inner_bb = MakeBox("DMC");
-	
+
 	ImGuiWindow* window = ImGui::GetCurrentWindow();
 	const auto DrawList = window->DrawList;
 	const auto pps = inner_bb.GetWidth() / (double)available;
@@ -190,7 +194,6 @@ void ApuWindow::DrawDMC() const {
 	int last = 0;
 
 	DrawList->PathLineTo(inner_bb.Min);
-
 
 	for(int i = 0; i < available; i += 2) {
 		auto val = apu->waveBuffer[i].dmc;
@@ -242,7 +245,7 @@ void ApuWindow::DrawVrc6Pulse(const vrc6Pulse& pulse, const char* label) const {
 		}
 		DrawList->PathLineTo(ImVec2(x, h));
 		DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
-		
+
 		while(true) {
 			x += w * (1 - dutyLen);
 			if(x > inner_bb.Max.x) {
@@ -278,7 +281,7 @@ void ApuWindow::DrawVrc6Saw() const {
 	const auto width = inner_bb.GetWidth();
 	auto lineColor = ImGui::GetColorU32(ImVec4(1, 1, 1, 1));
 
-	if(saw.enabled) {
+	if(saw.enabled && saw.timerPeriod > 0 && saw.accumRate > 0) {
 		// Width of one duty cycle
 		float w = width * (saw.timerPeriod * 16.0 / cyclesPerFrame);
 		float height = inner_bb.GetHeight() * (6 * saw.accumRate >> 3 & 0x1F) / 31.0;
@@ -291,7 +294,6 @@ void ApuWindow::DrawVrc6Saw() const {
 		// center duty
 		x += fmod(width / 2, w);
 
-		
 		DrawList->PathLineTo(ImVec2(inner_bb.Min.x, inner_bb.Min.y + height * (inner_bb.Min.x - (x - w)) / w));
 		DrawList->PathLineTo(ImVec2(x, h));
 		DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
@@ -302,7 +304,7 @@ void ApuWindow::DrawVrc6Saw() const {
 				DrawList->PathLineTo(ImVec2(inner_bb.Max.x, inner_bb.Min.y + height * (inner_bb.Max.x - (x - w)) / w));
 				break;
 			}
-			
+
 			DrawList->PathLineTo(ImVec2(x, h));
 			DrawList->PathLineTo(ImVec2(x, inner_bb.Min.y));
 		}
@@ -311,6 +313,7 @@ void ApuWindow::DrawVrc6Saw() const {
 		DrawList->PathLineTo(ImVec2(inner_bb.Max.x, inner_bb.Min.y));
 	}
 
+end:
 	DrawList->PathStroke(lineColor, false, 2);
 }
 
@@ -320,7 +323,7 @@ void ApuWindow::DrawWindow() {
 	if(!open || !apu) {
 		return;
 	}
-	
+
 	ImGui::SetNextWindowSize(ImVec2(500, 500), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSizeConstraints(ImVec2(200, 0), ImVec2(INFINITY, INFINITY));
 	if(ImGui::Begin(Title.c_str(), &open)) {
@@ -331,7 +334,7 @@ void ApuWindow::DrawWindow() {
 		DrawTriangle();
 		DrawNoise();
 		DrawDMC();
-		
+
 		if(apu->vrc6) {
 			DrawVrc6Pulse(apu->vrc6Pulse1, "vrc6 Pulse1");
 			DrawVrc6Pulse(apu->vrc6Pulse2, "vrc6 Pulse2");

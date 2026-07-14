@@ -15,7 +15,7 @@ Mapper001::Mapper001(const std::vector<uint8_t>& prg, const std::vector<uint8_t>
 
 Mapper001::~Mapper001() {
 	if(file) {
-		delete file;
+		prgRam = nullptr;
 	} else {
 		delete[] prgRam;
 	}
@@ -109,8 +109,8 @@ bool Mapper001::cpuWrite(uint16_t addr, uint8_t data) {
 		}
 
 		if(Control & 0x10) {
-			chrBankOffset[0] = (chrBank0)*0x1000;
-			chrBankOffset[1] = (chrBank1)*0x1000;
+			chrBankOffset[0] = (chrBank0) * 0x1000;
+			chrBankOffset[1] = (chrBank1) * 0x1000;
 		} else {
 			chrBankOffset[0] = (chrBank0 & ~1) * 0x1000;
 			chrBankOffset[1] = (chrBank0 & ~1) * 0x1000 + 0x1000;
@@ -122,12 +122,14 @@ bool Mapper001::cpuWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper001::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
-	if(addr < 0x2000 && !chr.empty()) {
-		data = chr[((addr & 0x0FFF) | chrBankOffset[addr >> 12 & 1]) & chrMask];
-		return true;
+uint8_t Mapper001::ppuRead(uint16_t addr, bool readOnly) {
+	if(addr < 0x2000) {
+		if(chr.empty())
+			return chrRam[addr];
+		return chr[((addr & 0x0FFF) | chrBankOffset[addr >> 12 & 1]) & chrMask];
+	} else { // 0x2000 - 0x3EFF
+		return vram[mapMirrorAddress(mirror, addr)];
 	}
-	return false;
 }
 
 void Mapper001::SaveState(nlohmann::json& saver) const {
@@ -161,7 +163,7 @@ void Mapper001::LoadState(const nlohmann::json& saver) {
 	chrBankOffset = saver["chrBankOffset"];
 
 	ramEnable = saver["ramEnable"];
-	
+
 	auto& dat = saver["prgRam"].get_binary();
 	assert(dat.size() == 0x2000);
 	std::memcpy(prgRam, dat.data(), 0x2000);
@@ -170,7 +172,7 @@ void Mapper001::LoadState(const nlohmann::json& saver) {
 void Mapper001::MapSaveRam(const std::string& path) {
 	delete[] prgRam;
 
-	file = new MemoryMapped(path, 0x2000);
+	file = std::make_unique<MemoryMapped>(path, 0x2000);
 	prgRam = file->begin();
 }
 

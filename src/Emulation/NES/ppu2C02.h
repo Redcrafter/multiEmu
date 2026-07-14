@@ -3,8 +3,8 @@
 
 #include <nlohmann/json.hpp>
 
-#include "Cartridge.h"
 #include "../../Texture.h"
+#include "Cartridge.h"
 
 namespace Nes {
 
@@ -30,7 +30,12 @@ struct Sprite {
 	uint8_t x = 0;
 };
 
-struct PpuState {
+class ppu2C02 {
+	friend class Bus;
+	friend class PatternTables;
+	friend class Core;
+
+  private:
 	bool oddFrame = false;
 	int last2002Read = 0;
 
@@ -115,12 +120,6 @@ struct PpuState {
 
 	int nmi = 0;
 	uint8_t oamAddr = 0;
-};
-
-class ppu2C02 : public PpuState {
-	friend class Bus;
-	friend class PatternTables;
-	friend class Core;
 
   public:
 	bool frameComplete = false;
@@ -146,9 +145,10 @@ class ppu2C02 : public PpuState {
 	void ppuWrite(uint16_t addr, uint8_t data);
 
   private:
+	uint8_t getPallet(uint16_t addr) const;
+
 	Color GetPaletteColor(uint8_t palette, uint8_t pixel) const;
 	void LoadBackgroundShifters();
-	uint8_t& getRef(uint16_t addr);
 };
 
 }

@@ -1,10 +1,10 @@
 #pragma once
-#include "Mapper.h"
 #include "../../../MemoryMapped.h"
+#include "Mapper.h"
 
 namespace Nes {
 
-class Mapper004 : public Mapper {
+class Mapper004 final : public Mapper {
   private:
 	union {
 		struct {
@@ -31,7 +31,7 @@ class Mapper004 : public Mapper {
 
 	uint8_t* prgRam = nullptr; // 0x2000;
 
-	MemoryMapped* file = nullptr;
+	std::unique_ptr<MemoryMapped> file;
 
 	// not implemented because of compatibility issue between MMC3 and MMC6 (http://wiki.nesdev.com/w/index.php/MMC3)
 	// bool ramEnable;
@@ -41,8 +41,9 @@ class Mapper004 : public Mapper {
 
 	int cpuRead(uint16_t addr, uint8_t& data) override;
 	bool cpuWrite(uint16_t addr, uint8_t data) override;
-	bool ppuRead(uint16_t addr, uint8_t& data, bool readOnly) override;
-	bool ppuWrite(uint16_t addr, uint8_t data) override;
+
+	uint8_t ppuRead(uint16_t addr, bool readOnly) override;
+	void ppuWrite(uint16_t addr, uint8_t data) override;
 
 	void SaveState(nlohmann::json& saver) const override;
 	void LoadState(const nlohmann::json& saver) override;

@@ -10,14 +10,13 @@ void Bus::InsertCartridge(std::shared_ptr<Mapper>& cartridge) {
 }
 
 void Bus::HardReset() {
+	// cartridge->HardReset();
 	cpu.HardReset();
 	ppu.HardReset();
-	// apu.HardReset();
+	apu.HardReset();
 
-	irqDelay = false;
-	for(unsigned char& i : CpuRam) {
-		i = 0;
-	}
+	irqDelay = 0;
+	CpuRam.fill(0);
 	cpuOpenBus = 0;
 
 	dmaPage = 0;
@@ -64,7 +63,7 @@ void Bus::Clock() {
 				if(systemClockCounter % 2 == 0) {
 					dmaData = CpuRead(dmaPage << 8 | dmaAddr);
 				} else {
-					reinterpret_cast<uint8_t*>(ppu.oam)[(ppu.oamAddr + dmaAddr) & 0xFF] = dmaData;
+					reinterpret_cast<uint8_t*>(ppu.oam.data())[(ppu.oamAddr + dmaAddr) & 0xFF] = dmaData;
 					dmaAddr++;
 
 					if(dmaAddr == 0) {
@@ -76,9 +75,10 @@ void Bus::Clock() {
 		} else {
 			if(CpuStall) {
 				CpuStall--;
+			} else {
+				cpu.Clock();
+				cartridge->CpuClock();
 			}
-			cpu.Clock();
-			cartridge->CpuClock();
 
 			cpu.IRQ = irqDelay || cartridge->Irq;
 			irqDelay = apu.GetIrq();
@@ -100,6 +100,8 @@ void Bus::Clock() {
 }
 
 void Bus::CpuWrite(uint16_t addr, uint8_t data) {
+	cpuOpenBus = data;
+
 	if(cartridge->cpuWrite(addr, data)) {
 		// 0x4020-0xFFFF
 	} else if(addr < 0x2000) {
@@ -141,7 +143,7 @@ uint8_t Bus::CpuRead(uint16_t addr, bool readOnly) {
 	} else {
 		switch(addr) {
 			case 0x4015:
-				data = apu.ReadStatus(readOnly);
+				return apu.ReadStatus(readOnly) | (cpuOpenBus & 0x20);
 				break;
 			case 0x4016:
 				if(controller1 != nullptr) {
@@ -153,7 +155,7 @@ uint8_t Bus::CpuRead(uint16_t addr, bool readOnly) {
 					data = (cpuOpenBus & 0xE0) | (controller2->CpuRead(addr, readOnly) & 0x1F);
 				}
 				break;
-			default: data = cpuOpenBus;
+			default: data = cpuOpenBus; break;
 		}
 	}
 

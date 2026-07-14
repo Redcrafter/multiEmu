@@ -12,7 +12,7 @@ Mapper004::Mapper004(const std::vector<uint8_t>& prg, const std::vector<uint8_t>
 
 Mapper004::~Mapper004() {
 	if(file) {
-		delete file;
+		prgRam = nullptr;
 	} else {
 		delete[] prgRam;
 	}
@@ -79,7 +79,7 @@ bool Mapper004::cpuWrite(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Mapper004::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
+uint8_t Mapper004::ppuRead(uint16_t addr, bool readOnly) {
 	if(!readOnly) {
 		if(!lastA12 && (addr & 0x1000)) {
 			if(irqCounter == 0 || reloadIrq) {
@@ -96,14 +96,18 @@ bool Mapper004::ppuRead(uint16_t addr, uint8_t& data, bool readOnly) {
 		lastA12 = addr & 0x1000;
 	}
 
-	if(addr < 0x2000 && !chr.empty()) {
-		data = chr[((addr & 0x03FF) | chrBankOffset[(addr >> 10) & 7]) & chrMask];
-		return true;
+	if(addr < 0x2000) {
+		if(chr.empty()) {
+			return 0;
+		} else {
+			return chr[((addr & 0x03FF) | chrBankOffset[(addr >> 10) & 7]) & chrMask];
+		}
+	} else { // 0x2000 - 0x3EFF
+		return vram[mapMirrorAddress(mirror, addr)];
 	}
-	return false;
 }
 
-bool Mapper004::ppuWrite(uint16_t addr, uint8_t data) {
+void Mapper004::ppuWrite(uint16_t addr, uint8_t data) {
 	if(!lastA12 && (addr & 0x1000)) {
 		if(irqCounter == 0 || reloadIrq) {
 			reloadIrq = false;
@@ -118,7 +122,9 @@ bool Mapper004::ppuWrite(uint16_t addr, uint8_t data) {
 	}
 	lastA12 = addr & 0x1000;
 
-	return false;
+	if(addr >= 0x2000) { // 0x2000 - 0x3EFF
+		vram[mapMirrorAddress(mirror, addr)] = data;
+	}
 }
 
 void Mapper004::SaveState(nlohmann::json& saver) const {
@@ -194,7 +200,7 @@ void Mapper004::UpdateRegs() {
 void Mapper004::MapSaveRam(const std::string& path) {
 	delete[] prgRam;
 
-	file = new MemoryMapped(path, 0x2000);
+	file = std::make_unique<MemoryMapped>(path, 0x2000);
 	prgRam = file->begin();
 }
 

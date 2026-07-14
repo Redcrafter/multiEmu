@@ -144,10 +144,10 @@ static const char* InstructionNames[77] = {
 	"ROR",
 
 	"LDA",
-	"STA",
 	"LDX",
-	"STX",
 	"LDY",
+	"STA",
+	"STX",
 	"STY",
 	"TAX",
 	"TXA",
@@ -195,14 +195,15 @@ static const char* InstructionNames[77] = {
 	"ANC",
 	"ALR",
 	"ARR",
-	"XAA",
-	"LAX",
+
 	"AXS",
+	"LAS"
 	"AHX",
 	"SHY",
 	"SHX",
 	"TAS",
-	"LAS"
+	"XAA",
+	"LAX",
 };
 
 struct Instruction {

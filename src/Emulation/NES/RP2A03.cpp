@@ -116,7 +116,6 @@ void Triangle::LoadState(const nlohmann::json& saver) {
 	linearCounterReload = saver["linearCounterReload"];
 }
 
-
 void Noise::Clock() {
 	if(timer == 0) {
 		timer = timerPeriod;
@@ -234,9 +233,9 @@ uint8_t Pulse::Output() const {
 		return 0;
 	}
 
-	//if(timer < 8) {
+	// if(timer < 8) {
 	//	return 0;
-	//}
+	// }
 
 	if(envelopeEnabled) {
 		return constantVolume;
@@ -316,7 +315,7 @@ void DMC::Reload() {
 void DMC::FillBuffer(Bus& bus) {
 	if(bufferEmpty && currentLength > 0) {
 		// not perfectly accurate
-		// bus->CpuStall = 4;
+		bus.CpuStall = 2; // stalls cpu 1-4 cycles todo: https://www.nesdev.org/wiki/DMA
 		sampleBuffer = bus.CpuRead(currentAddress);
 		if(currentAddress == 0xFFFF) {
 			currentAddress = 0x8000;
@@ -374,7 +373,7 @@ void DMC::LoadState(const nlohmann::json& saver) {
 	timerPeriod = saver["timerPeriod"];
 }
 
-RP2A03::RP2A03(Bus* bus): bus(bus) {
+RP2A03::RP2A03(Bus* bus) : bus(bus) {
 	pulse1.negative = 1;
 }
 
@@ -461,6 +460,49 @@ void RP2A03::Reset() {
 	pulse1.lengthCounterEnabled = true;
 	pulse2.lengthCounterEnabled = true;
 	noise.lengthCounterEnabled = true;
+}
+
+void RP2A03::HardReset() {
+	/*
+	Irq = true;
+	last4017Write = 0;
+	frameCounterMode = false;
+	frameCounter = 0;
+	IRQinhibit = false;
+
+	std::memset(&pulse1, 0, sizeof(Pulse));
+	std::memset(&pulse2, 0, sizeof(Pulse));
+	std::memset(&triangle, 0, sizeof(Triangle));
+	std::memset(&noise, 0, sizeof(Noise));
+	std::memset(&dmc, 0, sizeof(DMC));
+
+	vrc6 = false;
+	vrc6Halt = false;
+	vrc6FreqShift = 0;
+	std::memset(&vrc6Pulse1, 0, sizeof(vrc6Pulse));
+	std::memset(&vrc6Pulse2, 0, sizeof(vrc6Pulse));
+	std::memset(&vrc6Saw, 0, sizeof(vrc6Sawtooth));
+
+	bufferPos = 0;
+	lastBufferPos = 0;
+	std::memset(&waveBuffer, 0, sizeof(waveBuffer));
+	*/
+
+	// std::memset(&dmc, 0, sizeof(DMC));
+	dmc.enabled = false;
+	dmc.irq = false;
+	dmc.irqEnable = false;
+	dmc.loop = false;
+
+	dmc.silence = true;
+
+	dmc.value = 0;
+	dmc.sampleAddress = 0;
+	dmc.sampleLength = 0;
+
+	dmc.bufferEmpty = true;
+
+	dmc.timerPeriod = 0;
 }
 
 void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
@@ -550,11 +592,13 @@ void RP2A03::CpuWrite(uint16_t addr, uint8_t data) {
 			if(!noise.enabled) {
 				noise.lengthCounter = 0;
 			}
-			if(!dmc.enabled) {
+			if(dmc.enabled) {
+				if(!oldDmc || dmc.bufferEmpty) {
+					dmc.Reload();
+					dmc.FillBuffer(*bus);
+				}
+			} else {
 				dmc.currentLength = 0;
-			} else if(!oldDmc) {
-				dmc.Reload();
-				dmc.FillBuffer(*bus);
 			}
 
 			dmc.irq = false;
