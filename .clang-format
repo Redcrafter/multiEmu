@@ -1,5 +1,5 @@
 # AccessModifierOffset: -4
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: false
 # AlignConsecutiveAssignments: false
 # AlignConsecutiveDeclarations: false
 # AlignEscapedNewlines: Left
@@ -65,6 +65,7 @@ FixNamespaceComments: false
 #   Regex: .*
 # IncludeIsMainRegex: (Test)?$
 IndentCaseLabels: true
+IndentPPDirectives: Leave
 IndentWidth: 4
 # IndentWrappedFunctionNames: true
 # JavaScriptQuotes: Leave
@@ -87,7 +88,7 @@ SpaceAfterTemplateKeyword: false
 # SpaceBeforeAssignmentOperators: true
 SpaceBeforeCpp11BracedList: true
 SpaceBeforeParens: Never
-SpaceBeforeCtorInitializerColon: false
+SpaceBeforeCtorInitializerColon: true
 # SpaceInEmptyParentheses: false
 # SpacesBeforeTrailingComments: 1
 # SpacesInAngles: false

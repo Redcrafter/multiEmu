@@ -87,6 +87,7 @@ struct Pulse : Envelope {
 	void Clock();
 	void ClockSweep();
 
+    // [0, 15]
 	uint8_t Output() const;
 
 	void SaveState(nlohmann::json& saver) const;
@@ -139,6 +140,7 @@ struct vrc6Pulse {
 	uint16_t timerPeriod = 0;
 
 	void Clock(uint8_t freqShift);
+    // [0, 15]
 	uint8_t Output();
 
 	void SaveState(nlohmann::json& saver) const {
@@ -172,6 +174,7 @@ struct vrc6Sawtooth {
 	uint16_t timerPeriod = 0;
 
 	void Clock(uint8_t freqShift);
+    // [0, 31]
 	uint8_t Output();
 
 	void SaveState(nlohmann::json& saver) const {

@@ -5,14 +5,14 @@
 #include "../../Input.h"
 
 static Input::Mapper inputMapper ("GB", {
-	{ "Right",  0, { GLFW_KEY_RIGHT, 0 } },
-	{ "Left",   1, { GLFW_KEY_LEFT,  0 } },
-	{ "Up",     2, { GLFW_KEY_UP,    0 } },
-	{ "Down",   3, { GLFW_KEY_DOWN,  0 } },
-	{ "A",      4, { GLFW_KEY_A,     0 } },
-	{ "B",      5, { GLFW_KEY_B,     0 } },
-	{ "Select", 6, { GLFW_KEY_ENTER, 0 } },
-	{ "Start",  7, { GLFW_KEY_S,     0 } },
+	{ "Right",  0, { SDL_SCANCODE_RIGHT, 0 } },
+	{ "Left",   1, { SDL_SCANCODE_LEFT,  0 } },
+	{ "Up",     2, { SDL_SCANCODE_UP,    0 } },
+	{ "Down",   3, { SDL_SCANCODE_DOWN,  0 } },
+	{ "A",      4, { SDL_SCANCODE_A,     0 } },
+	{ "B",      5, { SDL_SCANCODE_B,     0 } },
+	{ "Select", 6, { SDL_SCANCODE_RETURN, 0 } },
+	{ "Start",  7, { SDL_SCANCODE_S,     0 } },
 });
 
 namespace Gameboy {

@@ -7,22 +7,22 @@
 #include "../../Input.h"
 
 static Input::Mapper inputMapper ("Chip-8", {
-	{"0", 0,  { GLFW_KEY_1, 0 } },
-	{"1", 1,  { GLFW_KEY_2, 0 } },
-	{"2", 2,  { GLFW_KEY_3, 0 } },
-	{"3", 3,  { GLFW_KEY_4, 0 } },
-	{"4", 4,  { GLFW_KEY_Q, 0 } },
-	{"5", 5,  { GLFW_KEY_W, 0 } },
-	{"6", 6,  { GLFW_KEY_E, 0 } },
-	{"7", 7,  { GLFW_KEY_R, 0 } },
-	{"8", 8,  { GLFW_KEY_A, 0 } },
-	{"9", 9,  { GLFW_KEY_S, 0 } },
-	{"A", 10, { GLFW_KEY_D, 0 } },
-	{"B", 11, { GLFW_KEY_F, 0 } },
-	{"C", 12, { GLFW_KEY_Y, 0 } },
-	{"D", 13, { GLFW_KEY_X, 0 } },
-	{"E", 14, { GLFW_KEY_C, 0 } },
-	{"F", 15, { GLFW_KEY_V, 0 } },
+	{"0", 0,  { SDL_SCANCODE_1, 0 } },
+	{"1", 1,  { SDL_SCANCODE_2, 0 } },
+	{"2", 2,  { SDL_SCANCODE_3, 0 } },
+	{"3", 3,  { SDL_SCANCODE_4, 0 } },
+	{"4", 4,  { SDL_SCANCODE_Q, 0 } },
+	{"5", 5,  { SDL_SCANCODE_W, 0 } },
+	{"6", 6,  { SDL_SCANCODE_E, 0 } },
+	{"7", 7,  { SDL_SCANCODE_R, 0 } },
+	{"8", 8,  { SDL_SCANCODE_A, 0 } },
+	{"9", 9,  { SDL_SCANCODE_S, 0 } },
+	{"A", 10, { SDL_SCANCODE_D, 0 } },
+	{"B", 11, { SDL_SCANCODE_F, 0 } },
+	{"C", 12, { SDL_SCANCODE_Y, 0 } },
+	{"D", 13, { SDL_SCANCODE_X, 0 } },
+	{"E", 14, { SDL_SCANCODE_C, 0 } },
+	{"F", 15, { SDL_SCANCODE_V, 0 } },
 });
 
 static const uint8_t chip8_fontset[] = {

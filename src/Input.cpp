@@ -9,14 +9,16 @@
 
 namespace Input {
 
-static std::vector<uint64_t> keyDown;
-static std::vector<uint64_t> keyHold;
-static std::vector<uint64_t> keyUp;
+static std::vector<Key> keyDown;
+static std::vector<Key> keyHold;
+static std::vector<Key> keyUp;
 
-template<typename T>
-bool find(const std::vector<T>&vec, T val) {
-	for(auto& item: vec) {
-		if(item == val) return true;
+static std::vector<const char*> mapperNames;
+static std::vector<Mapper*> mappers;
+
+bool find(const std::vector<Key>& vec, Key key) {
+	for(auto& item : vec) {
+		if(item == key) return true;
 	}
 	return false;
 }
@@ -35,8 +37,9 @@ Mapper::Mapper(const char* name, const std::vector<InputItem>& elements) {
 void Mapper::ShowEditWindow() {
 	if(selected != -1 && !keyDown.empty()) {
 		Key key = *keyDown.begin();
-		if(key.Info.key == GLFW_KEY_BACKSPACE) key.Reg = 0;
-		keyMap[items[selected].Id] = Key(key);
+		if(key.Info.key == SDL_SCANCODE_BACKSPACE) key.Reg = 0;
+		key.Info.mods &= SDL_KMOD_CTRL | SDL_KMOD_SHIFT | SDL_KMOD_ALT;
+		keyMap[items[selected].Id] = key;
 		selected = -1;
 	}
 
@@ -49,60 +52,22 @@ void Mapper::ShowEditWindow() {
 		if(keyMap.count(item.Id)) {
 			Key key = keyMap[item.Id];
 
-			if(key.Info.mods & GLFW_MOD_SHIFT) {
-				text = "shift + ";
-			}
-			if(key.Info.mods & GLFW_MOD_CONTROL) {
-				text = "ctrl + ";
-			}
-			if(key.Info.mods & GLFW_MOD_ALT) {
-				text = "alt + ";
-			}
+			if(key.Info.mods & SDL_KMOD_CTRL)
+				text += "ctrl + ";
+			if(key.Info.mods & SDL_KMOD_SHIFT)
+				text += "shift + ";
+			if(key.Info.mods & SDL_KMOD_ALT)
+				text += "alt + ";
 
-			switch(key.Info.key) {
-				case 0:
-					text += "none";
-					break;
-				case GLFW_KEY_UP:
-					text += "up";
-					break;
-				case GLFW_KEY_DOWN:
-					text += "down";
-					break;
-				case GLFW_KEY_LEFT:
-					text += "left";
-					break;
-				case GLFW_KEY_RIGHT:
-					text += "right";
-					break;
-				case GLFW_KEY_ENTER:
-					text += "enter";
-					break;
-				case GLFW_KEY_DELETE:
-					text += "del";
-					break;
-				case GLFW_KEY_F1:
-				case GLFW_KEY_F2:
-				case GLFW_KEY_F3:
-				case GLFW_KEY_F4:
-				case GLFW_KEY_F5:
-				case GLFW_KEY_F6:
-				case GLFW_KEY_F7:
-				case GLFW_KEY_F8:
-				case GLFW_KEY_F9:
-				case GLFW_KEY_F10:
-				case GLFW_KEY_F11:
-				case GLFW_KEY_F12:
-					text += "F" + std::to_string(key.Info.key - GLFW_KEY_F1 + 1);
-					break;
-				default:
-					auto name = glfwGetKeyName(key.Info.key, 0);
-					if(name) {
-						text += name;
-					} else {
-						text += "???";
-					}
-					break;
+			if(key.Info.key == SDL_SCANCODE_UNKNOWN) {
+				text += "none";
+			} else {
+				auto name = SDL_GetScancodeName(key.Info.key);
+				if(name) {
+					text += name;
+				} else {
+					text += "???";
+				}
 			}
 		}
 		text += "###" + std::to_string(i);
@@ -115,40 +80,36 @@ void Mapper::ShowEditWindow() {
 
 bool Mapper::GetKey(int id) {
 	assert(keyMap.count(id));
-	return find(keyHold, keyMap[id].Reg);
+	return find(keyHold, keyMap[id]);
 }
 
 bool Mapper::GetKeyDown(int id) {
 	assert(keyMap.count(id));
-	return find(keyDown, keyMap[id].Reg);
+	return find(keyDown, keyMap[id]);
 }
 
 bool Mapper::GetKeyUp(int id) {
 	assert(keyMap.count(id));
-	return find(keyUp, keyMap[id].Reg);
+	return find(keyUp, keyMap[id]);
 }
 
-void Mapper::OnKey(int key, int scancode, int action, int mods) {
-	if(key >= GLFW_KEY_LAST) {
-		return;
-	}
+void Mapper::HandleKeyDown(const SDL_KeyboardEvent& event) {
+	if(event.repeat) return;
 
-	Key k { key, mods };
-
-	// TODO: somehow get keys from other viewports?
-	if(action == GLFW_PRESS) {
-		keyDown.push_back(k.Reg);
-		keyHold.push_back(k.Reg);
-	} else if(action == GLFW_RELEASE) {
-		keyUp.push_back(k.Reg);
-		keyHold.erase(std::remove(keyHold.begin(), keyHold.end(), k.Reg), keyHold.end());	
-	}
+	Key key { event.scancode, event.mod & (SDL_KMOD_CTRL | SDL_KMOD_SHIFT | SDL_KMOD_ALT) };
+	keyDown.push_back(key);
+	keyHold.push_back(key);
+}
+void Mapper::HandleKeyUp(const SDL_KeyboardEvent& event) {
+	Key key { event.scancode, event.mod & (SDL_KMOD_CTRL | SDL_KMOD_SHIFT | SDL_KMOD_ALT) };
+	keyUp.push_back(key);
+	keyHold.erase(std::remove_if(keyHold.begin(), keyHold.end(), [key](const Key& k) { return k.Info.key == key.Info.key; }), keyHold.end());
 }
 
 void Mapper::Load(const nlohmann::json& j) {
 	std::map<std::string, std::map<std::string, int>> temp = j["keymap"];
 
-	for (size_t i = 0; i < mappers.size(); i++) {
+	for(size_t i = 0; i < mappers.size(); i++) {
 		auto mapper = mappers[i];
 		auto& items = temp[mapperNames[i]];
 
@@ -164,7 +125,7 @@ void Mapper::Save(nlohmann::json& j) {
 	std::map<std::string, std::map<std::string, int>> temp;
 
 	std::map<std::string, int> keys;
-	for (size_t i = 0; i < mappers.size(); i++) {
+	for(size_t i = 0; i < mappers.size(); i++) {
 		auto mapper = mappers[i];
 		keys.clear();
 

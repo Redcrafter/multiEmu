@@ -3,22 +3,21 @@
 #include <deque>
 #include <thread>
 
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_opengl.h>
+#define SDL_MAIN_USE_CALLBACKS
+#include <SDL3/SDL_main.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
+#include <backends/imgui_impl_opengl3.h>
+#include <backends/imgui_impl_sdl3.h>
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include <backends/imgui_impl_glfw.h>
-#include <backends/imgui_impl_opengl3.h>
-
-#include "nativefiledialog/nfd.h"
-
-#include "Input.h"
-
-#include "imguiWindows/imgui_memory_editor.h"
+#include "imgui_memory_editor.h"
 // #include "imguiWindows/imgui_tas_editor.h"
 
+#include "Input.h"
 #include "audio.h"
 #include "fs.h"
 #include "logger.h"
@@ -44,14 +43,18 @@ enum class Action {
 	Maximise
 };
 
-GLFWwindow* window;
+SDL_Window* g_window;
+SDL_GLContext gl_context;
 
 std::unique_ptr<ICore> emulationCore;
+
+std::chrono::steady_clock::time_point lastMouseMove;
 
 int selectedSaveState = 0;
 std::array<nlohmann::json, 10> saveStates;
 
 MemoryEditor memEdit;
+int memEdit_domain;
 
 bool settingsWindow = false;
 bool metricsWindow = false;
@@ -63,13 +66,16 @@ bool step = false;
 bool isFullscreen = false;
 bool menuBarOpen = false;
 
-static ImVec2 CalcWindowSize() {
-	// ImVec2 size = (emulationCore ? emulationCore->GetSize() : ImVec2(292, 240)) * Settings::windowScale;
-	auto size = ImVec2(292, 240) * Settings::windowScale;
+bool shouldQuit = false;
 
+static ImVec2 CalcWindowSize() {
+	ImVec2 size = ImVec2(292, 240);
+	if(emulationCore) {
+		size = emulationCore->GetSize();
+	}
+	size *= Settings::windowScale;
 	if(!Settings::AutoHideMenu) {
-		auto w = ImGui::FindWindowByName("##MainMenuBar");
-		size.y += w->MenuBarHeight();
+		size.y += ImGui::GetFrameHeight();
 	}
 	return size;
 }
@@ -79,7 +85,7 @@ static void LoadCore(const std::string& path) {
 	if(emulationCore == nullptr || typeid(*emulationCore) != typeid(T)) {
 		emulationCore = std::make_unique<T>();
 		auto s = CalcWindowSize();
-		glfwSetWindowSize(window, s.x, s.y);
+		SDL_SetWindowSize(g_window, s.x, s.y);
 	}
 	try {
 		emulationCore->LoadRom(path);
@@ -88,7 +94,9 @@ static void LoadCore(const std::string& path) {
 
 		running = true;
 	} catch(std::exception& e) {
+		emulationCore = nullptr;
 		logger.LogScreen("Failed to load ROM: %s", e.what());
+		return;
 	}
 
 	// Load savestates
@@ -205,25 +213,20 @@ static void HelpMarker(const char* desc) {
 	}
 }
 
-static Input::Mapper hotkeys ("hotkeys", {
-	{ "Speedup",		 0, { GLFW_KEY_Q,           0 } },
-	{ "Step",			 1, { GLFW_KEY_F,           0 } },
-	{ "ResumeRun",		 2, { GLFW_KEY_G,           0 } },
-	{ "Reset",			 3, { GLFW_KEY_R,           0 } },
-	{ "HardReset",		 4, { 0,                    0 } },
-	{ "SaveState",		 5, { GLFW_KEY_K,           0 } },
-	{ "LoadState",		 6, { GLFW_KEY_L,           0 } },
-	{ "SelectNextState", 7, { GLFW_KEY_KP_ADD,      0 } },
-	{ "SelectLastState", 8, { GLFW_KEY_KP_SUBTRACT, 0 } },
-	{ "Maximise",		 9, { GLFW_KEY_F11,         0 } } 
+// clang-format off
+static Input::Mapper hotkeys("hotkeys", {
+	{ "Speedup",		 0, { SDL_SCANCODE_Q,        0 } },
+	{ "Step",			 1, { SDL_SCANCODE_F,        0 } },
+	{ "ResumeRun",		 2, { SDL_SCANCODE_G,        0 } },
+	{ "Reset",			 3, { SDL_SCANCODE_UNKNOWN,  0 } },
+	{ "HardReset",		 4, { SDL_SCANCODE_R,        0 } },
+	{ "SaveState",		 5, { SDL_SCANCODE_K,        0 } },
+	{ "LoadState",		 6, { SDL_SCANCODE_L,        0 } },
+	{ "SelectNextState", 7, { SDL_SCANCODE_KP_PLUS,  0 } },
+	{ "SelectLastState", 8, { SDL_SCANCODE_KP_MINUS, 0 } },
+	{ "Maximise",		 9, { SDL_SCANCODE_F11,      0 } },
 });
-
-static void onKey(GLFWwindow* window, int key, int scancode, int action, int mods) {
-	Input::Mapper::OnKey(key, scancode, action, mods);
-	if(action == GLFW_PRESS && key == GLFW_KEY_F12) {
-		metricsWindow = !metricsWindow;
-	}
-}
+// clang-format on
 
 static void handleGuiInput() {
 	if(hotkeys.GetKeyDown((int)Action::Speedup)) speedUp = !speedUp;
@@ -253,35 +256,9 @@ static void handleGuiInput() {
 	}
 
 	if(hotkeys.GetKeyDown((int)Action::Maximise)) {
-		if(!isFullscreen) {
-			isFullscreen = true;
-
-			const auto monitor = glfwGetPrimaryMonitor();
-			const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-			glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-		} else {
-			isFullscreen = false;
-
-			auto s = CalcWindowSize();
-			glfwSetWindowMonitor(window, nullptr, 50, 50, s.x, s.y, 60);
-		}
+		isFullscreen = !isFullscreen;
+		SDL_SetWindowFullscreen(g_window, isFullscreen);
 	}
-}
-
-static void onResize(GLFWwindow* window, int width, int height) {
-	glViewport(0, 0, width, height);
-}
-
-static void onDrop(GLFWwindow* window, int count, const char** paths) {
-	if(!is_regular_file(fs::path(paths[0]))) {
-		return;
-	}
-
-	OpenFile(paths[0]);
-}
-
-static void onGlfwError(int error, const char* description) {
-	logger.Log("Glfw Error: %d: %s\n", error, description);
 }
 
 static void drawSettings() {
@@ -292,7 +269,7 @@ static void drawSettings() {
 		if(ImGui::BeginTabBar("tabBar")) {
 			if(ImGui::BeginTabItem("General")) {
 				if(ImGui::Checkbox("Vsync", &Settings::EnableVsync)) {
-					glfwSwapInterval(Settings::EnableVsync);
+					SDL_GL_SetSwapInterval(Settings::EnableVsync);
 					Settings::Save();
 				}
 
@@ -300,16 +277,13 @@ static void drawSettings() {
 					Settings::Save();
 				}
 
-                if(ImGui::Checkbox("Render game in own ImGui window", &Settings::GameInWindow)) {
+				if(ImGui::Checkbox("Render game in own ImGui window", &Settings::GameInWindow)) {
 					Settings::Save();
-                }
+				}
 
-				int val = Settings::windowScale - 1;
-				static const char* drawModeNames[] = { "x1", "x2", "x3", "x4" };
-				if(ImGui::Combo("DrawMode", &val, drawModeNames, 4)) {
-					Settings::windowScale = val + 1;
+				if(ImGui::SliderInt("Screen Scale", &Settings::windowScale, 1, 16)) {
 					auto s = CalcWindowSize();
-					glfwSetWindowSize(window, s.x, s.y);
+					SDL_SetWindowSize(g_window, s.x, s.y);
 					Settings::Save();
 				}
 				ImGui::EndTabItem();
@@ -327,20 +301,18 @@ static void drawSettings() {
 }
 
 static void drawMemoryEditor() {
-	static int selectedDomain = 0;
-
 	if(!emulationCore || !memEdit.Open) return;
 	const auto& domains = emulationCore->GetMemoryDomains();
-	if(selectedDomain > domains.size()) selectedDomain = 0;
+	if(memEdit_domain > domains.size()) memEdit_domain = 0;
 
-	memEdit.ReadFn = [](const ImU8* mem, size_t off, void* user_data) { 
-		return (ImU8)emulationCore->ReadMemory(selectedDomain, off);
+	memEdit.ReadFn = [](const ImU8* mem, size_t off, void* user_data) {
+		return (ImU8)emulationCore->ReadMemory(memEdit_domain, off);
 	};
 	memEdit.WriteFn = [](ImU8* mem, size_t off, ImU8 d, void* user_data) {
-		emulationCore->WriteMemory(selectedDomain, off, d);
+		emulationCore->WriteMemory(memEdit_domain, off, d);
 	};
 
-	auto mem_size = domains[selectedDomain].Size;
+	auto mem_size = domains[memEdit_domain].Size;
 
 	MemoryEditor::Sizes s;
 	memEdit.CalcSizes(s, mem_size, 0);
@@ -352,20 +324,29 @@ static void drawMemoryEditor() {
 			if(ImGui::BeginMenu("Memory Domain")) {
 				for(auto& domain : domains) {
 					if(ImGui::MenuItem(domain.Name.c_str())) {
-						selectedDomain = domain.Id;
+						memEdit_domain = domain.Id;
 					}
 				}
 				ImGui::EndMenu();
 			}
 
 			if(ImGui::MenuItem("Export")) {
-				std::string path;
-				NFD::SaveDialog({}, "./", path, (GLFWwindow*)ImGui::GetMainViewport()->PlatformHandle);
+				SDL_ShowSaveFileDialog([](void* userdata, const char* const* filelist, int filter) {
+					if(filelist == nullptr) {
+						logger.LogScreen("Error saving: %s", SDL_GetError());
+						return;
+					}
+					if(filelist[0] == nullptr) return;
 
-				std::ofstream file { path, std::ios::binary };
-				for(size_t i = 0; i < mem_size; i++) {
-					file.put(memEdit.ReadFn(nullptr, i, memEdit.UserData));
-				}
+					const auto& domains = emulationCore->GetMemoryDomains();
+					auto mem_size = domains[memEdit_domain].Size;
+
+					std::ofstream file { filelist[0], std::ios::binary };
+					for(size_t i = 0; i < mem_size; i++) {
+						file.put(emulationCore->ReadMemory(memEdit_domain, i));
+					}
+				},
+					nullptr, g_window, nullptr, 0, "./");
 			}
 
 			ImGui::EndMenuBar();
@@ -381,7 +362,7 @@ static void drawMemoryEditor() {
 }
 
 static void drawGui() {
-	if((menuBarOpen || glfwGetWindowAttrib(window, GLFW_HOVERED) || !Settings::AutoHideMenu) && ImGui::BeginMainMenuBar()) {
+	if((menuBarOpen || !Settings::AutoHideMenu || (((SDL_GetWindowFlags(g_window) & SDL_WINDOW_MOUSE_FOCUS) != 0) && (std::chrono::steady_clock::now() - lastMouseMove) < std::chrono::seconds(2))) && ImGui::BeginMainMenuBar()) {
 		menuBarOpen = false;
 		const auto enabled = emulationCore != nullptr;
 
@@ -389,17 +370,23 @@ static void drawGui() {
 			menuBarOpen = true;
 
 			if(ImGui::MenuItem("Open ROM", "CTRL+O")) {
-				std::string outPath;
-				const auto res = NFD::OpenDialog({ 
-					{ "Rom Files", { "nes", "nsf", "ch8" } },
-					{ "NES", { "nes", "nsf" } },
-					{ "CHIP-8", { "ch8" } },
-					{ "Gameboy", { "gb", "gbc", "gbs" } }
-					}, nullptr, outPath, window);
+				SDL_DialogFileFilter filters[] = {
+					{ "Rom Files", "nes;nsf;ch8;gb;gbc;gbs" },
+					{ "NES", "nes;nsf" },
+					{ "CHIP-8", "ch8" },
+					{ "Gameboy", "gb;gbc;gbs" },
+					{ "All files", "*" }
+				};
+				SDL_ShowOpenFileDialog([](void* userdata, const char* const* filelist, int filter) {
+					if(filelist == nullptr) {
+						logger.LogScreen("Error saving: %s", SDL_GetError());
+						return;
+					}
+					if(filelist[0] == nullptr) return;
 
-				if(res == NFD::Result::Okay) {
-					OpenFile(outPath);
-				}
+					OpenFile(filelist[0]);
+				},
+					nullptr, g_window, filters, sizeof(filters) / sizeof(filters[0]), "./", false);
 			}
 			if(ImGui::BeginMenu("Recent ROMs")) {
 				if(!Settings::RecentFiles.empty()) {
@@ -461,7 +448,7 @@ static void drawGui() {
 
 			ImGui::Separator();
 			if(ImGui::MenuItem("Exit", "Alt+F4")) {
-				glfwSetWindowShouldClose(window, true);
+				shouldQuit = true;
 			}
 
 			ImGui::EndMenu();
@@ -473,6 +460,7 @@ static void drawGui() {
 			bool paused = !running;
 			ImGui::Checkbox("Pause", &paused);
 			running = !paused;
+			ImGui::Checkbox("Fast Forward", &speedUp);
 
 			ImGui::Separator();
 
@@ -532,43 +520,60 @@ static void drawGui() {
 	emulatorPicker.Draw();
 }
 
-int main(int argc, char* argv[]) {
+SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv) {
+	memEdit.Open = false;
+
+	// Benchmark();
+	// exit(1);
+	// return SDL_APP_SUCCESS;
+
+	#pragma region SDL Setup
+
+	if(!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO)) {
+		printf("Error: SDL_Init(): %s\n", SDL_GetError());
+		return SDL_APP_FAILURE;
+	}
+
 	Settings::Load();
 	Audio::Init();
 
-	#pragma region glfw Init
-	glfwSetErrorCallback(onGlfwError);
-	if(!glfwInit()) {
-		logger.Log("Failed to initialize GLFW\n");
-		return -1;
-	}
-
-	glfwWindowHint(GLFW_SAMPLES, 4);			   // 4x antialiasing
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3); // We want OpenGL 3.3
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3); //
-	#ifdef __APPLE__
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
+	#if defined(__APPLE__)
+	// GL 3.2 Core + generally GLSL 150
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+	#else
+	// GL 3.0 + generally GLSL 130
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 	#endif
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL
 
-	// TODO: glfwWindowHint(GLFW_DECORATED, false);
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-	auto s = ImVec2(256, 256) * Settings::windowScale;
-	// Open a window and create its OpenGL context
-	window = glfwCreateWindow(s.x, s.y, "multiEmu", nullptr, nullptr);
-	if(window == nullptr) {
-		glfwTerminate();
-		return -1;
+	float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+	SDL_WindowFlags window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+	g_window = SDL_CreateWindow("Dear ImGui SDL3+OpenGL3 example", (int)(1280 * main_scale), (int)(800 * main_scale), window_flags);
+	if(g_window == nullptr) {
+		printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
+		return SDL_APP_FAILURE;
 	}
-	glfwMakeContextCurrent(window);
-	glfwSwapInterval(Settings::EnableVsync);
 
-	// Ensure we can capture the escape key being pressed below
-	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+	gl_context = SDL_GL_CreateContext(g_window);
+	if(gl_context == nullptr) {
+		printf("Error: SDL_GL_CreateContext(): %s\n", SDL_GetError());
+		return SDL_APP_FAILURE;
+	}
 
-	glfwSetKeyCallback(window, onKey); // TODO: support controllers
-	glfwSetWindowSizeCallback(window, onResize);
-	glfwSetDropCallback(window, onDrop);
+	SDL_GL_MakeCurrent(g_window, gl_context);
+	SDL_GL_SetSwapInterval(Settings::EnableVsync); // Enable vsync
+	SDL_SetWindowPosition(g_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+	SDL_ShowWindow(g_window);
+
 	#pragma endregion
 
 	#pragma region ImGui Init
@@ -578,60 +583,69 @@ int main(int argc, char* argv[]) {
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	// io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	// io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	// io.ConfigViewportsNoAutoMerge = true;
+	// io.ConfigViewportsNoTaskBarIcon = true;
 
 	// Setup Dear ImGui style
 	ImGui::StyleColorsDark();
 
+	// Setup scaling
+	ImGuiStyle& style = ImGui::GetStyle();
+	style.ScaleAllSizes(main_scale);   // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
+	style.FontScaleDpi = main_scale;   // Set initial font scale. (in docking branch: using io.ConfigDpiScaleFonts=true automatically overrides this for every window depending on the current monitor)
+	io.ConfigDpiScaleFonts = true;	   // [Experimental] Automatically overwrite style.FontScaleDpi in Begin() when Monitor DPI changes. This will scale fonts but _NOT_ scale sizes/padding for now.
+	io.ConfigDpiScaleViewports = true; // [Experimental] Scale Dear ImGui and Platform Windows when Monitor DPI changes.
+
+	if(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+		style.WindowRounding = 0.0f;
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+	}
+
 	// Setup Platform/Renderer bindings
-	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplSDL3_InitForOpenGL(g_window, gl_context);
 	ImGui_ImplOpenGL3_Init();
 	#pragma endregion
 
-	onResize(window, s.x, s.y);
+	return SDL_APP_CONTINUE;
+}
 
-	auto lastTime = glfwGetTime();
+SDL_AppResult SDL_AppIterate(void* appstate) {
+	if(shouldQuit) return SDL_APP_SUCCESS;
+	ImGuiIO& io = ImGui::GetIO();
 
-	#pragma region render loop
-	do {
-		#pragma region Timing
-		auto time = glfwGetTime();
-		auto dt = time - lastTime;
+	// Start the Dear ImGui frame
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplSDL3_NewFrame();
+	ImGui::NewFrame();
 
-		// if vsync is enabled glfw will wait in glfwPollEvents
-		if(!Settings::EnableVsync) {
-			// otherwise we have to manually time the render loop
-			if(dt >= 2 / 60.0) {
-				// dropped frame
-				// too much drift so we reset the timer
-				lastTime = time;
-				logger.Log("Dropped frame\n");
-			} else if(dt >= 1 / 60.0) {
-				// add time for 1 frame to stabilize framerate
-				lastTime += 1 / 60.0;
-			} else {
-				// sleep for rest of frame
-				std::this_thread::sleep_for(std::chrono::microseconds((int)((1 / 60.0 - dt) * std::micro::den)));
-				continue;
-			}
+	static auto lastTime = std::chrono::high_resolution_clock::now();
+
+	auto now = std::chrono::high_resolution_clock::now();
+	auto dt = now - lastTime;
+
+	// might change for different systems
+	const int targetFramerate = 60;
+	auto frameTime = std::chrono::duration_cast<std::chrono::high_resolution_clock::duration>(std::chrono::duration<double>(1.0 / targetFramerate));
+
+	// otherwise we have to manually time the render loop
+	if(dt >= frameTime) {
+		if(dt >= 2 * frameTime) {
+			// dropped frame
+			// too much drift so we reset the timer
+			lastTime = now;
+			logger.Log("Dropped frame\n");
 		} else {
-			if(dt >= 2 / 60.0) {
-				logger.Log("Dropped frame\n");
-			}
-			lastTime = time;
+			lastTime += frameTime;
 		}
-		#pragma endregion
 
-		glClear(GL_COLOR_BUFFER_BIT);
-
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-
-		if((running || step) && emulationCore != nullptr) {
+		if(emulationCore != nullptr && (running || step)) {
 			if(speedUp) {
-				for(size_t i = 1; i < 5; i++) {
+				auto start = std::chrono::high_resolution_clock::now();
+
+				// run as many ticks as possible in 12 milliseconds
+				while((std::chrono::high_resolution_clock::now() - start) < std::chrono::milliseconds(12)) {
 					emulationCore->Update();
 				}
 			} else {
@@ -640,42 +654,80 @@ int main(int argc, char* argv[]) {
 			Audio::Resample();
 			step = false;
 		}
-		handleGuiInput();
-		drawGui();
+        handleGuiInput();
+        Input::Mapper::NewFrame();
+	}
 
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	drawGui();
 
-		if(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-			GLFWwindow* backup_current_context = glfwGetCurrentContext();
-			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault();
-			glfwMakeContextCurrent(backup_current_context);
+
+	// Rendering
+	ImGui::Render();
+	glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+	glClearColor(0, 0, 0, 1);
+	glClear(GL_COLOR_BUFFER_BIT);
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+	// Update and Render additional Platform Windows
+	// (Platform functions may change the current OpenGL context, so we save/restore it to make it easier to paste this code elsewhere.
+	//  For this specific demo app we could also call SDL_GL_MakeCurrent(window, gl_context) directly)
+	if(io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
+		SDL_Window* backup_current_window = SDL_GL_GetCurrentWindow();
+		SDL_GLContext backup_current_context = SDL_GL_GetCurrentContext();
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+		SDL_GL_MakeCurrent(backup_current_window, backup_current_context);
+	}
+
+	SDL_GL_SwapWindow(g_window);
+	return SDL_APP_CONTINUE;
+}
+
+SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event) {
+	ImGui_ImplSDL3_ProcessEvent(event);
+
+	if(event->type == SDL_EVENT_QUIT)
+		return SDL_APP_SUCCESS;
+
+	// main window
+	if(event->key.windowID == SDL_GetWindowID(g_window)) {
+		if(event->type == SDL_EVENT_MOUSE_MOTION) {
+			lastMouseMove = std::chrono::steady_clock::now();
+		}
+		if(event->type == SDL_EVENT_DROP_FILE) {
+			logger.Log("SDL_EVENT_DROP_FILE %s %s\n", event->drop.source, event->drop.data);
+
+			if(event->drop.data != nullptr) {
+				OpenFile(event->drop.data);
+			}
 		}
 
-		Input::Mapper::NewFrame();
+		if(event->type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
+			return SDL_APP_SUCCESS;
+		if(event->type == SDL_EVENT_KEY_DOWN) {
+			Input::Mapper::HandleKeyDown(event->key);
+		}
+		if(event->type == SDL_EVENT_KEY_UP) {
+			Input::Mapper::HandleKeyUp(event->key);
 
-		glfwSwapBuffers(window);
-		glfwWaitEventsTimeout(0.007);
-	} while(glfwWindowShouldClose(window) == 0);
-	#pragma endregion
+			if(event->key.scancode == SDL_SCANCODE_F12) {
+				metricsWindow = !metricsWindow;
+			}
+		}
+	}
 
-	Settings::Save();
+	return SDL_APP_CONTINUE;
+}
+
+void SDL_AppQuit(void* appstate, SDL_AppResult result) {
 	Audio::Dispose();
+	Settings::Save();
 
 	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplGlfw_Shutdown();
+	ImGui_ImplSDL3_Shutdown();
 	ImGui::DestroyContext();
 
-	glfwDestroyWindow(window);
-	glfwTerminate();
-
-	return 0;
+	SDL_GL_DestroyContext(gl_context);
+	SDL_DestroyWindow(g_window);
+	SDL_Quit();
 }
-
-#ifdef _WIN32
-#include <windows.h>
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-	return main(__argc, __argv);
-}
-#endif

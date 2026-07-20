@@ -7,7 +7,10 @@
 #include <imgui_internal.h>
 
 #include "../../../logger.h"
-#include "../../../nativefiledialog/nfd.h"
+
+#include <SDL3/SDL_dialog.h>
+
+extern SDL_Window* g_window;
 
 namespace Nes {
 
@@ -408,11 +411,17 @@ void DisassemblerWindow::DrawWindow() {
 			// ImGui::Checkbox("Display jumps", &displayJumps);
 
 			if(ImGui::MenuItem("Export")) {
-				std::string path;
-				NFD::SaveDialog({  }, "./", path, (GLFWwindow*)ImGui::GetMainViewport()->PlatformHandle);
-				save(path);
+				SDL_ShowSaveFileDialog([](void* userdata, const char* const* filelist, int filter) {
+					if(filelist == nullptr) {
+						logger.LogScreen("Error saving: %s", SDL_GetError());
+						return;
+					}
+					if(filelist[0] == nullptr) return;
+
+					((DisassemblerWindow*)userdata)->save(filelist[0]);
+				}, this, g_window, nullptr, 0, "./");
 			}
-			
+
 			ImGui::EndMenu();
 		}
 

@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <map>
 
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL_events.h>
 
 #include <nlohmann/json.hpp>
 
@@ -10,14 +10,14 @@ namespace Input {
 
 union Key {
 	struct {
-		int key;
-		int mods;
+		SDL_Scancode key;
+		SDL_Keymod mods;
 	} Info;
 	uint64_t Reg;
 
 	Key() = default;
 	Key(uint64_t Reg) : Reg(Reg) {}
-	Key(int key, int mods) : Info({ key, mods }) {}
+	Key(SDL_Scancode key, SDL_Keymod mods) : Info({ key, mods }) {}
 
 	bool operator==(const Key& other) const {
 		return Reg == other.Reg;
@@ -33,9 +33,6 @@ struct InputItem {
 
 class Mapper {
   private:
-	inline static std::vector<const char*> mapperNames;
-	inline static std::vector<Mapper*> mappers;
-
 	std::map<int, Key> keyMap;
 	std::vector<InputItem> items;
 
@@ -50,7 +47,8 @@ class Mapper {
 	bool GetKeyDown(int id);
 	bool GetKeyUp(int id);
 
-	static void OnKey(int key, int scancode, int action, int mods);
+	static void HandleKeyDown(const SDL_KeyboardEvent& event);
+	static void HandleKeyUp(const SDL_KeyboardEvent& event);
 
 	static void Load(const nlohmann::json& j);
 	static void Save(nlohmann::json& j);

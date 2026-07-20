@@ -5,6 +5,12 @@
 
 #include <imgui.h>
 
+// #include <SDL3/SDL_dialog.h>
+
+// #include "../../logger.h"
+
+// extern SDL_Window* g_window;
+
 namespace Chip8 {
 
 static void displayInstruction(const Element& el) {
@@ -171,9 +177,16 @@ void DisassemblerWindow::DrawWindow() {
 				// ImGui::Checkbox("Display jumps", &displayJumps);
 
 				if(ImGui::MenuItem("Export")) {
-					std::string path;
-					NFD::SaveDialog({}, "./", path, (GLFWwindow*)ImGui::GetMainViewport()->PlatformHandle);
-					save(path);
+					SDL_Window* window = nullptr;
+					SDL_ShowSaveFileDialog([](void* userdata, const char* const* filelist, int filter) {
+						if(filelist == nullptr) {
+							logger.LogScreen("Error saving: %s", SDL_GetError());
+							return;
+						}
+						if(filelist[0] == nullptr) return;
+
+						((DisassemblerWindow*)userdata)->save(filelist[0]);
+					}, this, window, nullptr, 0, "./");
 				}
 
 				ImGui::EndMenu();
@@ -183,7 +196,7 @@ void DisassemblerWindow::DrawWindow() {
 		}
 
 		ImGui::Text("PC = %04X  I: %04X", chip8.PC, chip8.I);
-		for (int i = 0; i < 16; i++) {
+		for(int i = 0; i < 16; i++) {
 			if(i > 0 && i != 8) ImGui::SameLine();
 			ImGui::Text("V%X: %02X", i, chip8.V[i]);
 		}
@@ -214,7 +227,7 @@ void DisassemblerWindow::DrawWindow() {
 			ImGui::EndTable();
 		}
 
-        ImGui::EndChild();
+		ImGui::EndChild();
 	}
 
 	ImGui::End();

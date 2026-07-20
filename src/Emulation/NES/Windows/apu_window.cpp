@@ -147,7 +147,7 @@ void ApuWindow::DrawTriangle() const {
 		DrawList->PathLineTo(ImVec2(inner_bb.Max.x, inner_bb.Min.y));
 	}
 
-	DrawList->PathStroke(lineColor, false, 2);
+	DrawList->PathStroke(lineColor, 2.0f, ImDrawFlags_None);
 }
 void ApuWindow::DrawNoise() const {
 	const int available = apu->lastBufferPos;
@@ -178,7 +178,7 @@ void ApuWindow::DrawNoise() const {
 	}
 
 	DrawList->PathLineTo(ImVec2(inner_bb.Max.x, lastY));
-	DrawList->PathStroke(ImGui::GetColorU32(ImVec4(1, 1, 1, 1)), false, 1);
+	DrawList->PathStroke(ImGui::GetColorU32(ImVec4(1, 1, 1, 1)), 1.0f, ImDrawFlags_None);
 }
 void ApuWindow::DrawDMC() const {
 	const int available = apu->lastBufferPos;
@@ -210,7 +210,7 @@ void ApuWindow::DrawDMC() const {
 	}
 
 	DrawList->PathLineTo(ImVec2(inner_bb.Max.x, lastY));
-	DrawList->PathStroke(ImGui::GetColorU32(ImVec4(1, 1, 1, 1)), false, 1);
+	DrawList->PathStroke(ImGui::GetColorU32(ImVec4(1, 1, 1, 1)), 1.0f, ImDrawFlags_None);
 }
 
 void ApuWindow::DrawVrc6Pulse(const vrc6Pulse& pulse, const char* label) const {
@@ -229,7 +229,7 @@ void ApuWindow::DrawVrc6Pulse(const vrc6Pulse& pulse, const char* label) const {
 		// Width of one duty cycle
 		float w = width * (pulse.timerPeriod * 16.0 / cyclesPerFrame);
 		// Height based on volume
-		float h = inner_bb.Min.y + (height / 15.0) * pulse.Volume;
+		float h = inner_bb.Min.y + (height / 15.0) * pulse.volume;
 
 		// current x
 		float x = inner_bb.Min.x;
@@ -270,7 +270,7 @@ void ApuWindow::DrawVrc6Pulse(const vrc6Pulse& pulse, const char* label) const {
 		DrawList->PathLineTo(ImVec2(inner_bb.Max.x, inner_bb.Min.y));
 	}
 
-	DrawList->PathStroke(lineColor, false, 2);
+	DrawList->PathStroke(lineColor, 2.0f, ImDrawFlags_None);
 }
 void ApuWindow::DrawVrc6Saw() const {
 	const auto& saw = apu->vrc6Saw;
@@ -314,7 +314,7 @@ void ApuWindow::DrawVrc6Saw() const {
 	}
 
 end:
-	DrawList->PathStroke(lineColor, false, 2);
+	DrawList->PathStroke(lineColor, 2.0f, ImDrawFlags_None);
 }
 
 ApuWindow::ApuWindow(std::string title) : Title(std::move(title)) {}

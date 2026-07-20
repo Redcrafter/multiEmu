@@ -2,7 +2,7 @@
 #include <cassert>
 #include <vector>
 
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL_opengl.h>
 
 struct Color {
 	uint8_t R, G, B;

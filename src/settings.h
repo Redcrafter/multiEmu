@@ -5,9 +5,9 @@
 namespace Settings {
 
 // bug: stops working when switching to fullscreen
-inline bool EnableVsync = false;
+inline bool EnableVsync = true;
 inline bool AutoHideMenu = true;
-inline int windowScale = 2;
+inline int windowScale = 4;
 inline std::deque<std::string> RecentFiles;
 inline bool GameInWindow = false;
 

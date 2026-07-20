@@ -744,20 +744,29 @@ void RP2A03::ClockLength() {
 void RP2A03::GenerateSample() {
 	auto& buf = waveBuffer[bufferPos];
 
+    // [0, 15]
 	if(noise.enabled && noise.lengthCounter > 0 && (noise.shiftRegister & 1) == 0) {
 		buf.noise = noise.envelopeEnabled ? noise.constantVolume : noise.envelopeVolume;
 	} else {
 		buf.noise = 0;
 	}
 
+    // [0, 127]
 	buf.dmc = dmc.value;
 
-	float tnd_out = 159.79f / (1.0f / (triangleTable[triangle.dutyValue] / 8227.0f + buf.noise / 12241.0f + (dmc.value / 22638.0f)) + 100);
+    // [0, 0.741516245148]
+	float tnd_out = 159.79f / (1.0f / ((triangleTable[triangle.dutyValue] / 8227.0f) + (buf.noise / 12241.0f) + (dmc.value / 22638.0f)) + 100);
+    // [0, 0.258483105679]
 	float pulse_out = 95.88f / (8128.0f / (pulse1.Output() + pulse2.Output()) + 100);
-	float output = tnd_out + pulse_out;
+	float output = tnd_out + pulse_out; // between [0, 1]
 
 	if(vrc6) {
-		output += (vrc6Pulse1.Output() + vrc6Pulse2.Output() + vrc6Saw.Output()) / -100.0f;
+        // [0, 15+15+31] = [0, 61]
+        auto sum = vrc6Pulse1.Output() + vrc6Pulse2.Output() + vrc6Saw.Output(); // linear mixing
+
+        // negative and scaled so the pulse channels are roughly the same volume as the default pulse channels
+        // 30 / 0.258483105679
+		output += -sum / 116.0617438466f;
 	}
 
 	Audio::PushSample(output);
