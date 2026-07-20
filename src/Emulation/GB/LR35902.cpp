@@ -310,22 +310,26 @@ void LR35902::Step() {
 #pragma region control/misc
 		case 0x00: break; // NOP
 		case 0x10: // stop
-			if(read(0xFF00) & 0xF != 0xF) {
-				if(!interrupt) {
-					PC++;
+            // is a button currently being pressed
+			if((bus.CpuRead(0xFF00) & 0x0F) != 0x0F) {
+                if(interrupt) {
+                    // 1 byte instruction and nothing happens
+                } else {
+                    read(PC++);
 					state = CpuState::Halt;
 				}
 			} else {
+                // speed switch requested
 				if(bus.speed & 1) {
 					if(interrupt) {
 						if(IME) {
-							// bugged
-						} else {
-							bus.DIV = 0;
+                            bus.DIV = 0;
 							bus.speed = (bus.speed ^ 0x80) & 0xFE;
+						} else {
+							// bugged
 						}
 					} else {
-						PC++;
+                        read(PC++);
 						// unless an interrupt occurs before then HALT mode will exit automatically after about 0x20000 T-cycles
 						state = CpuState::Stop;
 						for(int i = 0; i < 33941; ++i) {
@@ -340,7 +344,8 @@ void LR35902::Step() {
 						bus.DIV = 0;
 					}
 				} else {
-					if(!interrupt) PC++;
+                    // if an interrupt occurs stop is 1 byte
+					if(!interrupt) read(PC++);
 					state = CpuState::Stop;
 					bus.DIV = 0;
 				}

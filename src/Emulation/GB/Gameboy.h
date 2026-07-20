@@ -61,6 +61,7 @@ class Gameboy {
 	uint8_t FF72, FF73, FF74, FF75;
 	uint8_t HDMA1, HDMA2, HDMA3, HDMA4;
 
+    // bit 7 = current speed, bit 0 = switch requested
 	uint8_t speed;
 	uint8_t RP;
 

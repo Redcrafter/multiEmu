@@ -178,7 +178,9 @@ uint8_t Gameboy::CpuRead(uint16_t addr) const {
 					val |= (!inputMapper.GetKey(6)) << 2; // Select
 					val |= (!inputMapper.GetKey(7)) << 3; // Start
 					val |= 0x10;
-				}
+				} else {
+                    val |= 0x0F;
+                }
 				return val | 0xC0;
 			}
 			case 0xFF01: return SB;

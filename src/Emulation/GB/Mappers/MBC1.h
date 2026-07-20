@@ -73,7 +73,7 @@ class MBC1 final : public MBC {
 		saver["mode"] = mode;
 	};
 	void LoadState(const nlohmann::json& saver) override {
-		auto& dat = saver["ram"].get_binary();
+		auto dat = saver["ram"].get<std::vector<uint8_t>>();
 		assert(dat.size() == ramMask + 1);
 		std::memcpy(ram, dat.data(), ramMask + 1);
 		romBank0 = saver["romBank0"];

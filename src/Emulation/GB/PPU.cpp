@@ -72,7 +72,7 @@ struct Sprite {
 void PPU::Clock(int cycles) {
 	if(!Control.lcdEnable) return;
 
-	for(size_t i = 0; i < cycles / 2; i++) {
+	for(int i = 0; i < cycles / 2; i++) {
 		LX += 2;
 		if(LX == 456) {
 			LX = 0;
@@ -323,7 +323,7 @@ void PPU::DrawSprites(bool gbc) {
 
 			auto bg = drawBuffer[x];
 			if(id != 0 && (bg.id == 0 || (!bg.bgPpriority && !s.priority && prio > bg.priority))) {
-				drawBuffer[x] = { id, pal, prio };
+				drawBuffer[x] = { id, pal, prio, false };
 			}
 
 			merged <<= 2;

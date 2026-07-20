@@ -61,7 +61,7 @@ class MBC3 final : public MBC {
 			aSelect = val & 0xF;
 		} else {
 			// 6000-7FFF - Latch Clock Data
-			
+
 			if(!lastTimer && val) {
 				if(!(rtcRegs[4] & 0x40)) {
 					const auto now = std::chrono::system_clock::now();
@@ -100,7 +100,7 @@ class MBC3 final : public MBC {
 						}
 					}
 				}
-				
+
 				passedTime -= seconds;
 			}
 			lastTimer = val != 0;
@@ -139,7 +139,7 @@ class MBC3 final : public MBC {
 		saver["ramEnable"] = ramEnable;
 	}
 	void LoadState(const nlohmann::json& saver) override {
-		auto& dat = saver["ram"].get_binary();
+		auto dat = saver["ram"].get<std::vector<uint8_t>>();
 		assert(dat.size() == ramMask + 1);
 		std::memcpy(ram, dat.data(), ramMask + 1);
 		// std::span(ram, ramMask + 1) = saver["ram"];
