@@ -1,7 +1,5 @@
 #include "VRC6Mapper.h"
 
-#include <ObjectArray.h>
-
 namespace Nes {
 
 static uint8_t Banks[16 * 16]; // which of the 8 chr regs is used to determine the bank here?
@@ -196,6 +194,42 @@ void VRC6Mapper::ppuWrite(uint16_t addr, uint8_t data) {
 	if(addr >= 0x2000 && !NTROM) {
 		vram[mapaddr(addr) & 0x7ff] = data;
 	}
+}
+
+void VRC6Mapper::HardReset() {
+	Mapper::HardReset();
+	prgBankOffset[0] = 0;
+	prgBankOffset[1] = 0;
+	prgBankOffset[2] = 0;
+	prgBankOffset[3] = (prgBanks - 1) * 0x2000; // fixed last bank
+
+    chr_banks_1k.fill(0);
+
+	int idx = 0;
+	for(int b003 = 0; b003 < 16; b003++) {
+		for(int banknum = 0; banknum < 16; banknum++) {
+			uint8_t bank = 0, mask = 0, a10 = 0;
+			GetBankByte(b003, banknum, bank, mask, a10);
+			Banks[idx] = bank;
+			Masks[idx] = mask;
+			A10s[idx] = a10;
+			idx++;
+		}
+	}
+
+    PPUBankingMode = 0;
+	chrA10replace = false;
+	NTROM = false;
+
+	ramEnable = false;
+	prgRam.fill(0);
+
+	irq_enabled = false;
+	irq_mode = false;
+	irq_autoen = false;
+	irq_reload = 0;
+	irq_counter = 0;
+	irq_prescaler = 0;
 }
 
 void VRC6Mapper::CpuClock() {

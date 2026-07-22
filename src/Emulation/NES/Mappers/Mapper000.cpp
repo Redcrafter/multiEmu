@@ -6,7 +6,7 @@ Mapper000::Mapper000(const std::vector<uint8_t>& prg, const std::vector<uint8_t>
 	if(this->prg.size() > 0x8000) {
 		throw std::invalid_argument("Invalid prg size");
 	}
-	if(this->chr.size() > 0x2000 || this->chr.empty()) {
+	if(this->chr.size() > 0x2000) {
 		throw std::invalid_argument("Invalid chr size");
 	}
 }
@@ -30,13 +30,15 @@ uint8_t Mapper000::ppuRead(uint16_t addr, bool readOnly) {
 
 void Mapper000::SaveState(nlohmann::json& saver) const {
 	saver["vram"] = vram;
-	saver["chrRam"] = chrRam;
+	if(chr.empty())
+		saver["chrRam"] = chrRam;
 	saver["Irq"] = Irq;
 }
 
 void Mapper000::LoadState(const nlohmann::json& saver) {
 	vram = saver["vram"];
-	chrRam = saver["chrRam"];
+	if(chr.empty())
+		chrRam = saver["chrRam"];
 	Irq = saver["Irq"];
 }
 

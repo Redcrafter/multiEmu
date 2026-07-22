@@ -62,8 +62,7 @@ NsfFormat::NsfFormat(const std::string& path) {
 const uint16_t NMI_VECTOR = 0x3800;
 const uint16_t RESET_VECTOR = 0x3820;
 
-NsfMapper::NsfMapper(const std::string& path)
-	: Mapper({}, {}), nsf(path) {
+NsfMapper::NsfMapper(const std::string& path) : Mapper({}, {}), nsf(path) {
 	NSFROM[0x12] = nsf.initAddress & 0xFF;
 	NSFROM[0x13] = nsf.initAddress >> 8;
 	NSFROM[0x19] = nsf.playAddress & 0xFF;
@@ -76,7 +75,6 @@ NsfMapper::NsfMapper(const std::string& path)
 		if(bank >= (nsf.length >> 12))
 			bank = 0;
 
-		InitBankSwitches[i] = bank;
 		prg_banks_4k[i] = bank;
 		if(bank != 0)
 			BankSwitched = true;
@@ -163,7 +161,9 @@ bool NsfMapper::cpuWrite(uint16_t addr, uint8_t data) {
 uint8_t NsfMapper::ppuRead(uint16_t addr, bool readOnly) {
 	if(addr >= 0x2000) { // 0x2000 - 0x3EFF
 		return vram[mapMirrorAddress(mirror, addr)];
-	}
+	} else {
+        return 0;
+    }
 }
 
 void NsfMapper::SaveState(nlohmann::json& saver) const {}

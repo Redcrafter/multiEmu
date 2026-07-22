@@ -18,7 +18,7 @@ class Mapper004 final : public Mapper {
 		uint8_t reg = 0; // unsepcified
 	} bankSelect;
 
-	uint8_t regs[8] { 0, 2, 4, 5, 6, 7, 0, 1 };
+	std::array<uint8_t, 8> regs { 0, 2, 4, 5, 6, 7, 0, 1 };
 
 	std::array<uint32_t, 4> prgBankOffset;
 	std::array<uint32_t, 8> chrBankOffset;
@@ -49,6 +49,20 @@ class Mapper004 final : public Mapper {
 	void LoadState(const nlohmann::json& saver) override;
 
 	void MapSaveRam(const std::string& path) override;
+
+    void HardReset() override {
+		Mapper::HardReset();
+
+        bankSelect.reg = 0;
+		regs = { 0, 2, 4, 5, 6, 7, 0, 1 };
+		prgBankOffset.fill(0);
+		chrBankOffset.fill(0);
+		reloadIrq = false;
+		irqEnable = false;
+		lastA12 = false;
+		irqCounter = 0;
+		irqLatch = 0;
+	}
 
   private:
 	void UpdateRegs();

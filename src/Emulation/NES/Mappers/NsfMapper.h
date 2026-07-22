@@ -49,21 +49,15 @@ class NsfMapper final : public Mapper {
   private:
 	// Whether the NSF is bankswitched
 	bool BankSwitched;
-	// the bankswitch values to be used before the INIT routine is called
-	uint8_t InitBankSwitches[8];
 	// An image of the entire PRG space where the unmapped files are located
 	uint8_t FakePRG[32768];
 
 	// PRG bankswitching
-	int prg_banks_4k[8];
+	std::array<uint8_t, 8> prg_banks_4k;
 	// whether vectors are currently patched. they should not be patched when running init/play routines because data from the ends of banks might get used
 	bool Patch_Vectors = true;
-	// Current 1-indexed song number (1 is the first song)
-	int CurrentSong = 1;
 	// Whether the INIT routine needs to be called
 	bool InitPending = true;
-	// Previous button state for button press handling
-	int ButtonState;
 
 	uint8_t NSFROM[0x23] = {
 		//@NMIVector
@@ -127,6 +121,16 @@ class NsfMapper final : public Mapper {
 
 	void SaveState(nlohmann::json& saver) const override;
 	void LoadState(const nlohmann::json& saver) override;
+
+    void HardReset() override {
+		Mapper::HardReset();
+		for(int i = 0; i < 8; i++) {
+			auto bank = nsf.bankInit[i];
+			prg_banks_4k[i] = (bank >= (nsf.length >> 12)) ? 0 : bank;
+		}
+		Patch_Vectors = true;
+		InitPending = true;
+	}
 };
 
 }

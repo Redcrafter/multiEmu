@@ -155,7 +155,7 @@ void Mapper004::LoadState(const nlohmann::json& saver) {
 	irqCounter = saver["irqCounter"];
 	irqLatch = saver["irqLatch"];
 
-	auto& dat = saver["prgRam"].get_binary();
+	auto dat = saver["prgRam"].get<std::vector<uint8_t>>();
 	assert(dat.size() == 0x2000);
 	std::memcpy(prgRam, dat.data(), 0x2000);
 	// ramEnable = saver["ramEnable"];

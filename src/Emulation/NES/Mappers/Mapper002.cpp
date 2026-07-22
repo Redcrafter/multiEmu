@@ -31,7 +31,9 @@ bool Mapper002::cpuWrite(uint16_t addr, uint8_t data) {
 }
 
 uint8_t Mapper002::ppuRead(uint16_t addr, bool readOnly) {
-	if(addr >= 0x2000) { // 0x2000 - 0x3EFF
+	if(addr < 0x2000) {
+		return chrRam[addr];
+	} else { // 0x2000 - 0x3EFF
 		return vram[mapMirrorAddress(mirror, addr)];
 	}
 	return 0;

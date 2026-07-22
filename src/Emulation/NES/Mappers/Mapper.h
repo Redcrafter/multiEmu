@@ -24,7 +24,7 @@ inline uint16_t mapMirrorAddress(const MirrorMode mode, uint16_t addr) {
 			if(addr < 0x2800) {
 				addr &= 0x3ff;
 			} else {
-				addr = (addr & 0x3ff) + 0x400;
+				addr = (addr & 0x3ff) | 0x400;
 			}
 			break;
 		case MirrorMode::Vertical:
@@ -34,7 +34,7 @@ inline uint16_t mapMirrorAddress(const MirrorMode mode, uint16_t addr) {
 			addr &= 0x3ff;
 			break;
 		case MirrorMode::OnescreenHi:
-			addr &= 0x3ff + 0x400;
+			addr = (addr & 0x3ff) | 0x400;
 			break;
 		case MirrorMode::FourScreen:
 			addr &= 0xFFF;
@@ -46,6 +46,11 @@ inline uint16_t mapMirrorAddress(const MirrorMode mode, uint16_t addr) {
 
 class Mapper {
   public:
+	MirrorMode defaultMirror = MirrorMode::Horizontal;
+	MirrorMode mirror = MirrorMode::Horizontal;
+	bool Irq = false;
+	md5 hash;
+
 	std::array<uint8_t, 0x1000> vram {};
 	std::array<uint8_t, 0x2000> chrRam {};
 
@@ -54,11 +59,6 @@ class Mapper {
 
 	size_t prgMask;
 	size_t chrMask;
-
-	bool Irq = false;
-
-	MirrorMode mirror = MirrorMode::Horizontal;
-	md5 hash;
 
   public:
 	Mapper(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : prg(prg), chr(chr) {
@@ -83,6 +83,13 @@ class Mapper {
 
 	virtual void SaveState(nlohmann::json& saver) const = 0;
 	virtual void LoadState(const nlohmann::json& saver) = 0;
+
+    virtual void HardReset() {
+		vram.fill(0);
+		chrRam.fill(0);
+		Irq = false;
+		mirror = defaultMirror;
+    }
 
 	virtual void MapSaveRam(const std::string& path) {
 		throw std::logic_error("Mapper does not support Saveram");

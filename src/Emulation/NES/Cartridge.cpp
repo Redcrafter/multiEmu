@@ -8,7 +8,21 @@
 #include "../../logger.h"
 #include "../../md5.h"
 #include "../../sha1.h"
-#include "Mappers/Mappers.h"
+
+#include "Mappers/Mapper000.h"
+#include "Mappers/Mapper001.h"
+#include "Mappers/Mapper002.h"
+#include "Mappers/Mapper003.h"
+#include "Mappers/Mapper004.h"
+// #include "Mappers/Mapper005.h"
+// #include "Mappers/Mapper006.h"
+#include "Mappers/Mapper007.h"
+#include "Mappers/Mapper011.h"
+#include "Mappers/Mapper065.h"
+#include "Mappers/Mapper071.h"
+#include "Mappers/Mapper079.h"
+#include "Mappers/Mapper232.h"
+#include "Mappers/VRC6Mapper.h"
 
 namespace Nes {
 
@@ -50,7 +64,7 @@ static void InsertPrg(const std::string& name, uint16_t mapper, const std::strin
 
 static void InsertCart(const std::string& name, nlohmann::json& obj) {
 	auto& board = obj["board"];
-	auto mapper = std::stoi(board["@mapper"].get<std::string>());
+	auto mapper = (uint16_t)std::stoi(board["@mapper"].get<std::string>());
 	auto& prg = board["prg"];
 
 	if(prg.is_array()) {
@@ -172,11 +186,11 @@ std::shared_ptr<Mapper> LoadCart(const std::string& path) {
 		default: throw std::logic_error("Mapper not implemented");
 	}
 	if(header.Flags6 & 1) {
-		mapper->mirror = MirrorMode::Vertical;
+		mapper->mirror = mapper->defaultMirror = MirrorMode::Vertical;
 	} else if(header.Flags6 & 8) {
-		mapper->mirror = MirrorMode::FourScreen;
+		mapper->mirror = mapper->defaultMirror = MirrorMode::FourScreen;
 	} else {
-		mapper->mirror = MirrorMode::Horizontal;
+		mapper->mirror = mapper->defaultMirror = MirrorMode::Horizontal;
 	}
 
 	stream.clear();

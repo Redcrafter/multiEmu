@@ -9,16 +9,16 @@ class VRC6Mapper final : public Mapper {
 	int chrBanks;
 
 	bool swap;
-	uint32_t prgBankOffset[4];
+	std::array<uint32_t, 4> prgBankOffset;
 
-	uint8_t chr_banks_1k[8];
+	std::array<uint8_t, 8> chr_banks_1k;
 
 	uint8_t PPUBankingMode = 0;
 	bool chrA10replace = false;
 	bool NTROM = false;
 
 	bool ramEnable = false;
-	uint8_t prgRam[0x2000];
+	std::array<uint8_t, 0x2000> prgRam;
 
 	bool irq_enabled = false;
 	bool irq_mode = false;
@@ -41,6 +41,7 @@ class VRC6Mapper final : public Mapper {
 	void SaveState(nlohmann::json& saver) const override {}
 	void LoadState(const nlohmann::json& saver) override {}
 
+	void HardReset() override;
 	void CpuClock() override;
 
   private:

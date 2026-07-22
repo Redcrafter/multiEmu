@@ -5,8 +5,8 @@ namespace Nes {
 
 class Mapper065 final : public Mapper {
   private:
-	uint32_t prgBankOffset[4];
-	uint32_t chrBankOffset[8] {};
+	std::array<uint32_t, 4> prgBankOffset {};
+	std::array<uint32_t, 8> chrBankOffset {};
 
 	bool irqEnable = false;
 	uint16_t irqCounter = 0;
@@ -23,6 +23,14 @@ class Mapper065 final : public Mapper {
 	void SaveState(nlohmann::json& saver) const override;
 	void LoadState(const nlohmann::json& saver) override;
 
+    void HardReset() override {
+		Mapper::HardReset();
+		prgBankOffset.fill(0);
+		chrBankOffset.fill(0);
+		irqEnable = false;
+		irqCounter = 0;
+		irqReload = 0;
+	}
 	void CpuClock() override;
 };
 

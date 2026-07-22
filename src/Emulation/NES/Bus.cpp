@@ -10,7 +10,7 @@ void Bus::InsertCartridge(std::shared_ptr<Mapper>& cartridge) {
 }
 
 void Bus::HardReset() {
-	// cartridge->HardReset();
+	cartridge->HardReset();
 	cpu.HardReset();
 	ppu.HardReset();
 	apu.HardReset();

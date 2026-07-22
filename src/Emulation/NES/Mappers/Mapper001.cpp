@@ -164,7 +164,7 @@ void Mapper001::LoadState(const nlohmann::json& saver) {
 
 	ramEnable = saver["ramEnable"];
 
-	auto& dat = saver["prgRam"].get_binary();
+	auto dat = saver["prgRam"].get<std::vector<uint8_t>>();
 	assert(dat.size() == 0x2000);
 	std::memcpy(prgRam, dat.data(), 0x2000);
 }

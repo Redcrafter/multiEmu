@@ -32,6 +32,18 @@ class Mapper001 final : public Mapper {
 	void SaveState(nlohmann::json& saver) const override;
 	void LoadState(const nlohmann::json& saver) override;
 
+    void HardReset() override {
+		Mapper::HardReset();
+		lastWrite = false;
+		Control = 0b01100;
+		shiftRegister = 0b100000;
+		chrBank0 = 0;
+		chrBank1 = 0;
+		prgBank = 0;
+		prgBankOffset.fill(0);
+		chrBankOffset.fill(0);
+		ramEnable = true;
+    }
 	void MapSaveRam(const std::string& path) override;
 };
 

@@ -18,6 +18,12 @@ class Mapper011 final : public Mapper {
 
 	void SaveState(nlohmann::json& saver) const override;
 	void LoadState(const nlohmann::json& saver) override;
+
+    void HardReset() override {
+		Mapper::HardReset();
+		prgBank = 0;
+	    chrBank = 0;
+	}
 };
 
 }
