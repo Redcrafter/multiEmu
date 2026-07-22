@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 
-#include "../../../Texture.h"
+#include "../../../texture.h"
 #include "../ppu2C02.h"
 
 namespace Nes {

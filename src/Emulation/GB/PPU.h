@@ -4,7 +4,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "../../Texture.h"
+#include "../../texture.h"
 
 namespace Gameboy {
 

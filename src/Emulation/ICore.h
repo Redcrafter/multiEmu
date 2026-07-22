@@ -7,7 +7,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "../Texture.h"
+#include "../texture.h"
 #include "../md5.h"
 #include "../settings.h"
 

@@ -3,7 +3,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "../../Texture.h"
+#include "../../texture.h"
 #include "Cartridge.h"
 
 namespace Nes {
