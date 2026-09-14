@@ -15,6 +15,8 @@ struct Chip8 {
 	std::array<uint16_t, 0x100> stack;
 	std::array<uint8_t, 64 * 32> gfx;
 
+	int8_t waitKey; // key seen going down during FX0A, -1 while none
+
   public:
 	Chip8();
 
