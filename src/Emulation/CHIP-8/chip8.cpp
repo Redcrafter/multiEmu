@@ -75,7 +75,6 @@ void Chip8::Reset() {
 
 	delay_timer = 0;
 	sound_timer = 0;
-	waitKey = -1;
 }
 
 void Chip8::Clock() {
@@ -230,19 +229,16 @@ void Chip8::Clock() {
 					break;
 				case 0x0A: {
 					// the original hardware moves on when the key is released, not when it goes down
-					if(waitKey < 0) {
-						for(int i = 0; i < 16; i++) {
-							if(inputMapper.GetKey(i)) {
-								waitKey = i;
-								break;
-							}
+					bool released = false;
+					for(int i = 0; i < 16; i++) {
+						if(inputMapper.GetKeyUp(i)) {
+							vx = i;
+							released = true;
+							break;
 						}
+					}
+					if(!released) {
 						PC -= 2;
-					} else if(inputMapper.GetKey(waitKey)) {
-						PC -= 2;
-					} else {
-						vx = waitKey;
-						waitKey = -1;
 					}
 					break;
 				}
