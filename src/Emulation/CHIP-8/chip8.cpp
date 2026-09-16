@@ -133,26 +133,37 @@ void Chip8::Clock() {
 				case 0x1: vx |= vy; break;
 				case 0x2: vx &= vy; break;
 				case 0x3: vx ^= vy; break;
-				case 0x4:
-					V[0xF] = (vx + vy) >> 8;
+				// VF is written after the result so the flag survives when VX is VF
+				case 0x4: {
+					auto flag = (vx + vy) >> 8;
 					vx += vy;
+					V[0xF] = flag;
 					break;
-				case 0x5:
-					V[0xF] = (vx >= vy);
+				}
+				case 0x5: {
+					auto flag = (vx >= vy);
 					vx -= vy;
+					V[0xF] = flag;
 					break;
-				case 0x6:
-					V[0xF] = vx & 1;
+				}
+				case 0x6: {
+					auto flag = vx & 1;
 					vx >>= 1;
+					V[0xF] = flag;
 					break;
-				case 0x7:
-					V[0xF] = (vy >= vx);
+				}
+				case 0x7: {
+					auto flag = (vy >= vx);
 					vx = vy - vx;
+					V[0xF] = flag;
 					break;
-				case 0xE:
-					V[0xF] = (vx >> 7);
+				}
+				case 0xE: {
+					auto flag = (vx >> 7);
 					vx <<= 1;
+					V[0xF] = flag;
 					break;
+				}
 				default: // unknown opcode
 					break;
 			}
@@ -173,11 +184,17 @@ void Chip8::Clock() {
 			break;
 		case 0xD000: // DXYN: Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels
 			V[0xF] = 0;
+			// the start position wraps around the screen, the rest of the sprite is clipped at the edges
 			for(auto y = 0; y < (opcode & 0xF); y++) {
 				auto row = memory[I + y];
+				auto py = vy % 32 + y;
+				if(py >= 32) {
+					break;
+				}
 				for(auto x = 0; x < 8; x++) {
-					if((row & 0x80) != 0) {
-						auto pos = (vx + x) + (vy + y) * 64;
+					auto px = vx % 64 + x;
+					if((row & 0x80) != 0 && px < 64) {
+						auto pos = px + py * 64;
 						if(gfx[pos] == 1) {
 							V[0xF] = 1;
 						}
@@ -190,13 +207,14 @@ void Chip8::Clock() {
 			break;
 		case 0xE000:
 			switch(opcode & 0xFF) {
+				// only the low nibble names a key; the mapper asserts on ids it does not know
 				case 0x9E:
-					if(inputMapper.GetKey(vx)) {
+					if(inputMapper.GetKey(vx & 0xF)) {
 						PC += 2;
 					}
 					break;
 				case 0xA1:
-					if(!inputMapper.GetKey(vx)) {
+					if(!inputMapper.GetKey(vx & 0xF)) {
 						PC += 2;
 					}
 					break;
@@ -210,15 +228,16 @@ void Chip8::Clock() {
 					vx = delay_timer;
 					break;
 				case 0x0A: {
-					bool hasInput = false;
+					// the original hardware moves on when the key is released, not when it goes down
+					bool released = false;
 					for(int i = 0; i < 16; i++) {
-						if(inputMapper.GetKey(i)) {
-							hasInput = true;
+						if(inputMapper.GetKeyUp(i)) {
 							vx = i;
+							released = true;
 							break;
 						}
 					}
-					if(!hasInput) {
+					if(!released) {
 						PC -= 2;
 					}
 					break;
