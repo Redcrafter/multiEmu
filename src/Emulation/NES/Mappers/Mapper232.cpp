@@ -2,10 +2,7 @@
 
 namespace Nes {
 
-Mapper232::Mapper232(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
-	prgBanks[0] = 0;
-	prgBanks[1] = 0xFF;
-}
+Mapper232::Mapper232(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {}
 
 int Mapper232::cpuRead(uint16_t addr, uint8_t& data) {
 	if(addr >= 0x8000) {

@@ -5,7 +5,7 @@ namespace Nes {
 
 class Mapper071 final : public Mapper {
   private:
-	std::array<uint8_t, 2> prgBanks;
+	std::array<uint8_t, 2> prgBanks { 0, 0xFF };
 
   public:
 	Mapper071(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr);
@@ -21,7 +21,7 @@ class Mapper071 final : public Mapper {
 
 	void HardReset() override {
 		Mapper::HardReset();
-		prgBanks.fill(0);
+		prgBanks = { 0, 0xFF };
 	}
 };
 

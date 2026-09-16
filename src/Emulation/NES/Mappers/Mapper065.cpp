@@ -2,12 +2,7 @@
 
 namespace Nes {
 
-Mapper065::Mapper065(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
-	prgBankOffset[0] = 0;
-	prgBankOffset[1] = 1;
-	prgBankOffset[2] = 0xFE;
-	prgBankOffset[3] = 0xFF;
-}
+Mapper065::Mapper065(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {}
 
 int Mapper065::cpuRead(uint16_t addr, uint8_t& data) {
 	if(addr >= 0x8000) {

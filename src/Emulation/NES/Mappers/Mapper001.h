@@ -14,7 +14,7 @@ class Mapper001 final : public Mapper {
 	uint8_t chrBank0 = 0, chrBank1 = 0, prgBank = 0;
 
 	std::array<uint32_t, 2> prgBankOffset;
-	std::array<uint32_t, 2> chrBankOffset;
+	std::array<uint32_t, 2> chrBankOffset { 0, 0x1000 };
 
 	bool ramEnable = true;
 	uint8_t* prgRam = nullptr;
@@ -32,7 +32,7 @@ class Mapper001 final : public Mapper {
 	void SaveState(nlohmann::json& saver) const override;
 	void LoadState(const nlohmann::json& saver) override;
 
-    void HardReset() override {
+	void HardReset() override {
 		Mapper::HardReset();
 		lastWrite = false;
 		Control = 0b01100;
@@ -40,10 +40,13 @@ class Mapper001 final : public Mapper {
 		chrBank0 = 0;
 		chrBank1 = 0;
 		prgBank = 0;
-		prgBankOffset.fill(0);
-		chrBankOffset.fill(0);
+		prgBankOffset = { 0, (uint32_t)prg.size() - 0x4000 };
+		chrBankOffset = { 0, 0x1000 };
 		ramEnable = true;
-    }
+		if(!file) { // clear non save ram
+			std::memset(prgRam, 0, 0x2000);
+		}
+	}
 	void MapSaveRam(const std::string& path) override;
 };
 

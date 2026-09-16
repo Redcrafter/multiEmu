@@ -5,12 +5,10 @@ namespace Nes {
 
 Mapper001::Mapper001(const std::vector<uint8_t>& prg, const std::vector<uint8_t>& chr) : Mapper(prg, chr) {
 	prgRam = new uint8_t[0x2000];
+	std::memset(prgRam, 0, 0x2000);
 
 	prgBankOffset[0] = 0;
 	prgBankOffset[1] = prg.size() - 0x4000;
-
-	chrBankOffset[0] = 0;
-	chrBankOffset[1] = 0x1000;
 }
 
 Mapper001::~Mapper001() {
@@ -50,6 +48,7 @@ bool Mapper001::cpuWrite(uint16_t addr, uint8_t data) {
 	if(data & 0x80) {
 		shiftRegister = 0b100000;
 		Control |= 0x0C;
+		prgBankOffset[1] = prg.size() - 0x4000;
 		lastWrite = true;
 
 		return false;

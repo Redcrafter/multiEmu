@@ -50,12 +50,13 @@ class Mapper004 final : public Mapper {
 
 	void MapSaveRam(const std::string& path) override;
 
-    void HardReset() override {
+	void HardReset() override {
 		Mapper::HardReset();
 
-        bankSelect.reg = 0;
+		bankSelect.reg = 0;
 		regs = { 0, 2, 4, 5, 6, 7, 0, 1 };
-		prgBankOffset.fill(0);
+		prgBankOffset[3] = prg.size() - 0x2000; // last bank
+		UpdateRegs();
 		chrBankOffset.fill(0);
 		reloadIrq = false;
 		irqEnable = false;
